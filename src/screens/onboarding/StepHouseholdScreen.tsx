@@ -31,7 +31,7 @@ export function StepHouseholdScreen() {
   };
 
   return (
-    <FormLayout stepNumber={2} icon="people-outline" onBack={handleBack} onNext={handleNext}>
+    <FormLayout stepNumber={2} icon="people" onBack={handleBack} onNext={handleNext}>
       <NumericStepper
         value={householdSize}
         onChange={(v) => dispatch(setHouseholdSize(v))}

@@ -53,6 +53,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg,
     paddingTop: spacing.xxl,
   },
-  title: { marginBottom: spacing.sm },
-  subtitle: { marginBottom: spacing.xl },
+  title: { marginBottom: spacing.sm, textAlign: 'center' },
+  subtitle: { marginBottom: spacing.xl, textAlign: 'center' },
 });

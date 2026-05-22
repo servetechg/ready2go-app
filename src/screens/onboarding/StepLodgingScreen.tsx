@@ -78,7 +78,7 @@ export function StepLodgingScreen() {
   return (
     <FormLayout
       stepNumber={7}
-      icon="bed-outline"
+      icon="bed"
       nextLabel="FINISH"
       loading={!!loading}
       onBack={() => navigation.navigate(ONBOARDING_ROUTES.STEP_TRANSPORT)}

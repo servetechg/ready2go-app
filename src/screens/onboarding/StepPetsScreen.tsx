@@ -29,7 +29,7 @@ export function StepPetsScreen() {
   return (
     <FormLayout
       stepNumber={5}
-      icon="paw-outline"
+      icon="paw"
       onBack={() => {
         dispatch(setCurrentStep(4));
         navigation.navigate(ONBOARDING_ROUTES.STEP_MEDICAL);

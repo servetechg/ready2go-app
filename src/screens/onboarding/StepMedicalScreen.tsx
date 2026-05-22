@@ -32,7 +32,7 @@ export function StepMedicalScreen() {
   return (
     <FormLayout
       stepNumber={4}
-      icon="heart-outline"
+      icon="heart"
       onBack={() => {
         dispatch(setCurrentStep(3));
         navigation.navigate(ONBOARDING_ROUTES.STEP_ADA);

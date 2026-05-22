@@ -32,7 +32,7 @@ export function StepTransportScreen() {
   return (
     <FormLayout
       stepNumber={6}
-      icon="car-outline"
+      icon="car"
       onBack={() => {
         dispatch(setCurrentStep(5));
         navigation.navigate(ONBOARDING_ROUTES.STEP_PETS);

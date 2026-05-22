@@ -29,7 +29,7 @@ export function StepAdaScreen() {
   return (
     <FormLayout
       stepNumber={3}
-      icon="accessibility-outline"
+      icon="accessibility"
       onBack={() => {
         dispatch(setCurrentStep(2));
         navigation.navigate(ONBOARDING_ROUTES.STEP_HOUSEHOLD);

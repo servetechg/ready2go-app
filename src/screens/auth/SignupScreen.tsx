@@ -173,7 +173,7 @@ export function SignupScreen() {
       ) : null}
 
       <AppButton
-        title={completeAfterSignup ? 'SAVE & FINISH' : 'CREATE ACCOUNT'}
+        title={isLoading ? 'Signing Up...' : (completeAfterSignup ? 'Sign Up' : 'CREATE ACCOUNT')}
         onPress={handleSubmit(onSubmit)}
         loading={!!isLoading}
       />
