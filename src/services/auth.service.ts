@@ -1,9 +1,14 @@
-import type { ForgotPasswordPayload, LoginCredentials, SignupCredentials, User } from '@/types/auth';
+import type {
+  AuthResponse,
+  ForgotPasswordPayload,
+  LoginCredentials,
+  ResendOtpPayload,
+  SignupCredentials,
+  VerifyOtpPayload,
+} from '@/types/auth';
 
-interface AuthResponse {
-  user: User;
-  token: string;
-}
+/** Mock OTP for development — replace with backend-sent codes */
+export const MOCK_OTP_CODE = '123456';
 
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -44,6 +49,24 @@ export const authService = {
       },
       token: 'mock-jwt-token',
     };
+  },
+
+  async sendSignupOtp(_payload: ResendOtpPayload): Promise<void> {
+    await delay(600);
+  },
+
+  async verifyOtp(
+    payload: VerifyOtpPayload,
+    pendingAuth: AuthResponse | null,
+  ): Promise<AuthResponse> {
+    await delay(800);
+    if (payload.code !== MOCK_OTP_CODE) {
+      throw new Error('Invalid verification code');
+    }
+    if (!pendingAuth || pendingAuth.user.email !== payload.email) {
+      throw new Error('Verification session expired. Please sign up again.');
+    }
+    return pendingAuth;
   },
 
   async forgotPassword(payload: ForgotPasswordPayload): Promise<void> {

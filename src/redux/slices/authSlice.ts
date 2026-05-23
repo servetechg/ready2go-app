@@ -1,7 +1,15 @@
 import { createAsyncThunk, createSlice, PayloadAction } from '@reduxjs/toolkit';
 
 import { authService } from '@/services/auth.service';
-import type { AuthState, ForgotPasswordPayload, LoginCredentials, SignupCredentials, User } from '@/types/auth';
+import type {
+  AuthState,
+  ForgotPasswordPayload,
+  LoginCredentials,
+  ResendOtpPayload,
+  SignupCredentials,
+  User,
+  VerifyOtpPayload,
+} from '@/types/auth';
 import { getErrorMessage } from '@/utils/error';
 
 const initialState: AuthState = {
@@ -10,6 +18,8 @@ const initialState: AuthState = {
   isAuthenticated: false,
   isLoading: false,
   error: null,
+  pendingAuth: null,
+  otpEmail: null,
 };
 
 export const loginUser = createAsyncThunk(
@@ -27,9 +37,35 @@ export const signupUser = createAsyncThunk(
   'auth/signup',
   async (credentials: SignupCredentials, { rejectWithValue }) => {
     try {
-      return await authService.signup(credentials);
+      const response = await authService.signup(credentials);
+      await authService.sendSignupOtp({ email: credentials.email });
+      return response;
     } catch (error) {
       return rejectWithValue(getErrorMessage(error, 'Signup failed'));
+    }
+  },
+);
+
+export const verifyOtp = createAsyncThunk(
+  'auth/verifyOtp',
+  async (payload: VerifyOtpPayload, { getState, rejectWithValue }) => {
+    try {
+      const { pendingAuth } = (getState() as { auth: AuthState }).auth;
+      return await authService.verifyOtp(payload, pendingAuth);
+    } catch (error) {
+      return rejectWithValue(getErrorMessage(error, 'Verification failed'));
+    }
+  },
+);
+
+export const resendOtp = createAsyncThunk(
+  'auth/resendOtp',
+  async (payload: ResendOtpPayload, { rejectWithValue }) => {
+    try {
+      await authService.sendSignupOtp(payload);
+      return payload.email;
+    } catch (error) {
+      return rejectWithValue(getErrorMessage(error, 'Could not resend code'));
     }
   },
 );
@@ -62,6 +98,12 @@ const authSlice = createSlice({
       state.isAuthenticated = false;
       state.error = null;
       state.isLoading = false;
+      state.pendingAuth = null;
+      state.otpEmail = null;
+    },
+    clearPendingAuth: (state) => {
+      state.pendingAuth = null;
+      state.otpEmail = null;
     },
     clearAuthError: (state) => {
       state.error = null;
@@ -89,11 +131,26 @@ const authSlice = createSlice({
       .addCase(signupUser.pending, handlePending)
       .addCase(signupUser.fulfilled, (state, action) => {
         state.isLoading = false;
+        state.pendingAuth = action.payload;
+        state.otpEmail = action.payload.user.email;
+        state.error = null;
+      })
+      .addCase(signupUser.rejected, handleRejected)
+      .addCase(verifyOtp.pending, handlePending)
+      .addCase(verifyOtp.fulfilled, (state, action) => {
+        state.isLoading = false;
         state.user = action.payload.user;
         state.token = action.payload.token;
         state.isAuthenticated = true;
+        state.pendingAuth = null;
+        state.otpEmail = null;
       })
-      .addCase(signupUser.rejected, handleRejected)
+      .addCase(verifyOtp.rejected, handleRejected)
+      .addCase(resendOtp.pending, handlePending)
+      .addCase(resendOtp.fulfilled, (state) => {
+        state.isLoading = false;
+      })
+      .addCase(resendOtp.rejected, handleRejected)
       .addCase(forgotPassword.pending, handlePending)
       .addCase(forgotPassword.fulfilled, (state) => {
         state.isLoading = false;
@@ -102,5 +159,5 @@ const authSlice = createSlice({
   },
 });
 
-export const { setCredentials, logout, clearAuthError } = authSlice.actions;
+export const { setCredentials, logout, clearAuthError, clearPendingAuth } = authSlice.actions;
 export default authSlice.reducer;
