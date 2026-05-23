@@ -6,6 +6,10 @@ export type AuthStackParamList = {
   [AUTH_ROUTES.WELCOME]: undefined;
   [AUTH_ROUTES.LOGIN]: undefined;
   [AUTH_ROUTES.SIGNUP]: { completeRegistration?: boolean } | undefined;
+  [AUTH_ROUTES.OTP_VERIFICATION]: {
+    email: string;
+    completeRegistration?: boolean;
+  };
   [AUTH_ROUTES.FORGOT_PASSWORD]: undefined;
 };
 

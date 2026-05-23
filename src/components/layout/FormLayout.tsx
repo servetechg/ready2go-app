@@ -1,10 +1,15 @@
 import React from 'react';
 import { StyleSheet, View } from 'react-native';
 
-import { REGISTRATION_STEPS, TOTAL_REGISTRATION_STEPS } from '@/constants/registration';
+import {
+  ONBOARDING_PURPOSE_MESSAGE,
+  REGISTRATION_STEPS,
+  TOTAL_REGISTRATION_STEPS,
+} from '@/constants/registration';
 import { spacing } from '@/theme';
 import { toBoolean } from '@/utils/coerce';
 
+import { OnboardingPurposeNote } from '../ui/OnboardingPurposeNote';
 import { StepIndicator } from '../ui/StepIndicator';
 import { StepInstruction } from '../ui/StepInstruction';
 import { AppHeader } from './AppHeader';
@@ -47,6 +52,7 @@ export function FormLayout({
             totalSteps={TOTAL_REGISTRATION_STEPS}
             title={step.title}
           />
+          <OnboardingPurposeNote text={ONBOARDING_PURPOSE_MESSAGE} />
           {instructionText ? <StepInstruction text={instructionText} /> : null}
           {children}
         </View>

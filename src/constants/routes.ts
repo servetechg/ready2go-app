@@ -2,6 +2,7 @@ export const AUTH_ROUTES = {
   WELCOME: 'Welcome',
   LOGIN: 'Login',
   SIGNUP: 'Signup',
+  OTP_VERIFICATION: 'OtpVerification',
   FORGOT_PASSWORD: 'ForgotPassword',
 } as const;
 

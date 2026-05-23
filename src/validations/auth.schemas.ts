@@ -22,6 +22,15 @@ export const forgotPasswordSchema = z.object({
   email: z.string().min(1, 'Email is required').email('Enter a valid email'),
 });
 
+export const otpSchema = z.object({
+  code: z
+    .string()
+    .min(6, 'Enter the 6-digit code')
+    .max(6, 'Enter the 6-digit code')
+    .regex(/^\d{6}$/, 'Enter a valid 6-digit code'),
+});
+
 export type LoginFormData = z.infer<typeof loginSchema>;
 export type SignupFormData = z.infer<typeof signupSchema>;
 export type ForgotPasswordFormData = z.infer<typeof forgotPasswordSchema>;
+export type OtpFormData = z.infer<typeof otpSchema>;

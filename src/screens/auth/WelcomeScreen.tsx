@@ -9,6 +9,7 @@ import { AppButton } from '@/components/ui/AppButton';
 import { AppCard } from '@/components/ui/AppCard';
 import { AppText } from '@/components/ui/AppText';
 import { HeroBanner } from '@/components/ui/HeroBanner';
+import { ONBOARDING_PURPOSE_MESSAGE } from '@/constants/registration';
 import { AUTH_ROUTES } from '@/constants/routes';
 import { useAppTheme } from '@/hooks/useAppTheme';
 import { useAppDispatch } from '@/redux/hooks';
@@ -36,7 +37,7 @@ export function WelcomeScreen() {
           Create Your Account
         </AppText>
         <AppText variant="body" color={colors.textSecondary} center={true} style={styles.desc}>
-          Your information helps us get you the right assistance when you need it.
+          {ONBOARDING_PURPOSE_MESSAGE}
         </AppText>
 
         <AppButton title="GET STARTED" onPress={handleGetStarted} />

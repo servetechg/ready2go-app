@@ -15,6 +15,7 @@ interface AppSelectProps {
   onChange: (value: string) => void;
   placeholder?: string;
   error?: string;
+  containerStyle?: object;
 }
 
 export function AppSelect({
@@ -24,12 +25,13 @@ export function AppSelect({
   onChange,
   placeholder = 'Select',
   error,
+  containerStyle,
 }: AppSelectProps) {
   const { colors } = useAppTheme();
   const [open, setOpen] = useState(false);
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, containerStyle]}>
       {label ? (
         <AppText variant="label" color={colors.textSecondary} style={styles.label}>
           {label}
@@ -44,10 +46,15 @@ export function AppSelect({
           },
         ]}
         onPress={() => setOpen(true)}>
-        <AppText variant="body" color={value ? colors.text : colors.textMuted}>
+        <AppText
+          variant="body"
+          numberOfLines={1}
+          ellipsizeMode="tail"
+          style={styles.triggerText}
+          color={value ? colors.text : colors.textMuted}>
           {value || placeholder}
         </AppText>
-        <Ionicons name="chevron-down" size={20} color={colors.primary} />
+        <Ionicons name="chevron-down" size={20} color={colors.primary} style={styles.chevron} />
       </Pressable>
       <ErrorMessage message={error} />
 
@@ -91,12 +98,17 @@ const styles = StyleSheet.create({
   trigger: {
     borderWidth: 1,
     borderRadius: borderRadius.md,
-    paddingHorizontal: spacing.lg,
+    paddingHorizontal: spacing.md,
     paddingVertical: spacing.md,
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
   },
+  triggerText: {
+    flex: 1,
+    minWidth: 0,
+    marginRight: spacing.xs,
+  },
+  chevron: { flexShrink: 0 },
   overlay: {
     flex: 1,
     justifyContent: 'center',

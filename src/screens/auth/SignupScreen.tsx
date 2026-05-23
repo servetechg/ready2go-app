@@ -14,11 +14,6 @@ import { useAppTheme } from '@/hooks/useAppTheme';
 import { useToast } from '@/hooks/useToast';
 import { useAppDispatch, useAppSelector } from '@/redux/hooks';
 import { clearAuthError, signupUser } from '@/redux/slices/authSlice';
-import {
-  completeRegistration,
-  setNeedsAccount,
-} from '@/redux/slices/registrationSlice';
-import { registrationService } from '@/services/registration.service';
 import { spacing } from '@/theme';
 import type { AuthStackParamList } from '@/types/navigation';
 import { signupSchema, type SignupFormData } from '@/validations/auth.schemas';
@@ -31,7 +26,6 @@ export function SignupScreen() {
   const route = useRoute<Route>();
   const dispatch = useAppDispatch();
   const { isLoading, error } = useAppSelector((s) => s.auth);
-  const registration = useAppSelector((s) => s.registration);
   const needsAccount = useAppSelector((s) => s.registration.needsAccount);
   const { colors } = useAppTheme();
   const { showSuccess } = useToast();
@@ -57,19 +51,11 @@ export function SignupScreen() {
     const result = await dispatch(signupUser(data));
     if (!signupUser.fulfilled.match(result)) return;
 
-    const token = result.payload.token;
-
-    if (completeAfterSignup) {
-      await registrationService.submitRegistration(
-        { ...registration, isComplete: true },
-        token,
-      );
-      dispatch(completeRegistration());
-      dispatch(setNeedsAccount(false));
-      showSuccess('Registration complete! Welcome to Ready2Go.');
-    } else {
-      showSuccess('Account created successfully!');
-    }
+    showSuccess('Verification code sent to your email');
+    navigation.navigate(AUTH_ROUTES.OTP_VERIFICATION, {
+      email: data.email,
+      completeRegistration: completeAfterSignup,
+    });
   };
 
   return (
