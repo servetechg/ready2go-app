@@ -31,7 +31,7 @@ export function StepAddressScreen() {
   const dispatch = useAppDispatch();
   const address = useAppSelector((s) => s.registration.address);
   const isStarted = useAppSelector((s) => s.registration.isStarted);
-  const [showAddressWhyModal, setShowAddressWhyModal] = React.useState(true);
+  const [showAddressWhyModal, setShowAddressWhyModal] = React.useState(false);
 
   const { control, handleSubmit, setValue, watch } = useForm<AddressFormData>({
     resolver: zodResolver(addressSchema),

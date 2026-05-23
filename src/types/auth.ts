@@ -5,12 +5,28 @@ export interface User {
   lastName: string;
 }
 
+export interface AuthResponse {
+  user: User;
+  token: string;
+}
+
 export interface AuthState {
   user: User | null;
   token: string | null;
   isAuthenticated: boolean;
   isLoading: boolean;
   error: string | null;
+  pendingAuth: AuthResponse | null;
+  otpEmail: string | null;
+}
+
+export interface VerifyOtpPayload {
+  email: string;
+  code: string;
+}
+
+export interface ResendOtpPayload {
+  email: string;
 }
 
 export interface LoginCredentials {
