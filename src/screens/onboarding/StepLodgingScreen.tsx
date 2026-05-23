@@ -21,6 +21,7 @@ import {
 } from '@/redux/slices/registrationSlice';
 import { registrationService } from '@/services/registration.service';
 import type { OnboardingStackParamList } from '@/types/navigation';
+import { toBoolean } from '@/utils/coerce';
 import { lodgingSchema, type LodgingFormData } from '@/validations/registration.schemas';
 
 type Nav = StackNavigationProp<
@@ -33,6 +34,7 @@ export function StepLodgingScreen() {
   const dispatch = useAppDispatch();
   const lodging = useAppSelector((s) => s.registration.lodging);
   const registration = useAppSelector((s) => s.registration);
+  const isAuthenticated = useAppSelector((s) => s.auth.isAuthenticated);
   const token = useAppSelector((s) => s.auth.token);
   const { colors } = useAppTheme();
   const { showSuccess } = useToast();
@@ -58,7 +60,7 @@ export function StepLodgingScreen() {
     dispatch(setLodging(lodgingData));
 
     try {
-      if (!token) {
+      if (!toBoolean(isAuthenticated) || !token) {
         dispatch(setNeedsAccount(true));
         showSuccess('Create your account to save your profile');
         return;
@@ -66,7 +68,7 @@ export function StepLodgingScreen() {
 
       await registrationService.submitRegistration(
         { ...registration, lodging: lodgingData, isComplete: true },
-        token,
+        token!,
       );
       dispatch(completeRegistration());
       showSuccess('Registration complete!');

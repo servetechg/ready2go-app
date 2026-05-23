@@ -5,8 +5,8 @@ import { useAppTheme } from '@/hooks/useAppTheme';
 import { borderRadius, spacing } from '@/theme';
 import { sanitizeTextInputProps } from '@/utils/nativeProps';
 
-import { AppText } from '../ui/AppText';
 import { ErrorMessage } from '../common/ErrorMessage';
+import { AppText } from '../ui/AppText';
 
 interface AppInputProps extends TextInputProps {
   label?: string;

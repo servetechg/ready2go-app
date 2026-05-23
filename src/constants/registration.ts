@@ -1,5 +1,14 @@
 import { ONBOARDING_ROUTES } from './routes';
 
+/** Shown on every onboarding step */
+export const ONBOARDING_PURPOSE_MESSAGE =
+  'By completing the registration accurately, you will receive quicker assistance during disruptions.';
+
+export const ADDRESS_WHY_MODAL = {
+  title: 'Why we need your address?',
+  message: 'For rescue family/pets/livestock during disruptions',
+} as const;
+
 export const REGISTRATION_STEPS = [
   {
     id: 1,

@@ -9,7 +9,9 @@ import { AppCheckbox } from '@/components/form/AppCheckbox';
 import { AppInput } from '@/components/form/AppInput';
 import { AppSelect } from '@/components/form/AppSelect';
 import { FormLayout } from '@/components/layout/FormLayout';
-import { US_STATES } from '@/constants/registration';
+import { AppModal } from '@/components/ui/AppModal';
+import { InfoLink } from '@/components/ui/InfoLink';
+import { ADDRESS_WHY_MODAL, US_STATES } from '@/constants/registration';
 import { ONBOARDING_ROUTES } from '@/constants/routes';
 import { useAppTheme } from '@/hooks/useAppTheme';
 import { useAppDispatch, useAppSelector } from '@/redux/hooks';
@@ -29,6 +31,7 @@ export function StepAddressScreen() {
   const dispatch = useAppDispatch();
   const address = useAppSelector((s) => s.registration.address);
   const isStarted = useAppSelector((s) => s.registration.isStarted);
+  const [showAddressWhyModal, setShowAddressWhyModal] = React.useState(true);
 
   const { control, handleSubmit, setValue, watch } = useForm<AddressFormData>({
     resolver: zodResolver(addressSchema),
@@ -54,12 +57,14 @@ export function StepAddressScreen() {
   };
 
   return (
+    <>
     <FormLayout
       stepNumber={1}
       icon="location"
       showBack={toBoolean(isStarted)}
       onBack={handleBack}
       onNext={handleSubmit(onSubmit)}>
+      <InfoLink onPress={() => setShowAddressWhyModal(true)} />
       <Controller
         control={control}
         name="streetAddress"
@@ -102,20 +107,23 @@ export function StepAddressScreen() {
         )}
       />
       <View style={styles.row}>
-        <Controller
-          control={control}
-          name="state"
-          render={({ field: { onChange, value }, fieldState: { error } }) => (
-            <AppSelect
-              label="State"
-              value={value}
-              options={US_STATES}
-              onChange={onChange}
-              placeholder="Select state"
-              error={error?.message}
-            />
-          )}
-        />
+        <View style={styles.stateCol}>
+          <Controller
+            control={control}
+            name="state"
+            render={({ field: { onChange, value }, fieldState: { error } }) => (
+              <AppSelect
+                label="State"
+                value={value}
+                options={US_STATES}
+                onChange={onChange}
+                placeholder="State state"
+                error={error?.message}
+                containerStyle={styles.stateSelect}
+              />
+            )}
+          />
+        </View>
         <Controller
           control={control}
           name="zipCode"
@@ -126,7 +134,7 @@ export function StepAddressScreen() {
               onChangeText={onChange}
               onBlur={onBlur}
               keyboardType="number-pad"
-              placeholder="Enter Your ZIP Code"
+              placeholder="ZIP Code"
               error={error?.message}
               containerStyle={styles.zip}
             />
@@ -149,10 +157,19 @@ export function StepAddressScreen() {
         )}
       />
     </FormLayout>
+    <AppModal
+      visible={showAddressWhyModal}
+      title={ADDRESS_WHY_MODAL.title}
+      message={ADDRESS_WHY_MODAL.message}
+      onClose={() => setShowAddressWhyModal(false)}
+    />
+    </>
   );
 }
 
 const styles = StyleSheet.create({
   row: { flexDirection: 'row', gap: 12, alignItems: 'flex-start' },
-  zip: { flex: 1, minWidth: 120 },
+  stateCol: { width: 108, flexShrink: 0 },
+  stateSelect: { marginBottom: 0 },
+  zip: { flex: 1, minWidth: 0 },
 });

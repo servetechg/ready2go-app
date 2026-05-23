@@ -28,7 +28,10 @@ export function RootNavigator() {
         <Stack.Screen
           name={ROOT_ROUTES.AUTH}
           component={AuthNavigator}
-          initialParams={{ screen: AUTH_ROUTES.SIGNUP }}
+          initialParams={{
+            screen: AUTH_ROUTES.SIGNUP,
+            params: { completeRegistration: true },
+          }}
         />
       </Stack.Navigator>
     );
