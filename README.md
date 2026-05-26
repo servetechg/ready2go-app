@@ -17,13 +17,15 @@ npm install
 npm start
 ```
 
-Copy `.env.example` to `.env` and set your API URL when connecting a backend.
+Copy `.env.example` to `.env` and set `EXPO_PUBLIC_API_BASE_URL` (must include `/api/v1`).
+
+Default dev: `http://localhost:3000/api/v1` — use your machine LAN IP on a physical device.
 
 ## App Flow
 
 1. **Welcome** → Sign up or Sign in
-2. **Auth** → Login / Signup / Forgot password (mock API)
-3. **Onboarding** (7 steps) → Address → Household → ADA → Medical → Pets → Transport → Lodging
+2. **Auth** → Signup → OTP → Login / Forgot password → OTP → Reset password
+3. **Onboarding** (7 steps, local Redux) → Finish submits `POST /profile/complete`
 4. **Dashboard** → Profile summary
 
 ## Project Structure
@@ -40,9 +42,9 @@ src/
 └── types/          # TypeScript interfaces
 ```
 
-## Demo Login
+## API
 
-Any email/password works (mock auth). Example: `demo@ready2go.com` / `password`
+Mobile REST API v1 (`/api/v1/auth/*`, `/users/me`, `/profile/complete`). Production base: `https://earthquickalert.vercel.app/api/v1`
 
 ## Scripts
 

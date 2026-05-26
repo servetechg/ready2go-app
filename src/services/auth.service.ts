@@ -1,100 +1,120 @@
+import { apiRequest } from '@/services/api/client';
+import type {
+  ApiAuthResponse,
+  ApiRefreshResponse,
+  MessageResponse,
+  OtpPurpose,
+  OtpSendResponse,
+  PasswordResetOtpResponse,
+} from '@/types/api';
 import type {
   AuthResponse,
+  ChangePasswordPayload,
   ForgotPasswordPayload,
   LoginCredentials,
-  ResendOtpPayload,
-  SignupCredentials,
+  ResetPasswordPayload,
+  SendOtpPayload,
+  SignupApiPayload,
   VerifyOtpPayload,
 } from '@/types/auth';
 
-/** Mock OTP for development — replace with backend-sent codes */
-export const MOCK_OTP_CODE = '123456';
+function normalizeAuthResponse(raw: ApiAuthResponse): AuthResponse {
+  return {
+    user: raw.user,
+    token: raw.accessToken,
+    refreshToken: raw.refreshToken,
+  };
+}
 
-const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
-
-/** Mock auth service — replace with apiClient calls when backend is ready */
 export const authService = {
+  async signup(payload: SignupApiPayload): Promise<AuthResponse> {
+    const raw = await apiRequest<ApiAuthResponse>('/auth/signup', {
+      method: 'POST',
+      body: payload,
+    });
+    return normalizeAuthResponse(raw);
+  },
+
   async login(credentials: LoginCredentials): Promise<AuthResponse> {
-    await delay(800);
-    if (credentials.email === 'demo@ready2go.com' && credentials.password === 'password') {
-      return {
-        user: {
-          id: '1',
-          email: credentials.email,
-          firstName: 'Demo',
-          lastName: 'User',
-        },
-        token: 'mock-jwt-token',
-      };
-    }
-    return {
-      user: {
-        id: Date.now().toString(),
-        email: credentials.email,
-        firstName: 'Ready2Go',
-        lastName: 'User',
-      },
-      token: 'mock-jwt-token',
-    };
+    const raw = await apiRequest<ApiAuthResponse>('/auth/login', {
+      method: 'POST',
+      body: credentials,
+    });
+    return normalizeAuthResponse(raw);
   },
 
-  async signup(credentials: SignupCredentials): Promise<AuthResponse> {
-    await delay(1000);
-    return {
-      user: {
-        id: Date.now().toString(),
-        email: credentials.email,
-        firstName: credentials.firstName,
-        lastName: credentials.lastName,
-      },
-      token: 'mock-jwt-token',
-    };
+  async forgotPassword(payload: ForgotPasswordPayload): Promise<MessageResponse> {
+    return apiRequest<MessageResponse>('/auth/forgot-password', {
+      method: 'POST',
+      body: payload,
+    });
   },
 
-  async sendSignupOtp(_payload: ResendOtpPayload): Promise<void> {
-    await delay(600);
+  async sendOtp(payload: SendOtpPayload): Promise<OtpSendResponse> {
+    return apiRequest<OtpSendResponse>('/auth/otp/send', {
+      method: 'POST',
+      body: payload,
+    });
   },
 
   async verifyOtp(
     payload: VerifyOtpPayload,
-    pendingAuth: AuthResponse | null,
-  ): Promise<AuthResponse> {
-    await delay(800);
-    if (payload.code !== MOCK_OTP_CODE) {
-      throw new Error('Invalid verification code');
+    accessToken?: string | null,
+  ): Promise<AuthResponse | PasswordResetOtpResponse> {
+    if (payload.purpose === 'PASSWORD_RESET') {
+      return apiRequest<PasswordResetOtpResponse>('/auth/otp/verify', {
+        method: 'POST',
+        body: payload,
+      });
     }
-    if (!pendingAuth || pendingAuth.user.email !== payload.email) {
-      throw new Error('Verification session expired. Please sign up again.');
-    }
-    return pendingAuth;
+
+    const raw = await apiRequest<ApiAuthResponse>('/auth/otp/verify', {
+      method: 'POST',
+      body: payload,
+      token: accessToken,
+    });
+    return normalizeAuthResponse(raw);
   },
 
-  async forgotPassword(payload: ForgotPasswordPayload): Promise<void> {
-    await delay(600);
-    if (!payload.email) {
-      throw new Error('Email is required');
-    }
-    await this.sendResetPasswordOtp({ email: payload.email });
+  async resetPassword(payload: ResetPasswordPayload): Promise<MessageResponse> {
+    const { resetToken, password, confirmPassword } = payload;
+    return apiRequest<MessageResponse>('/auth/reset-password', {
+      method: 'POST',
+      body: { resetToken, password, confirmPassword },
+    });
   },
 
-  async sendResetPasswordOtp(_payload: ResendOtpPayload): Promise<void> {
-    await delay(600);
+  async changePassword(
+    payload: ChangePasswordPayload,
+    token: string,
+  ): Promise<MessageResponse> {
+    const { currentPassword, newPassword, confirmPassword } = payload;
+    return apiRequest<MessageResponse>('/auth/change-password', {
+      method: 'POST',
+      body: { currentPassword, newPassword, confirmPassword },
+      token,
+    });
   },
 
-  async verifyResetPasswordOtp(payload: VerifyOtpPayload, expectedEmail: string | null): Promise<void> {
-    await delay(800);
-    if (payload.code !== MOCK_OTP_CODE) {
-      throw new Error('Invalid verification code');
-    }
-    if (!expectedEmail || expectedEmail !== payload.email) {
-      throw new Error('Reset session expired. Please request a new code.');
-    }
+  async refresh(refreshToken: string): Promise<AuthResponse> {
+    const raw = await apiRequest<ApiRefreshResponse>('/auth/refresh', {
+      method: 'POST',
+      body: { refreshToken },
+    });
+    return {
+      user: null as never,
+      token: raw.accessToken,
+      refreshToken: raw.refreshToken,
+    };
   },
 
-  async updatePassword(payload: { email: string; password: string }): Promise<void> {
-    await delay(800);
-    if (!payload.password || payload.password.length < 6) {
-      throw new Error('Password must be at least 6 characters');
-    }
+  async logout(token: string, refreshToken?: string | null): Promise<MessageResponse> {
+    return apiRequest<MessageResponse>('/auth/logout', {
+      method: 'POST',
+      body: refreshToken ? { refreshToken } : {},
+      token,
+    });
   },
 };
+
+export type { OtpPurpose };

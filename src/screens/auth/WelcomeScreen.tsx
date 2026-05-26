@@ -10,10 +10,8 @@ import { AppCard } from '@/components/ui/AppCard';
 import { AppText } from '@/components/ui/AppText';
 import { HeroBanner } from '@/components/ui/HeroBanner';
 import { ONBOARDING_PURPOSE_MESSAGE } from '@/constants/registration';
-import { AUTH_ROUTES } from '@/constants/routes';
 import { useAppTheme } from '@/hooks/useAppTheme';
-import { useAppDispatch } from '@/redux/hooks';
-import { startRegistration } from '@/redux/slices/registrationSlice';
+import { AUTH_ROUTES } from '@/constants/routes';
 import { borderRadius, spacing } from '@/theme';
 import type { AuthStackParamList } from '@/types/navigation';
 
@@ -21,11 +19,10 @@ type Nav = StackNavigationProp<AuthStackParamList, typeof AUTH_ROUTES.WELCOME>;
 
 export function WelcomeScreen() {
   const navigation = useNavigation<Nav>();
-  const dispatch = useAppDispatch();
   const { colors } = useAppTheme();
 
   const handleGetStarted = () => {
-    dispatch(startRegistration());
+    navigation.navigate(AUTH_ROUTES.SIGNUP);
   };
 
   return (

@@ -52,7 +52,7 @@ export function AppSelect({
           ellipsizeMode="tail"
           style={styles.triggerText}
           color={value ? colors.text : colors.textMuted}>
-          {value || placeholder}
+          {typeof value === 'string' ? value || placeholder : placeholder}
         </AppText>
         <Ionicons name="chevron-down" size={20} color={colors.primary} style={styles.chevron} />
       </Pressable>

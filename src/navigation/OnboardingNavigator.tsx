@@ -1,7 +1,9 @@
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import { createStackNavigator } from '@react-navigation/stack';
 
 import { ONBOARDING_ROUTES } from '@/constants/routes';
+import { useAppDispatch, useAppSelector } from '@/redux/hooks';
+import { sanitizeRegistration } from '@/redux/slices/registrationSlice';
 import { StepAddressScreen } from '@/screens/onboarding/StepAddressScreen';
 import { StepAdaScreen } from '@/screens/onboarding/StepAdaScreen';
 import { StepHouseholdScreen } from '@/screens/onboarding/StepHouseholdScreen';
@@ -10,7 +12,6 @@ import { StepMedicalScreen } from '@/screens/onboarding/StepMedicalScreen';
 import { StepPetsScreen } from '@/screens/onboarding/StepPetsScreen';
 import { StepTransportScreen } from '@/screens/onboarding/StepTransportScreen';
 import type { OnboardingStackParamList } from '@/types/navigation';
-import { useAppSelector } from '@/redux/hooks';
 
 import { stackScreenOptions } from './screenOptions';
 
@@ -27,8 +28,18 @@ const STEP_ROUTE_MAP: Record<number, keyof OnboardingStackParamList> = {
 };
 
 export function OnboardingNavigator() {
+  const dispatch = useAppDispatch();
   const currentStep = useAppSelector((s) => s.registration.currentStep);
-  const initialRoute = STEP_ROUTE_MAP[currentStep] ?? ONBOARDING_ROUTES.STEP_ADDRESS;
+  const initialRoute = useRef(
+    STEP_ROUTE_MAP[currentStep] ?? ONBOARDING_ROUTES.STEP_ADDRESS,
+  ).current;
+  const sanitized = useRef(false);
+
+  useEffect(() => {
+    if (sanitized.current) return;
+    sanitized.current = true;
+    dispatch(sanitizeRegistration());
+  }, [dispatch]);
 
   return (
     <Stack.Navigator initialRouteName={initialRoute} screenOptions={stackScreenOptions}>

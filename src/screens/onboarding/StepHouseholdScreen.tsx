@@ -8,6 +8,7 @@ import { ONBOARDING_ROUTES } from '@/constants/routes';
 import { useAppDispatch, useAppSelector } from '@/redux/hooks';
 import { setCurrentStep, setHouseholdSize } from '@/redux/slices/registrationSlice';
 import type { OnboardingStackParamList } from '@/types/navigation';
+import { coerceHouseholdSize } from '@/utils/registration';
 
 type Nav = StackNavigationProp<
   OnboardingStackParamList,
@@ -17,7 +18,8 @@ type Nav = StackNavigationProp<
 export function StepHouseholdScreen() {
   const navigation = useNavigation<Nav>();
   const dispatch = useAppDispatch();
-  const householdSize = useAppSelector((s) => s.registration.householdSize);
+  const householdSizeRaw = useAppSelector((s) => s.registration.householdSize);
+  const householdSize = coerceHouseholdSize(householdSizeRaw);
 
   const handleNext = () => {
     dispatch(setHouseholdSize(householdSize));

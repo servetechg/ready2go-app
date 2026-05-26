@@ -5,11 +5,10 @@ import { AUTH_ROUTES, MAIN_ROUTES, ONBOARDING_ROUTES, ROOT_ROUTES } from '@/cons
 export type AuthStackParamList = {
   [AUTH_ROUTES.WELCOME]: undefined;
   [AUTH_ROUTES.LOGIN]: undefined;
-  [AUTH_ROUTES.SIGNUP]: { completeRegistration?: boolean } | undefined;
+  [AUTH_ROUTES.SIGNUP]: undefined;
   [AUTH_ROUTES.OTP_VERIFICATION]: {
     email: string;
     flow: 'signup' | 'resetPassword';
-    completeRegistration?: boolean;
   };
   [AUTH_ROUTES.FORGOT_PASSWORD]: undefined;
   [AUTH_ROUTES.UPDATE_PASSWORD]: { email: string };
