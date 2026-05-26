@@ -11,13 +11,16 @@ import { AppButton } from '@/components/ui/AppButton';
 import { AppText } from '@/components/ui/AppText';
 import { AUTH_ROUTES } from '@/constants/routes';
 import { useAppTheme } from '@/hooks/useAppTheme';
+import { useOtpCountdown } from '@/hooks/useOtpCountdown';
 import { useToast } from '@/hooks/useToast';
 import { useAppDispatch, useAppSelector } from '@/redux/hooks';
 import {
   clearAuthError,
   clearPendingAuth,
   resendOtp,
+  resendResetOtp,
   verifyOtp,
+  verifyResetOtp,
 } from '@/redux/slices/authSlice';
 import {
   completeRegistration,
@@ -43,7 +46,14 @@ export function OtpVerificationScreen() {
   const { showSuccess, showError } = useToast();
 
   const email = route.params.email;
+  const flow = route.params.flow;
+  const isResetFlow = flow === 'resetPassword';
   const completeAfterVerify = route.params?.completeRegistration ?? false;
+
+  const countdown = useOtpCountdown(60);
+  const canResend = isResetFlow ? countdown.canResend : true;
+  const formatted = countdown.formatted;
+  const resetTimer = countdown.reset;
 
   const { control, handleSubmit, formState: { errors } } = useForm<OtpFormData>({
     resolver: zodResolver(otpSchema),
@@ -55,6 +65,14 @@ export function OtpVerificationScreen() {
   }, [dispatch]);
 
   const onSubmit = async (data: OtpFormData) => {
+    if (isResetFlow) {
+      const result = await dispatch(verifyResetOtp({ email, code: data.code }));
+      if (!verifyResetOtp.fulfilled.match(result)) return;
+      showSuccess('Code verified');
+      navigation.navigate(AUTH_ROUTES.UPDATE_PASSWORD, { email });
+      return;
+    }
+
     const result = await dispatch(verifyOtp({ email, code: data.code }));
     if (!verifyOtp.fulfilled.match(result)) return;
 
@@ -75,8 +93,16 @@ export function OtpVerificationScreen() {
   };
 
   const handleResend = async () => {
-    const result = await dispatch(resendOtp({ email }));
-    if (resendOtp.fulfilled.match(result)) {
+    if (!canResend) return;
+
+    const result = isResetFlow
+      ? await dispatch(resendResetOtp({ email }))
+      : await dispatch(resendOtp({ email }));
+
+    const fulfilled = isResetFlow ? resendResetOtp.fulfilled : resendOtp.fulfilled;
+
+    if (fulfilled.match(result)) {
+      resetTimer();
       showSuccess('A new verification code has been sent');
     } else {
       showError(error ?? 'Could not resend code');
@@ -94,9 +120,15 @@ export function OtpVerificationScreen() {
           />
         </View>
       }
-      title="Verify Your Email"
+      title={isResetFlow ? 'Verify Reset Code' : 'Verify Your Email'}
       subtitle={`Enter the 6-digit code sent to ${email}`}
       showLogo={false}>
+      {isResetFlow ? (
+        <AppText variant="caption" color={colors.textMuted} center={true} style={styles.timer}>
+          Code expires in {formatted}
+        </AppText>
+      ) : null}
+
       <Controller
         control={control}
         name="code"
@@ -125,25 +157,39 @@ export function OtpVerificationScreen() {
         <AppText variant="bodySmall" color={colors.textSecondary}>
           Didn&apos;t receive a code?{' '}
         </AppText>
-        <Pressable onPress={handleResend} disabled={toBoolean(isLoading)}>
-          <AppText variant="bodySmall" style={[styles.link, { color: colors.primary }]}>
-            Resend
+        {canResend ? (
+          <Pressable onPress={handleResend} disabled={toBoolean(isLoading)}>
+            <AppText variant="bodySmall" style={[styles.link, { color: colors.primary }]}>
+              Resend
+            </AppText>
+          </Pressable>
+        ) : (
+          <AppText variant="bodySmall" color={colors.textMuted}>
+            Resend in {formatted}
           </AppText>
-        </Pressable>
+        )}
       </View>
 
       <View style={styles.footer}>
-        <Pressable
-          onPress={() => {
-            dispatch(clearPendingAuth());
-            navigation.navigate(AUTH_ROUTES.SIGNUP, {
-              completeRegistration: completeAfterVerify,
-            });
-          }}>
-          <AppText variant="bodySmall" style={[styles.link, { color: colors.primary }]}>
-            Change email
-          </AppText>
-        </Pressable>
+        {isResetFlow ? (
+          <Pressable onPress={() => navigation.navigate(AUTH_ROUTES.LOGIN)}>
+            <AppText variant="bodySmall" style={[styles.link, { color: colors.primary }]}>
+              Back to Sign In
+            </AppText>
+          </Pressable>
+        ) : (
+          <Pressable
+            onPress={() => {
+              dispatch(clearPendingAuth());
+              navigation.navigate(AUTH_ROUTES.SIGNUP, {
+                completeRegistration: completeAfterVerify,
+              });
+            }}>
+            <AppText variant="bodySmall" style={[styles.link, { color: colors.primary }]}>
+              Change email
+            </AppText>
+          </Pressable>
+        )}
       </View>
     </AuthLayout>
   );
@@ -160,6 +206,7 @@ const styles = StyleSheet.create({
     height: 200,
     resizeMode: 'contain',
   },
+  timer: { marginBottom: spacing.md },
   error: { marginBottom: spacing.sm },
   devHint: { marginBottom: spacing.md },
   link: { fontWeight: '600' },
