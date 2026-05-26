@@ -18,6 +18,13 @@ export interface AuthState {
   error: string | null;
   pendingAuth: AuthResponse | null;
   otpEmail: string | null;
+  pendingPasswordResetEmail: string | null;
+  passwordResetVerified: boolean;
+}
+
+export interface UpdatePasswordPayload {
+  email: string;
+  password: string;
 }
 
 export interface VerifyOtpPayload {

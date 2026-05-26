@@ -54,6 +54,7 @@ export function SignupScreen() {
     showSuccess('Verification code sent to your email');
     navigation.navigate(AUTH_ROUTES.OTP_VERIFICATION, {
       email: data.email,
+      flow: 'signup',
       completeRegistration: completeAfterSignup,
     });
   };

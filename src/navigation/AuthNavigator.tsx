@@ -8,6 +8,7 @@ import { ForgotPasswordScreen } from '@/screens/auth/ForgotPasswordScreen';
 import { LoginScreen } from '@/screens/auth/LoginScreen';
 import { OtpVerificationScreen } from '@/screens/auth/OtpVerificationScreen';
 import { SignupScreen } from '@/screens/auth/SignupScreen';
+import { UpdatePasswordScreen } from '@/screens/auth/UpdatePasswordScreen';
 import { WelcomeScreen } from '@/screens/auth/WelcomeScreen';
 import type { AuthStackParamList, RootStackParamList } from '@/types/navigation';
 import { toBoolean } from '@/utils/coerce';
@@ -43,6 +44,7 @@ export function AuthNavigator({ route }: AuthNavProps) {
       />
       <Stack.Screen name={AUTH_ROUTES.OTP_VERIFICATION} component={OtpVerificationScreen} />
       <Stack.Screen name={AUTH_ROUTES.FORGOT_PASSWORD} component={ForgotPasswordScreen} />
+      <Stack.Screen name={AUTH_ROUTES.UPDATE_PASSWORD} component={UpdatePasswordScreen} />
     </Stack.Navigator>
   );
 }
