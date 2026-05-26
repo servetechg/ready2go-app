@@ -49,9 +49,11 @@ export const loginUser = createAsyncThunk<
   AuthResponse,
   LoginCredentials,
   { rejectValue: LoginRejectedPayload }
->('auth/login', async (credentials, { rejectWithValue }) => {
+>('auth/login', async (credentials, { dispatch, rejectWithValue }) => {
   try {
-    return await authService.login(credentials);
+    const response = await authService.login(credentials);
+    await dispatch(fetchCurrentUser(response.token));
+    return response;
   } catch (error) {
     if (isApiClientError(error) && error.code === 'EMAIL_NOT_VERIFIED') {
       return rejectWithValue({
@@ -80,7 +82,7 @@ export const signupUser = createAsyncThunk(
 
 export const verifyOtp = createAsyncThunk(
   'auth/verifyOtp',
-  async (payload: VerifyOtpPayload, { getState, rejectWithValue }) => {
+  async (payload: VerifyOtpPayload, { dispatch, getState, rejectWithValue }) => {
     try {
       const { pendingAuth, token } = (getState() as { auth: AuthState }).auth;
       const bearer = token ?? pendingAuth?.token;
@@ -90,7 +92,9 @@ export const verifyOtp = createAsyncThunk(
         return { kind: 'password_reset' as const, data: result as PasswordResetOtpResponse };
       }
 
-      return { kind: 'auth' as const, data: result as AuthResponse };
+      const auth = result as AuthResponse;
+      await dispatch(fetchCurrentUser(auth.token));
+      return { kind: 'auth' as const, data: auth };
     } catch (error) {
       return rejectWithValue(getErrorMessage(error, 'Verification failed'));
     }
@@ -168,9 +172,10 @@ export const logoutUser = createAsyncThunk('auth/logout', async (_, { getState }
 
 export const fetchCurrentUser = createAsyncThunk(
   'auth/fetchCurrentUser',
-  async (_, { getState, rejectWithValue }) => {
+  async (accessToken: string | undefined, { getState, rejectWithValue }) => {
     try {
-      const { token } = (getState() as { auth: AuthState }).auth;
+      const token =
+        accessToken ?? (getState() as { auth: AuthState }).auth.token ?? undefined;
       if (!token) return rejectWithValue('No token');
       return await profileService.getMe(token);
     } catch (error) {
