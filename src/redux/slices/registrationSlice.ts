@@ -1,8 +1,14 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
 
+import type { ProfilePayload } from '@/types/api';
 import type { AddressData, RegistrationState, YesNoStepData } from '@/types/registration';
 import { initialRegistrationState } from '@/types/registration';
-import { toBoolean } from '@/utils/coerce';
+import {
+  coerceHouseholdSize,
+  normalizeProfilePayload,
+  normalizeRegistrationState,
+  pickAddressData,
+} from '@/utils/registration';
 
 const registrationSlice = createSlice({
   name: 'registration',
@@ -21,13 +27,10 @@ const registrationSlice = createSlice({
       state.currentStep = action.payload;
     },
     setAddress: (state, action: PayloadAction<AddressData>) => {
-      state.address = {
-        ...action.payload,
-        useCurrentLocation: toBoolean(action.payload.useCurrentLocation),
-      };
+      state.address = pickAddressData(action.payload);
     },
     setHouseholdSize: (state, action: PayloadAction<number>) => {
-      state.householdSize = action.payload;
+      state.householdSize = coerceHouseholdSize(action.payload);
     },
     setAda: (state, action: PayloadAction<YesNoStepData>) => {
       state.ada = action.payload;
@@ -54,6 +57,23 @@ const registrationSlice = createSlice({
       state.currentStep = 7;
     },
     resetRegistration: () => initialRegistrationState(),
+    hydrateProfileFromApi: (state, action: PayloadAction<ProfilePayload>) => {
+      const p = normalizeProfilePayload(action.payload) ?? action.payload;
+      state.address = pickAddressData(p.address);
+      state.householdSize = coerceHouseholdSize(p.householdSize);
+      state.ada = p.ada;
+      state.medical = p.medical;
+      state.pets = p.pets;
+      state.transport = p.transport;
+      state.lodging = {
+        selectedOptions: p.lodging.selectedOptions,
+        otherDetails: p.lodging.otherDetails ?? '',
+      };
+      state.currentStep = 7;
+    },
+    sanitizeRegistration: (state) => {
+      return normalizeRegistrationState(state);
+    },
   },
 });
 
@@ -71,6 +91,8 @@ export const {
   setLodging,
   completeRegistration,
   resetRegistration,
+  hydrateProfileFromApi,
+  sanitizeRegistration,
 } = registrationSlice.actions;
 
 export default registrationSlice.reducer;

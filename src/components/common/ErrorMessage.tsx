@@ -13,11 +13,12 @@ interface ErrorMessageProps {
 export function ErrorMessage({ message }: ErrorMessageProps) {
   const { colors } = useAppTheme();
 
-  if (!message) return null;
+  const text = typeof message === 'string' ? message : undefined;
+  if (!text) return null;
 
   return (
     <AppText variant="caption" color={colors.error} style={styles.error}>
-      {message}
+      {text}
     </AppText>
   );
 }

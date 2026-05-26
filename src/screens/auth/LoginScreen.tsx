@@ -14,7 +14,7 @@ import { AUTH_ROUTES } from '@/constants/routes';
 import { useAppTheme } from '@/hooks/useAppTheme';
 import { useToast } from '@/hooks/useToast';
 import { useAppDispatch, useAppSelector } from '@/redux/hooks';
-import { clearAuthError, loginUser } from '@/redux/slices/authSlice';
+import { clearAuthError, loginUser, sendOtp } from '@/redux/slices/authSlice';
 import { spacing } from '@/theme';
 import type { AuthStackParamList } from '@/types/navigation';
 import { toBoolean } from '@/utils/coerce';
@@ -42,14 +42,31 @@ export function LoginScreen() {
     const result = await dispatch(loginUser(data));
     if (loginUser.fulfilled.match(result)) {
       showSuccess('Welcome back!');
+      return;
+    }
+
+    const payload = result.payload;
+    if (
+      payload &&
+      typeof payload === 'object' &&
+      'code' in payload &&
+      payload.code === 'EMAIL_NOT_VERIFIED' &&
+      payload.email
+    ) {
+      await dispatch(
+        sendOtp({ email: payload.email, purpose: 'EMAIL_VERIFICATION' }),
+      );
+      navigation.navigate(AUTH_ROUTES.OTP_VERIFICATION, {
+        email: payload.email,
+        flow: 'signup',
+      });
     }
   };
 
   return (
-    <>
     <ScreenWrapper>
       <HeroBanner compact={true} />
- 
+
       <View style={styles.form}>
         <AppText variant="h2" center={true}>
           Sign In
@@ -99,7 +116,7 @@ export function LoginScreen() {
         <Pressable onPress={() => navigation.navigate(AUTH_ROUTES.FORGOT_PASSWORD)}>
           <AppText variant="bodySmall" style={[styles.link, { color: colors.primary }]}>
             Forgot password?
-          </AppText> 
+          </AppText>
         </Pressable>
 
         <AppButton
@@ -110,7 +127,7 @@ export function LoginScreen() {
 
         <View style={styles.footer}>
           <AppText variant="bodySmall">Don&apos;t have an account? </AppText>
-          <Pressable onPress={() => navigation.navigate(AUTH_ROUTES.WELCOME)}>
+          <Pressable onPress={() => navigation.navigate(AUTH_ROUTES.SIGNUP)}>
             <AppText variant="bodySmall" style={[styles.link, { color: colors.primary }]}>
               Sign up
             </AppText>
@@ -118,7 +135,6 @@ export function LoginScreen() {
         </View>
       </View>
     </ScreenWrapper>
-    </>
   );
 }
 

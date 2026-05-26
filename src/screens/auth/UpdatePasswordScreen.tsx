@@ -13,7 +13,7 @@ import { AUTH_ROUTES } from '@/constants/routes';
 import { useAppTheme } from '@/hooks/useAppTheme';
 import { useToast } from '@/hooks/useToast';
 import { useAppDispatch, useAppSelector } from '@/redux/hooks';
-import { clearAuthError, clearPasswordReset, updatePassword } from '@/redux/slices/authSlice';
+import { clearAuthError, clearPasswordReset, resetPassword } from '@/redux/slices/authSlice';
 import { spacing } from '@/theme';
 import type { AuthStackParamList } from '@/types/navigation';
 import { toBoolean } from '@/utils/coerce';
@@ -26,9 +26,11 @@ export function UpdatePasswordScreen() {
   const navigation = useNavigation<Nav>();
   const route = useRoute<Route>();
   const dispatch = useAppDispatch();
-  const { isLoading, error } = useAppSelector((s) => s.auth);
+  const { isLoading, error, passwordResetToken, passwordResetVerified } = useAppSelector(
+    (s) => s.auth,
+  );
   const { colors } = useAppTheme();
-  const { showSuccess } = useToast();
+  const { showSuccess, showError } = useToast();
 
   const email = route.params.email;
 
@@ -41,11 +43,24 @@ export function UpdatePasswordScreen() {
     dispatch(clearAuthError());
   }, [dispatch]);
 
+  React.useEffect(() => {
+    if (!passwordResetVerified || !passwordResetToken) {
+      showError('Please verify your code before updating your password');
+      navigation.navigate(AUTH_ROUTES.FORGOT_PASSWORD);
+    }
+  }, [navigation, passwordResetToken, passwordResetVerified, showError]);
+
   const onSubmit = async (data: UpdatePasswordFormData) => {
+    if (!passwordResetToken) return;
+
     const result = await dispatch(
-      updatePassword({ email, password: data.password }),
+      resetPassword({
+        resetToken: passwordResetToken,
+        password: data.password,
+        confirmPassword: data.confirmPassword,
+      }),
     );
-    if (!updatePassword.fulfilled.match(result)) return;
+    if (!resetPassword.fulfilled.match(result)) return;
 
     dispatch(clearPasswordReset());
     showSuccess('Password updated successfully');

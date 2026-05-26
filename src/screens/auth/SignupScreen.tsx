@@ -1,5 +1,5 @@
 import { zodResolver } from '@hookform/resolvers/zod';
-import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
+import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import React from 'react';
 import { Controller, useForm } from 'react-hook-form';
@@ -19,18 +19,13 @@ import type { AuthStackParamList } from '@/types/navigation';
 import { signupSchema, type SignupFormData } from '@/validations/auth.schemas';
 
 type Nav = StackNavigationProp<AuthStackParamList, typeof AUTH_ROUTES.SIGNUP>;
-type Route = RouteProp<AuthStackParamList, typeof AUTH_ROUTES.SIGNUP>;
 
 export function SignupScreen() {
   const navigation = useNavigation<Nav>();
-  const route = useRoute<Route>();
   const dispatch = useAppDispatch();
   const { isLoading, error } = useAppSelector((s) => s.auth);
-  const needsAccount = useAppSelector((s) => s.registration.needsAccount);
   const { colors } = useAppTheme();
   const { showSuccess } = useToast();
-
-  const completeAfterSignup = route.params?.completeRegistration ?? needsAccount;
 
   const { control, handleSubmit, formState: { errors } } = useForm<SignupFormData>({
     resolver: zodResolver(signupSchema),
@@ -55,24 +50,22 @@ export function SignupScreen() {
     navigation.navigate(AUTH_ROUTES.OTP_VERIFICATION, {
       email: data.email,
       flow: 'signup',
-      completeRegistration: completeAfterSignup,
     });
   };
 
   return (
-    <>
     <AuthLayout
-    illustration={
-      <View style={styles.illustrationWrap}>
-        <Image source={require('@/assets/images/signup.png')} style={styles.logo} resizeMode="contain" />
-      </View>
-    }
-      title={completeAfterSignup ? 'Save Your Profile' : 'Create Account'}
-      subtitle={
-        completeAfterSignup
-          ? 'Create login credentials to save your emergency registration'
-          : 'Register for emergency assistance'
+      illustration={
+        <View style={styles.illustrationWrap}>
+          <Image
+            source={require('@/assets/images/signup.png')}
+            style={styles.logo}
+            resizeMode="contain"
+          />
+        </View>
       }
+      title="Create Account"
+      subtitle="Register for emergency assistance"
       showLogo={false}>
       <View style={styles.row}>
         <Controller
@@ -160,7 +153,7 @@ export function SignupScreen() {
       ) : null}
 
       <AppButton
-        title={isLoading ? 'Signing Up...' : (completeAfterSignup ? 'Sign Up' : 'CREATE ACCOUNT')}
+        title={isLoading ? 'Signing Up...' : 'CREATE ACCOUNT'}
         onPress={handleSubmit(onSubmit)}
         loading={!!isLoading}
       />
@@ -174,7 +167,6 @@ export function SignupScreen() {
         </Pressable>
       </View>
     </AuthLayout>
-    </>
   );
 }
 
@@ -184,11 +176,8 @@ const styles = StyleSheet.create({
   link: { fontWeight: '600' },
   footer: { flexDirection: 'row', justifyContent: 'center', marginTop: spacing.lg },
   logo: {
-    width: 280,
-    height: 280,
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
+    width: 200,
+    height: 200,
     resizeMode: 'contain',
   },
   illustrationWrap: {

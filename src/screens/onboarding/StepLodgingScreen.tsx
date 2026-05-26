@@ -14,14 +14,12 @@ import { ONBOARDING_ROUTES } from '@/constants/routes';
 import { useAppTheme } from '@/hooks/useAppTheme';
 import { useToast } from '@/hooks/useToast';
 import { useAppDispatch, useAppSelector } from '@/redux/hooks';
-import {
-  completeRegistration,
-  setLodging,
-  setNeedsAccount,
-} from '@/redux/slices/registrationSlice';
-import { registrationService } from '@/services/registration.service';
+import { setUser } from '@/redux/slices/authSlice';
+import { completeRegistration, setLodging } from '@/redux/slices/registrationSlice';
+import { profileService } from '@/services/profile.service';
+import { toProfilePayload } from '@/types/profile';
 import type { OnboardingStackParamList } from '@/types/navigation';
-import { toBoolean } from '@/utils/coerce';
+import { getErrorMessage } from '@/utils/error';
 import { lodgingSchema, type LodgingFormData } from '@/validations/registration.schemas';
 
 type Nav = StackNavigationProp<
@@ -34,10 +32,9 @@ export function StepLodgingScreen() {
   const dispatch = useAppDispatch();
   const lodging = useAppSelector((s) => s.registration.lodging);
   const registration = useAppSelector((s) => s.registration);
-  const isAuthenticated = useAppSelector((s) => s.auth.isAuthenticated);
   const token = useAppSelector((s) => s.auth.token);
   const { colors } = useAppTheme();
-  const { showSuccess } = useToast();
+  const { showSuccess, showError } = useToast();
   const [loading, setLoading] = React.useState(false);
 
   const { control, handleSubmit, watch, setValue, formState: { errors } } = useForm<LodgingFormData>({
@@ -55,23 +52,27 @@ export function StepLodgingScreen() {
   };
 
   const onSubmit = async (data: LodgingFormData) => {
+    if (!token) {
+      showError('Please sign in to save your profile');
+      return;
+    }
+
     setLoading(true);
     const lodgingData = { ...data, otherDetails: data.otherDetails ?? '' };
     dispatch(setLodging(lodgingData));
 
     try {
-      if (!toBoolean(isAuthenticated) || !token) {
-        dispatch(setNeedsAccount(true));
-        showSuccess('Create your account to save your profile');
-        return;
-      }
+      const profile = toProfilePayload({
+        ...registration,
+        lodging: lodgingData,
+      });
 
-      await registrationService.submitRegistration(
-        { ...registration, lodging: lodgingData, isComplete: true },
-        token!,
-      );
+      const response = await profileService.completeProfile({ profile }, token);
+      dispatch(setUser(response.user));
       dispatch(completeRegistration());
       showSuccess('Registration complete!');
+    } catch (error) {
+      showError(getErrorMessage(error, 'Could not save profile'));
     } finally {
       setLoading(false);
     }
