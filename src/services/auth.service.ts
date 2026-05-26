@@ -74,5 +74,27 @@ export const authService = {
     if (!payload.email) {
       throw new Error('Email is required');
     }
+    await this.sendResetPasswordOtp({ email: payload.email });
+  },
+
+  async sendResetPasswordOtp(_payload: ResendOtpPayload): Promise<void> {
+    await delay(600);
+  },
+
+  async verifyResetPasswordOtp(payload: VerifyOtpPayload, expectedEmail: string | null): Promise<void> {
+    await delay(800);
+    if (payload.code !== MOCK_OTP_CODE) {
+      throw new Error('Invalid verification code');
+    }
+    if (!expectedEmail || expectedEmail !== payload.email) {
+      throw new Error('Reset session expired. Please request a new code.');
+    }
+  },
+
+  async updatePassword(payload: { email: string; password: string }): Promise<void> {
+    await delay(800);
+    if (!payload.password || payload.password.length < 6) {
+      throw new Error('Password must be at least 6 characters');
+    }
   },
 };

@@ -4,6 +4,7 @@ export const AUTH_ROUTES = {
   SIGNUP: 'Signup',
   OTP_VERIFICATION: 'OtpVerification',
   FORGOT_PASSWORD: 'ForgotPassword',
+  UPDATE_PASSWORD: 'UpdatePassword',
 } as const;
 
 export const ONBOARDING_ROUTES = {

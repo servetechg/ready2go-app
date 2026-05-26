@@ -8,6 +8,7 @@ import type {
   ResendOtpPayload,
   SignupCredentials,
   User,
+  UpdatePasswordPayload,
   VerifyOtpPayload,
 } from '@/types/auth';
 import { getErrorMessage } from '@/utils/error';
@@ -20,6 +21,8 @@ const initialState: AuthState = {
   error: null,
   pendingAuth: null,
   otpEmail: null,
+  pendingPasswordResetEmail: null,
+  passwordResetVerified: false,
 };
 
 export const loginUser = createAsyncThunk(
@@ -70,6 +73,49 @@ export const resendOtp = createAsyncThunk(
   },
 );
 
+export const verifyResetOtp = createAsyncThunk(
+  'auth/verifyResetOtp',
+  async (payload: VerifyOtpPayload, { getState, rejectWithValue }) => {
+    try {
+      const { pendingPasswordResetEmail } = (getState() as { auth: AuthState }).auth;
+      await authService.verifyResetPasswordOtp(payload, pendingPasswordResetEmail);
+      return payload.email;
+    } catch (error) {
+      return rejectWithValue(getErrorMessage(error, 'Verification failed'));
+    }
+  },
+);
+
+export const resendResetOtp = createAsyncThunk(
+  'auth/resendResetOtp',
+  async (payload: ResendOtpPayload, { rejectWithValue }) => {
+    try {
+      await authService.sendResetPasswordOtp(payload);
+      return payload.email;
+    } catch (error) {
+      return rejectWithValue(getErrorMessage(error, 'Could not resend code'));
+    }
+  },
+);
+
+export const updatePassword = createAsyncThunk(
+  'auth/updatePassword',
+  async (payload: UpdatePasswordPayload, { getState, rejectWithValue }) => {
+    try {
+      const { passwordResetVerified, pendingPasswordResetEmail } = (getState() as {
+        auth: AuthState;
+      }).auth;
+      if (!passwordResetVerified || pendingPasswordResetEmail !== payload.email) {
+        throw new Error('Please verify your code before updating your password');
+      }
+      await authService.updatePassword(payload);
+      return payload.email;
+    } catch (error) {
+      return rejectWithValue(getErrorMessage(error, 'Failed to update password'));
+    }
+  },
+);
+
 export const forgotPassword = createAsyncThunk(
   'auth/forgotPassword',
   async (payload: ForgotPasswordPayload, { rejectWithValue }) => {
@@ -100,10 +146,16 @@ const authSlice = createSlice({
       state.isLoading = false;
       state.pendingAuth = null;
       state.otpEmail = null;
+      state.pendingPasswordResetEmail = null;
+      state.passwordResetVerified = false;
     },
     clearPendingAuth: (state) => {
       state.pendingAuth = null;
       state.otpEmail = null;
+    },
+    clearPasswordReset: (state) => {
+      state.pendingPasswordResetEmail = null;
+      state.passwordResetVerified = false;
     },
     clearAuthError: (state) => {
       state.error = null;
@@ -151,13 +203,34 @@ const authSlice = createSlice({
         state.isLoading = false;
       })
       .addCase(resendOtp.rejected, handleRejected)
-      .addCase(forgotPassword.pending, handlePending)
-      .addCase(forgotPassword.fulfilled, (state) => {
+      .addCase(verifyResetOtp.pending, handlePending)
+      .addCase(verifyResetOtp.fulfilled, (state) => {
         state.isLoading = false;
+        state.passwordResetVerified = true;
+      })
+      .addCase(verifyResetOtp.rejected, handleRejected)
+      .addCase(resendResetOtp.pending, handlePending)
+      .addCase(resendResetOtp.fulfilled, (state) => {
+        state.isLoading = false;
+      })
+      .addCase(resendResetOtp.rejected, handleRejected)
+      .addCase(updatePassword.pending, handlePending)
+      .addCase(updatePassword.fulfilled, (state) => {
+        state.isLoading = false;
+        state.pendingPasswordResetEmail = null;
+        state.passwordResetVerified = false;
+      })
+      .addCase(updatePassword.rejected, handleRejected)
+      .addCase(forgotPassword.pending, handlePending)
+      .addCase(forgotPassword.fulfilled, (state, action) => {
+        state.isLoading = false;
+        state.pendingPasswordResetEmail = action.payload;
+        state.passwordResetVerified = false;
       })
       .addCase(forgotPassword.rejected, handleRejected);
   },
 });
 
-export const { setCredentials, logout, clearAuthError, clearPendingAuth } = authSlice.actions;
+export const { setCredentials, logout, clearAuthError, clearPendingAuth, clearPasswordReset } =
+  authSlice.actions;
 export default authSlice.reducer;
