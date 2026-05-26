@@ -18,6 +18,8 @@ import { useAppDispatch, useAppSelector } from '@/redux/hooks';
 import { cancelRegistration, setAddress, setCurrentStep } from '@/redux/slices/registrationSlice';
 import type { OnboardingStackParamList } from '@/types/navigation';
 import { toBoolean } from '@/utils/coerce';
+import { fieldErrorMessage } from '@/utils/form';
+import { pickAddressData } from '@/utils/registration';
 import { addressSchema, type AddressFormData } from '@/validations/registration.schemas';
 
 type Nav = StackNavigationProp<
@@ -33,17 +35,16 @@ export function StepAddressScreen() {
   const isStarted = useAppSelector((s) => s.registration.isStarted);
   const [showAddressWhyModal, setShowAddressWhyModal] = React.useState(false);
 
-  const { control, handleSubmit, setValue, watch } = useForm<AddressFormData>({
+  const addressDefaults = pickAddressData(address);
+
+  const { control, handleSubmit, setValue } = useForm<AddressFormData>({
     resolver: zodResolver(addressSchema),
-    defaultValues: {
-      ...address,
-      useCurrentLocation: toBoolean(address.useCurrentLocation),
-    },
+    defaultValues: addressDefaults,
   });
 
   const onSubmit = useCallback(
     (data: AddressFormData) => {
-      dispatch(setAddress({ ...data, aptUnit: data.aptUnit ?? '' }));
+      dispatch(setAddress(pickAddressData(data)));
       dispatch(setCurrentStep(2));
       navigation.navigate(ONBOARDING_ROUTES.STEP_HOUSEHOLD);
     },
@@ -58,111 +59,111 @@ export function StepAddressScreen() {
 
   return (
     <>
-    <FormLayout
-      stepNumber={1}
-      icon="location"
-      showBack={toBoolean(isStarted)}
-      onBack={handleBack}
-      onNext={handleSubmit(onSubmit)}>
-      <InfoLink onPress={() => setShowAddressWhyModal(true)} />
-      <Controller
-        control={control}
-        name="streetAddress"
-        render={({ field: { onChange, onBlur, value }, fieldState: { error } }) => (
-          <AppInput
-            label="Street Address"
-            placeholder="Enter Your Street Address"
-            value={value}
-            onChangeText={onChange}
-            onBlur={onBlur}
-            error={error?.message}
-          />
-        )}
-      />
-      <Controller
-        control={control}
-        name="aptUnit"
-        render={({ field: { onChange, onBlur, value } }) => (
-          <AppInput
-            label="Apt / Unit (Optional)"
-            placeholder="Enter Your Apt / Unit (Optional)"
-            value={value}
-            onChangeText={onChange}
-            onBlur={onBlur}
-          />
-        )}
-      />
-      <Controller
-        control={control}
-        name="city"
-        render={({ field: { onChange, onBlur, value }, fieldState: { error } }) => (
-          <AppInput
-            label="City"
-            placeholder="Enter Your City"
-            value={value}
-            onChangeText={onChange}
-            onBlur={onBlur}
-            error={error?.message}
-          />
-        )}
-      />
-      <View style={styles.row}>
-        <View style={styles.stateCol}>
+      <FormLayout
+        stepNumber={1}
+        icon="location"
+        showBack={toBoolean(isStarted)}
+        onBack={handleBack}
+        onNext={handleSubmit(onSubmit)}>
+        <InfoLink onPress={() => setShowAddressWhyModal(true)} />
+        <Controller
+          control={control}
+          name="streetAddress"
+          render={({ field: { onChange, onBlur, value }, fieldState: { error } }) => (
+            <AppInput
+              label="Street Address"
+              placeholder="Enter Your Street Address"
+              value={value}
+              onChangeText={onChange}
+              onBlur={onBlur}
+              error={fieldErrorMessage(error)}
+            />
+          )}
+        />
+        <Controller
+          control={control}
+          name="aptUnit"
+          render={({ field: { onChange, onBlur, value } }) => (
+            <AppInput
+              label="Apt / Unit (Optional)"
+              placeholder="Enter Your Apt / Unit (Optional)"
+              value={value}
+              onChangeText={onChange}
+              onBlur={onBlur}
+            />
+          )}
+        />
+        <Controller
+          control={control}
+          name="city"
+          render={({ field: { onChange, onBlur, value }, fieldState: { error } }) => (
+            <AppInput
+              label="City"
+              placeholder="Enter Your City"
+              value={value}
+              onChangeText={onChange}
+              onBlur={onBlur}
+              error={fieldErrorMessage(error)}
+            />
+          )}
+        />
+        <View style={styles.row}>
+          <View style={styles.stateCol}>
+            <Controller
+              control={control}
+              name="state"
+              render={({ field: { onChange, value }, fieldState: { error } }) => (
+                <AppSelect
+                  label="State"
+                  value={value}
+                  options={US_STATES}
+                  onChange={onChange}
+                  placeholder="State state"
+                  error={fieldErrorMessage(error)}
+                  containerStyle={styles.stateSelect}
+                />
+              )}
+            />
+          </View>
           <Controller
             control={control}
-            name="state"
-            render={({ field: { onChange, value }, fieldState: { error } }) => (
-              <AppSelect
-                label="State"
+            name="zipCode"
+            render={({ field: { onChange, onBlur, value }, fieldState: { error } }) => (
+              <AppInput
+                label="ZIP Code"
                 value={value}
-                options={US_STATES}
-                onChange={onChange}
-                placeholder="State state"
-                error={error?.message}
-                containerStyle={styles.stateSelect}
+                onChangeText={onChange}
+                onBlur={onBlur}
+                keyboardType="number-pad"
+                placeholder="ZIP Code"
+                error={fieldErrorMessage(error)}
+                containerStyle={styles.zip}
               />
             )}
           />
         </View>
         <Controller
           control={control}
-          name="zipCode"
-          render={({ field: { onChange, onBlur, value }, fieldState: { error } }) => (
-            <AppInput
-              label="ZIP Code"
-              value={value}
-              onChangeText={onChange}
-              onBlur={onBlur}
-              keyboardType="number-pad"
-              placeholder="ZIP Code"
-              error={error?.message}
-              containerStyle={styles.zip}
-            />
+          name="useCurrentLocation"
+          render={({ field: { value } }) => (
+            <View style={styles.row}>
+              <AppCheckbox
+                label="Use My Current Location"
+                checked={toBoolean(value)}
+                onToggle={() =>
+                  setValue('useCurrentLocation', !toBoolean(value), { shouldValidate: true })
+                }
+              />
+            </View>
           )}
         />
-      </View>
-      <Controller
-        control={control}
-        name="useCurrentLocation"
-        render={({ field: { value } }) => (
-          <View style={styles.row}>
-          <AppCheckbox
-            label="Use My Current Location"
-            checked={toBoolean(value)}
-            onToggle={() =>
-              setValue('useCurrentLocation', !toBoolean(value), { shouldValidate: true })
-            }
-          />
-          </View>
-        )}
+      </FormLayout>
+      <AppModal
+        visible={showAddressWhyModal}
+        title={ADDRESS_WHY_MODAL.title}
+        message={ADDRESS_WHY_MODAL.message}
+        onClose={() => setShowAddressWhyModal(false)}
       />
-    </FormLayout>
-    <AppModal
-      visible={showAddressWhyModal}
-      title={ADDRESS_WHY_MODAL.title}
-      message={ADDRESS_WHY_MODAL.message}
-      onClose={() => setShowAddressWhyModal(false)}
-    />
     </>
   );
 }

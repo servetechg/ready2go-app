@@ -9,6 +9,7 @@ import { OtpInput } from '@/components/form/OtpInput';
 import { AuthLayout } from '@/components/layout/AuthLayout';
 import { AppButton } from '@/components/ui/AppButton';
 import { AppText } from '@/components/ui/AppText';
+import { ENV } from '@/constants/env';
 import { AUTH_ROUTES } from '@/constants/routes';
 import { useAppTheme } from '@/hooks/useAppTheme';
 import { useOtpCountdown } from '@/hooks/useOtpCountdown';
@@ -17,38 +18,33 @@ import { useAppDispatch, useAppSelector } from '@/redux/hooks';
 import {
   clearAuthError,
   clearPendingAuth,
-  resendOtp,
-  resendResetOtp,
+  sendOtp,
   verifyOtp,
-  verifyResetOtp,
 } from '@/redux/slices/authSlice';
-import {
-  completeRegistration,
-  setNeedsAccount,
-} from '@/redux/slices/registrationSlice';
-import { MOCK_OTP_CODE } from '@/services/auth.service';
-import { registrationService } from '@/services/registration.service';
 import { spacing } from '@/theme';
 import type { AuthStackParamList } from '@/types/navigation';
+import type { OtpPurpose } from '@/types/api';
 import { toBoolean } from '@/utils/coerce';
 import { otpSchema, type OtpFormData } from '@/validations/auth.schemas';
 
 type Nav = StackNavigationProp<AuthStackParamList, typeof AUTH_ROUTES.OTP_VERIFICATION>;
 type Route = RouteProp<AuthStackParamList, typeof AUTH_ROUTES.OTP_VERIFICATION>;
 
+function otpPurposeForFlow(flow: 'signup' | 'resetPassword'): OtpPurpose {
+  return flow === 'resetPassword' ? 'PASSWORD_RESET' : 'EMAIL_VERIFICATION';
+}
+
 export function OtpVerificationScreen() {
   const navigation = useNavigation<Nav>();
   const route = useRoute<Route>();
   const dispatch = useAppDispatch();
   const { isLoading, error } = useAppSelector((s) => s.auth);
-  const registration = useAppSelector((s) => s.registration);
   const { colors } = useAppTheme();
   const { showSuccess, showError } = useToast();
 
-  const email = route.params.email;
-  const flow = route.params.flow;
+  const { email, flow } = route.params;
   const isResetFlow = flow === 'resetPassword';
-  const completeAfterVerify = route.params?.completeRegistration ?? false;
+  const purpose = otpPurposeForFlow(flow);
 
   const countdown = useOtpCountdown(60);
   const canResend = isResetFlow ? countdown.canResend : true;
@@ -65,44 +61,26 @@ export function OtpVerificationScreen() {
   }, [dispatch]);
 
   const onSubmit = async (data: OtpFormData) => {
-    if (isResetFlow) {
-      const result = await dispatch(verifyResetOtp({ email, code: data.code }));
-      if (!verifyResetOtp.fulfilled.match(result)) return;
+    const result = await dispatch(verifyOtp({ email, code: data.code, purpose }));
+    if (!verifyOtp.fulfilled.match(result)) return;
+
+    if (result.payload.kind === 'password_reset') {
       showSuccess('Code verified');
       navigation.navigate(AUTH_ROUTES.UPDATE_PASSWORD, { email });
       return;
     }
 
-    const result = await dispatch(verifyOtp({ email, code: data.code }));
-    if (!verifyOtp.fulfilled.match(result)) return;
-
-    const token = result.payload.token;
-
-    if (completeAfterVerify) {
-      await registrationService.submitRegistration(
-        { ...registration, isComplete: true },
-        token,
-      );
-      dispatch(completeRegistration());
-      dispatch(setNeedsAccount(false));
-      showSuccess('Registration complete! Welcome to Ready2Go.');
-      return;
-    }
-
-    showSuccess('Email verified! Welcome to Ready2Go.');
+    showSuccess('Email verified! Complete your emergency profile.');
   };
 
   const handleResend = async () => {
-    if (!canResend) return;
+    if (isResetFlow && !canResend) return;
 
-    const result = isResetFlow
-      ? await dispatch(resendResetOtp({ email }))
-      : await dispatch(resendOtp({ email }));
-
-    const fulfilled = isResetFlow ? resendResetOtp.fulfilled : resendOtp.fulfilled;
-
-    if (fulfilled.match(result)) {
-      resetTimer();
+    const result = await dispatch(sendOtp({ email, purpose }));
+    if (sendOtp.fulfilled.match(result)) {
+      if (isResetFlow) {
+        resetTimer();
+      }
       showSuccess('A new verification code has been sent');
     } else {
       showError(error ?? 'Could not resend code');
@@ -143,9 +121,11 @@ export function OtpVerificationScreen() {
         </AppText>
       ) : null}
 
-      <AppText variant="caption" color={colors.textMuted} center={true} style={styles.devHint}>
-        Demo code: {MOCK_OTP_CODE}
-      </AppText>
+      {ENV.IS_DEV ? (
+        <AppText variant="caption" color={colors.textMuted} center={true} style={styles.devHint}>
+          Dev: check the Next.js server terminal for the OTP code if email is not configured.
+        </AppText>
+      ) : null}
 
       <AppButton
         title={isLoading ? 'Verifying...' : 'VERIFY'}
@@ -181,9 +161,7 @@ export function OtpVerificationScreen() {
           <Pressable
             onPress={() => {
               dispatch(clearPendingAuth());
-              navigation.navigate(AUTH_ROUTES.SIGNUP, {
-                completeRegistration: completeAfterVerify,
-              });
+              navigation.navigate(AUTH_ROUTES.SIGNUP);
             }}>
             <AppText variant="bodySmall" style={[styles.link, { color: colors.primary }]}>
               Change email

@@ -14,30 +14,46 @@ import { stackScreenOptions } from './screenOptions';
 const Stack = createStackNavigator<RootStackParamList>();
 
 export function RootNavigator() {
+  const token = useAppSelector((s) => s.auth.token);
+  const user = useAppSelector((s) => s.auth.user);
   const isAuthenticated = toBoolean(useAppSelector((s) => s.auth.isAuthenticated));
-  const isComplete = toBoolean(useAppSelector((s) => s.registration.isComplete));
-  const isStarted = toBoolean(useAppSelector((s) => s.registration.isStarted));
-  const needsAccount = toBoolean(useAppSelector((s) => s.registration.needsAccount));
 
-  const showOnboarding =
-    (isAuthenticated && !isComplete) || (isStarted && !isComplete && !needsAccount);
+  const emailVerified = toBoolean(user?.emailVerified);
+  const profileComplete = toBoolean(user?.profileComplete);
 
-  if (needsAccount) {
+  const hasSession = Boolean(token) && isAuthenticated;
+
+  if (!hasSession) {
+    return (
+      <Stack.Navigator screenOptions={stackScreenOptions}>
+        <Stack.Screen
+          name={ROOT_ROUTES.AUTH}
+          component={AuthNavigator}
+          initialParams={{ screen: AUTH_ROUTES.LOGIN }}
+        />
+      </Stack.Navigator>
+    );
+  }
+
+  if (!emailVerified) {
     return (
       <Stack.Navigator screenOptions={stackScreenOptions}>
         <Stack.Screen
           name={ROOT_ROUTES.AUTH}
           component={AuthNavigator}
           initialParams={{
-            screen: AUTH_ROUTES.SIGNUP,
-            params: { completeRegistration: true },
+            screen: AUTH_ROUTES.OTP_VERIFICATION,
+            params: {
+              email: user?.email ?? '',
+              flow: 'signup',
+            },
           }}
         />
       </Stack.Navigator>
     );
   }
 
-  if (showOnboarding) {
+  if (!profileComplete) {
     return (
       <Stack.Navigator screenOptions={stackScreenOptions}>
         <Stack.Screen name={ROOT_ROUTES.ONBOARDING} component={OnboardingNavigator} />
@@ -45,21 +61,9 @@ export function RootNavigator() {
     );
   }
 
-  if (isAuthenticated && isComplete) {
-    return (
-      <Stack.Navigator screenOptions={stackScreenOptions}>
-        <Stack.Screen name={ROOT_ROUTES.MAIN} component={MainNavigator} />
-      </Stack.Navigator>
-    );
-  }
-
   return (
     <Stack.Navigator screenOptions={stackScreenOptions}>
-      <Stack.Screen
-        name={ROOT_ROUTES.AUTH}
-        component={AuthNavigator}
-        initialParams={{ screen: AUTH_ROUTES.LOGIN }}
-      />
+      <Stack.Screen name={ROOT_ROUTES.MAIN} component={MainNavigator} />
     </Stack.Navigator>
   );
 }

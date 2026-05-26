@@ -3,7 +3,6 @@ import { createStackNavigator } from '@react-navigation/stack';
 import type { RouteProp } from '@react-navigation/native';
 
 import { AUTH_ROUTES, ROOT_ROUTES } from '@/constants/routes';
-import { useAppSelector } from '@/redux/hooks';
 import { ForgotPasswordScreen } from '@/screens/auth/ForgotPasswordScreen';
 import { LoginScreen } from '@/screens/auth/LoginScreen';
 import { OtpVerificationScreen } from '@/screens/auth/OtpVerificationScreen';
@@ -11,7 +10,6 @@ import { SignupScreen } from '@/screens/auth/SignupScreen';
 import { UpdatePasswordScreen } from '@/screens/auth/UpdatePasswordScreen';
 import { WelcomeScreen } from '@/screens/auth/WelcomeScreen';
 import type { AuthStackParamList, RootStackParamList } from '@/types/navigation';
-import { toBoolean } from '@/utils/coerce';
 
 import { stackScreenOptions } from './screenOptions';
 
@@ -22,27 +20,23 @@ type AuthNavProps = {
 };
 
 export function AuthNavigator({ route }: AuthNavProps) {
-  const needsAccount = toBoolean(useAppSelector((s) => s.registration.needsAccount));
-
-  const initialScreen = needsAccount
-    ? AUTH_ROUTES.SIGNUP
-    : ((route.params?.screen ?? AUTH_ROUTES.LOGIN) as keyof AuthStackParamList);
-
-  const signupInitialParams = needsAccount ? { completeRegistration: true as const } : undefined;
+  const initialScreen = (route.params?.screen ?? AUTH_ROUTES.LOGIN) as keyof AuthStackParamList;
+  const screenParams = route.params?.params;
 
   return (
-    <Stack.Navigator
-      key={needsAccount ? 'auth-signup' : 'auth-default'}
-      initialRouteName={initialScreen}
-      screenOptions={stackScreenOptions}>
+    <Stack.Navigator initialRouteName={initialScreen} screenOptions={stackScreenOptions}>
       <Stack.Screen name={AUTH_ROUTES.LOGIN} component={LoginScreen} />
       <Stack.Screen name={AUTH_ROUTES.WELCOME} component={WelcomeScreen} />
+      <Stack.Screen name={AUTH_ROUTES.SIGNUP} component={SignupScreen} />
       <Stack.Screen
-        name={AUTH_ROUTES.SIGNUP}
-        component={SignupScreen}
-        initialParams={signupInitialParams}
+        name={AUTH_ROUTES.OTP_VERIFICATION}
+        component={OtpVerificationScreen}
+        initialParams={
+          initialScreen === AUTH_ROUTES.OTP_VERIFICATION
+            ? (screenParams as AuthStackParamList[typeof AUTH_ROUTES.OTP_VERIFICATION])
+            : undefined
+        }
       />
-      <Stack.Screen name={AUTH_ROUTES.OTP_VERIFICATION} component={OtpVerificationScreen} />
       <Stack.Screen name={AUTH_ROUTES.FORGOT_PASSWORD} component={ForgotPasswordScreen} />
       <Stack.Screen name={AUTH_ROUTES.UPDATE_PASSWORD} component={UpdatePasswordScreen} />
     </Stack.Navigator>

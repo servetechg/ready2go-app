@@ -8,9 +8,10 @@ import { AppCard } from '@/components/ui/AppCard';
 import { AppText } from '@/components/ui/AppText';
 import { useAppTheme } from '@/hooks/useAppTheme';
 import { useAppDispatch, useAppSelector } from '@/redux/hooks';
-import { logout } from '@/redux/slices/authSlice';
+import { logoutUser } from '@/redux/slices/authSlice';
 import { resetRegistration } from '@/redux/slices/registrationSlice';
 import { spacing } from '@/theme';
+import { toBoolean } from '@/utils/coerce';
 
 export function DashboardScreen() {
   const dispatch = useAppDispatch();
@@ -18,8 +19,10 @@ export function DashboardScreen() {
   const registration = useAppSelector((s) => s.registration);
   const { colors } = useAppTheme();
 
+  const profileComplete = toBoolean(user?.profileComplete ?? registration.isComplete);
+
   const handleLogout = () => {
-    dispatch(logout());
+    dispatch(logoutUser());
     dispatch(resetRegistration());
   };
 
@@ -28,7 +31,7 @@ export function DashboardScreen() {
       <AppCard style={styles.card}>
         <AppText variant="h3">Welcome, {user?.firstName ?? 'User'}!</AppText>
         <AppText variant="body" color={colors.textSecondary} style={styles.sub}>
-          Your emergency profile is {registration.isComplete ? 'complete' : 'in progress'}.
+          Your emergency profile is {profileComplete ? 'complete' : 'in progress'}.
         </AppText>
       </AppCard>
 
@@ -42,7 +45,7 @@ export function DashboardScreen() {
         <StatItem
           icon="checkmark-circle"
           label="Status"
-          value={registration.isComplete ? 'Registered' : 'Pending'}
+          value={profileComplete ? 'Registered' : 'Pending'}
         />
       </View>
 

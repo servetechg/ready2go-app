@@ -7,6 +7,7 @@ import { Provider } from 'react-redux';
 import { PersistGate } from 'redux-persist/integration/react';
 
 import { LoadingSpinner } from '@/components/common/LoadingSpinner';
+import { useSessionBootstrap } from '@/hooks/useSessionBootstrap';
 import { RootNavigator } from '@/navigation';
 import { persistor, store } from '@/redux/store';
 import { palette } from '@/theme';
@@ -24,6 +25,21 @@ const navTheme = {
   },
 };
 
+function AppNavigation() {
+  useSessionBootstrap();
+
+  return (
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <SafeAreaProvider>
+        <NavigationContainer theme={navTheme}>
+          <StatusBar style="auto" />
+          <RootNavigator />
+        </NavigationContainer>
+      </SafeAreaProvider>
+    </GestureHandlerRootView>
+  );
+}
+
 function AppContent({ bootstrapped }: { bootstrapped: boolean }) {
   if (!bootstrapped) {
     return <LoadingSpinner fullScreen={true} message="Loading..." />;
@@ -33,14 +49,7 @@ function AppContent({ bootstrapped }: { bootstrapped: boolean }) {
     <PersistGate
       loading={<LoadingSpinner fullScreen={true} message="Loading..." />}
       persistor={persistor}>
-      <GestureHandlerRootView style={{ flex: 1 }}>
-        <SafeAreaProvider>
-          <NavigationContainer theme={navTheme}>
-            <StatusBar style="auto" />
-            <RootNavigator />
-          </NavigationContainer>
-        </SafeAreaProvider>
-      </GestureHandlerRootView>
+      <AppNavigation />
     </PersistGate>
   );
 }

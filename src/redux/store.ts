@@ -21,7 +21,7 @@ import { authTransform, registrationTransform } from './transforms';
 const authPersistConfig = {
   key: STORAGE_KEYS.AUTH,
   storage: safePersistStorage,
-  whitelist: ['user', 'token', 'isAuthenticated'],
+  whitelist: ['user', 'token', 'refreshToken', 'isAuthenticated'],
   transforms: [authTransform],
 };
 

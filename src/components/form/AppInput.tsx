@@ -14,18 +14,27 @@ interface AppInputProps extends TextInputProps {
   containerStyle?: object;
 }
 
+function inputTextValue(value: TextInputProps['value']): string {
+  if (typeof value === 'string' || typeof value === 'number') {
+    return String(value);
+  }
+  return '';
+}
+
 export function AppInput({
   label,
   error,
   containerStyle,
   style,
   secureTextEntry,
+  value,
   ...props
 }: AppInputProps) {
   const { colors } = useAppTheme();
 
   const nativeProps = sanitizeTextInputProps({
     ...props,
+    value: inputTextValue(value),
     secureTextEntry: secureTextEntry === true,
   });
 

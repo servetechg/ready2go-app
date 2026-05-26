@@ -22,8 +22,8 @@ type Nav = StackNavigationProp<AuthStackParamList, typeof AUTH_ROUTES.FORGOT_PAS
 export function ForgotPasswordScreen() {
   const navigation = useNavigation<Nav>();
   const dispatch = useAppDispatch();
-  const { colors } = useAppTheme();
   const { isLoading, error } = useAppSelector((s) => s.auth);
+  const { colors } = useAppTheme();
   const { showSuccess, showError } = useToast();
 
   const { control, handleSubmit, formState: { errors } } = useForm<ForgotPasswordFormData>({
@@ -38,7 +38,7 @@ export function ForgotPasswordScreen() {
   const onSubmit = async (data: ForgotPasswordFormData) => {
     const result = await dispatch(forgotPassword(data));
     if (forgotPassword.fulfilled.match(result)) {
-      showSuccess('Verification code sent to your email');
+      showSuccess('If an account exists, a code was sent to your email');
       navigation.navigate(AUTH_ROUTES.OTP_VERIFICATION, {
         email: data.email,
         flow: 'resetPassword',

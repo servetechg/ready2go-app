@@ -30,9 +30,6 @@ export const otpSchema = z.object({
     .regex(/^\d{6}$/, 'Enter a valid 6-digit code'),
 });
 
-export type LoginFormData = z.infer<typeof loginSchema>;
-export type SignupFormData = z.infer<typeof signupSchema>;
-export type ForgotPasswordFormData = z.infer<typeof forgotPasswordSchema>;
 export const updatePasswordSchema = z
   .object({
     password: z.string().min(6, 'Password must be at least 6 characters'),
@@ -43,5 +40,8 @@ export const updatePasswordSchema = z
     path: ['confirmPassword'],
   });
 
+export type LoginFormData = z.infer<typeof loginSchema>;
+export type SignupFormData = z.infer<typeof signupSchema>;
+export type ForgotPasswordFormData = z.infer<typeof forgotPasswordSchema>;
 export type OtpFormData = z.infer<typeof otpSchema>;
 export type UpdatePasswordFormData = z.infer<typeof updatePasswordSchema>;
