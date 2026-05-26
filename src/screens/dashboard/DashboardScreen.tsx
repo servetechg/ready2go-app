@@ -8,7 +8,7 @@ import { AppCard } from '@/components/ui/AppCard';
 import { AppText } from '@/components/ui/AppText';
 import { useAppTheme } from '@/hooks/useAppTheme';
 import { useAppDispatch, useAppSelector } from '@/redux/hooks';
-import { logoutUser } from '@/redux/slices/authSlice';
+import { fetchCurrentUser, logoutUser } from '@/redux/slices/authSlice';
 import { resetRegistration } from '@/redux/slices/registrationSlice';
 import { spacing } from '@/theme';
 import { toBoolean } from '@/utils/coerce';
@@ -16,10 +16,21 @@ import { toBoolean } from '@/utils/coerce';
 export function DashboardScreen() {
   const dispatch = useAppDispatch();
   const user = useAppSelector((s) => s.auth.user);
+  const token = useAppSelector((s) => s.auth.token);
   const registration = useAppSelector((s) => s.registration);
   const { colors } = useAppTheme();
 
   const profileComplete = toBoolean(user?.profileComplete ?? registration.isComplete);
+  const hasProfileDetails = Boolean(
+    registration.address.city ||
+      registration.address.streetAddress ||
+      registration.householdSize > 1,
+  );
+
+  React.useEffect(() => {
+    if (!token || !profileComplete || hasProfileDetails) return;
+    void dispatch(fetchCurrentUser());
+  }, [dispatch, hasProfileDetails, profileComplete, token]);
 
   const handleLogout = () => {
     dispatch(logoutUser());
