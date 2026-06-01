@@ -16,14 +16,14 @@ import { useOtpCountdown } from '@/hooks/useOtpCountdown';
 import { useToast } from '@/hooks/useToast';
 import { useAppDispatch, useAppSelector } from '@/redux/hooks';
 import {
-  clearAuthError,
-  clearPendingAuth,
-  sendOtp,
-  verifyOtp,
+    clearAuthError,
+    clearPendingAuth,
+    sendOtp,
+    verifyOtp,
 } from '@/redux/slices/authSlice';
-import { spacing } from '@/theme';
-import type { AuthStackParamList } from '@/types/navigation';
+import { fontFamily, spacing } from '@/theme';
 import type { OtpPurpose } from '@/types/api';
+import type { AuthStackParamList } from '@/types/navigation';
 import { toBoolean } from '@/utils/coerce';
 import { otpSchema, type OtpFormData } from '@/validations/auth.schemas';
 
@@ -187,7 +187,7 @@ const styles = StyleSheet.create({
   timer: { marginBottom: spacing.md },
   error: { marginBottom: spacing.sm },
   devHint: { marginBottom: spacing.md },
-  link: { fontWeight: '600' },
+  link: { fontFamily: fontFamily.semiBold },
   resendRow: {
     flexDirection: 'row',
     justifyContent: 'center',

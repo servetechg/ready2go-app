@@ -1,10 +1,8 @@
 import { TextStyle } from 'react-native';
 
-export const fontFamily = {
-  regular: undefined as string | undefined,
-  medium: undefined as string | undefined,
-  bold: undefined as string | undefined,
-};
+import { fontFamily } from './fonts';
+
+export { fontFamily } from './fonts';
 
 export const fontSize = {
   xs: 11,
@@ -24,13 +22,64 @@ export const lineHeight = {
 } as const;
 
 export const typography: Record<string, TextStyle> = {
-  display: { fontSize: fontSize.display, fontWeight: '700', lineHeight: fontSize.display * lineHeight.tight },
-  h1: { fontSize: fontSize.xxxl, fontWeight: '700', lineHeight: fontSize.xxxl * lineHeight.tight },
-  h2: { fontSize: fontSize.xxl, fontWeight: '700', lineHeight: fontSize.xxl * lineHeight.tight },
-  h3: { fontSize: fontSize.xl, fontWeight: '600', lineHeight: fontSize.xl * lineHeight.tight },
-  body: { fontSize: fontSize.md, fontWeight: '400', lineHeight: fontSize.md * lineHeight.relaxed },
-  bodySmall: { fontSize: fontSize.sm, fontWeight: '400', lineHeight: fontSize.sm * lineHeight.relaxed },
-  label: { fontSize: fontSize.sm, fontWeight: '600', lineHeight: fontSize.sm * lineHeight.normal },
-  caption: { fontSize: fontSize.xs, fontWeight: '400', lineHeight: fontSize.xs * lineHeight.normal },
-  button: { fontSize: fontSize.md, fontWeight: '700', letterSpacing: 0.5 },
+  display: {
+    fontFamily: fontFamily.bold,
+    fontSize: fontSize.display,
+    lineHeight: fontSize.display * lineHeight.tight,
+  },
+  h1: {
+    fontFamily: fontFamily.bold,
+    fontSize: fontSize.xxxl,
+    lineHeight: fontSize.xxxl * lineHeight.tight,
+  },
+  h2: {
+    fontFamily: fontFamily.bold,
+    fontSize: fontSize.xxl,
+    lineHeight: fontSize.xxl * lineHeight.tight,
+  },
+  h3: {
+    fontFamily: fontFamily.semiBold,
+    fontSize: fontSize.xl,
+    lineHeight: fontSize.xl * lineHeight.tight,
+  },
+  body: {
+    fontFamily: fontFamily.regular,
+    fontSize: fontSize.md,
+    lineHeight: fontSize.md * lineHeight.relaxed,
+  },
+  bodySmall: {
+    fontFamily: fontFamily.regular,
+    fontSize: fontSize.sm,
+    lineHeight: fontSize.sm * lineHeight.relaxed,
+  },
+  label: {
+    fontFamily: fontFamily.semiBold,
+    fontSize: fontSize.sm,
+    lineHeight: fontSize.sm * lineHeight.normal,
+  },
+  caption: {
+    fontFamily: fontFamily.regular,
+    fontSize: fontSize.xs,
+    lineHeight: fontSize.xs * lineHeight.normal,
+  },
+  button: {
+    fontFamily: fontFamily.bold,
+    fontSize: fontSize.md,
+    letterSpacing: 0.5,
+  },
 };
+
+/** Use on raw Text that are not wrapped in AppText */
+export const defaultTextStyle: TextStyle = {
+  fontFamily: fontFamily.regular,
+  fontSize: fontSize.md,
+};
+
+/** Compact style for TextInput — avoids tall boxes with custom fonts on Android */
+export const inputTextStyle: TextStyle = {
+  fontFamily: fontFamily.regular,
+  fontSize: fontSize.md,
+  lineHeight: fontSize.md + 2,
+};
+
+export const inputHeight = 40;
