@@ -1,8 +1,8 @@
 import React from 'react';
-import { StyleSheet, TextInput, TextInputProps, View } from 'react-native';
+import { Platform, StyleSheet, TextInput, TextInputProps, View } from 'react-native';
 
 import { useAppTheme } from '@/hooks/useAppTheme';
-import { borderRadius, spacing } from '@/theme';
+import { borderRadius, inputHeight, inputTextStyle, spacing } from '@/theme';
 import { sanitizeTextInputProps } from '@/utils/nativeProps';
 
 import { ErrorMessage } from '../common/ErrorMessage';
@@ -57,6 +57,8 @@ export function AppInput({
         ]}
         placeholderTextColor={colors.textMuted}
         accessibilityLabel={label}
+        textAlignVertical="center"
+        {...(Platform.OS === 'android' ? { includeFontPadding: false as const } : {})}
         {...nativeProps}
       />
       <ErrorMessage message={error} />
@@ -68,10 +70,11 @@ const styles = StyleSheet.create({
   container: { marginBottom: spacing.md },
   label: { marginBottom: spacing.xs },
   input: {
+    ...inputTextStyle,
+    height: inputHeight,
     borderWidth: 1,
     borderRadius: borderRadius.md,
     paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
-    fontSize: 15,
+    paddingVertical: Platform.OS === 'ios' ? 12 : 0,
   },
 });

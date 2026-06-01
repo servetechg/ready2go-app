@@ -1,15 +1,15 @@
 import React, { useRef } from 'react';
 import {
-  NativeSyntheticEvent,
-  Pressable,
-  StyleSheet,
-  TextInput,
-  TextInputKeyPressEventData,
-  View,
+    NativeSyntheticEvent,
+    Pressable,
+    StyleSheet,
+    TextInput,
+    TextInputKeyPressEventData,
+    View,
 } from 'react-native';
 
 import { useAppTheme } from '@/hooks/useAppTheme';
-import { borderRadius, spacing } from '@/theme';
+import { borderRadius, fontFamily, spacing } from '@/theme';
 
 import { ErrorMessage } from '../common/ErrorMessage';
 
@@ -107,8 +107,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   digit: {
+    fontFamily: fontFamily.semiBold,
     fontSize: 22,
-    fontWeight: '600',
     textAlign: 'center',
     padding: 0,
   },

@@ -78,7 +78,7 @@ export function AppButton({
 
 const sizeStyles: Record<'sm' | 'md' | 'lg', ViewStyle> = {
   sm: { paddingVertical: spacing.sm, paddingHorizontal: spacing.lg },
-  md: { paddingVertical: spacing.md + 2, paddingHorizontal: spacing.xl },
+  md: { paddingVertical: spacing.sm, paddingHorizontal: spacing.xl },
   lg: { paddingVertical: spacing.lg, paddingHorizontal: spacing.xxl },
 };
 
