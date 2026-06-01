@@ -67,7 +67,7 @@ const styles = StyleSheet.create({
   row: { flexDirection: 'row', justifyContent: 'space-between' },
   main: { flex: 1, gap: spacing.xs },
   tempRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-  temp: { fontSize: 40 },
+  temp: { fontSize: 40, paddingTop: spacing.xs },
   meta: { alignItems: 'flex-end', justifyContent: 'center', gap: spacing.xs },
   alertLink: {
     flexDirection: 'row',
