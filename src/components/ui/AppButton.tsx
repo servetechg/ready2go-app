@@ -8,7 +8,7 @@ import {
 } from 'react-native';
 
 import { useAppTheme } from '@/hooks/useAppTheme';
-import { borderRadius, spacing } from '@/theme';
+import { borderRadius, inputHeight, spacing } from '@/theme';
 import { toBoolean } from '@/utils/coerce';
 
 import { AppText } from './AppText';
@@ -77,9 +77,21 @@ export function AppButton({
 }
 
 const sizeStyles: Record<'sm' | 'md' | 'lg', ViewStyle> = {
-  sm: { paddingVertical: spacing.sm, paddingHorizontal: spacing.lg },
-  md: { paddingVertical: spacing.sm, paddingHorizontal: spacing.xl },
-  lg: { paddingVertical: spacing.lg, paddingHorizontal: spacing.xxl },
+  sm: {
+    height: inputHeight - 4,
+    minHeight: inputHeight - 4,
+    paddingHorizontal: spacing.lg,
+  },
+  md: {
+    height: inputHeight,
+    minHeight: inputHeight,
+    paddingHorizontal: spacing.xl,
+  },
+  lg: {
+    height: inputHeight + 4,
+    minHeight: inputHeight + 4,
+    paddingHorizontal: spacing.xxl,
+  },
 };
 
 const styles = StyleSheet.create({
