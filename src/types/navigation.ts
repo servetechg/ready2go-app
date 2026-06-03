@@ -27,6 +27,7 @@ export type AuthStackParamList = {
 
 export type OnboardingStackParamList = {
   [ONBOARDING_ROUTES.STEP_ADDRESS]: undefined;
+  [ONBOARDING_ROUTES.STEP_ALERT_LOCATIONS]: undefined;
   [ONBOARDING_ROUTES.STEP_HOUSEHOLD]: undefined;
   [ONBOARDING_ROUTES.STEP_ADA]: undefined;
   [ONBOARDING_ROUTES.STEP_MEDICAL]: undefined;
@@ -62,6 +63,7 @@ export type MainStackParamList = {
   [MAIN_STACK_ROUTES.TABS]: NavigatorScreenParams<MainTabParamList>;
   [MAIN_STACK_ROUTES.SETTINGS]: undefined;
   [MAIN_STACK_ROUTES.STATIC_INFO]: { title: string; body: string };
+  [MAIN_STACK_ROUTES.FAQ]: undefined;
 };
 
 export type DrawerParamList = {

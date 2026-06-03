@@ -7,6 +7,15 @@ export interface AddressData {
   useCurrentLocation: boolean;
 }
 
+/** Optional locations to receive alerts (e.g. family in another state). */
+export interface AlertLocation {
+  id: string;
+  label: string;
+  city: string;
+  state: string;
+  zipCode: string;
+}
+
 export interface YesNoStepData {
   hasRequirement: boolean | null;
   selectedOptions: string[];
@@ -28,6 +37,7 @@ export interface RegistrationState {
     selectedOptions: string[];
     otherDetails?: string;
   };
+  alertLocations: AlertLocation[];
 }
 
 export const initialYesNoStep = (): YesNoStepData => ({
@@ -58,4 +68,5 @@ export const initialRegistrationState = (): RegistrationState => ({
     selectedOptions: [],
     otherDetails: '',
   },
+  alertLocations: [],
 });

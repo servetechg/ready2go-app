@@ -1,10 +1,16 @@
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
-import React, { useMemo } from 'react';
-import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import React, { useMemo, useRef } from 'react';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
 import { AlertCard } from '@/components/dashboard/AlertCard';
+import { BlueSkyNewsFeed } from '@/components/dashboard/BlueSkyNewsFeed';
+import { BlueSkyStatusBanner } from '@/components/dashboard/BlueSkyStatusBanner';
 import { DashboardLayout } from '@/components/dashboard/DashboardLayout';
+import { DisruptionStatusBanner } from '@/components/dashboard/DisruptionStatusBanner';
+import { EmergencyMap } from '@/components/dashboard/EmergencyMap';
+import { EmergencyNewsFeed } from '@/components/dashboard/EmergencyNewsFeed';
+import { IncidentLog } from '@/components/dashboard/IncidentLog';
 import { PreparednessCategoryCard } from '@/components/dashboard/PreparednessCategoryCard';
 import { WeatherSummaryCard } from '@/components/dashboard/WeatherSummaryCard';
 import { AppText } from '@/components/ui/AppText';
@@ -14,8 +20,9 @@ import {
   PREPAREDNESS_STACK_ROUTES,
   TAB_ROUTES,
 } from '@/constants/routes';
-import { navigateToAlertsTab } from '@/navigation/navigationHelpers';
 import { useAppTheme } from '@/hooks/useAppTheme';
+import { useEmergencyDashboard } from '@/hooks/useEmergencyDashboard';
+import { navigateToAlertsTab } from '@/navigation/navigationHelpers';
 import { useAppSelector } from '@/redux/hooks';
 import { spacing } from '@/theme';
 import type { HomeStackParamList, MainTabParamList } from '@/types/navigation';
@@ -30,8 +37,11 @@ type HomeNav = CompositeNavigationProp<
 export function HomeScreen() {
   const navigation = useNavigation<HomeNav>();
   const { colors } = useAppTheme();
+  const scrollRef = useRef<ScrollView>(null);
+  const mapSectionY = useRef(0);
   const searchQuery = useAppSelector((s) => s.dashboard.searchQuery);
   const alerts = useAppSelector((s) => s.dashboard.alerts);
+  const { isCloudy, emergency, loading } = useEmergencyDashboard();
 
   const filteredCategories = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
@@ -49,9 +59,44 @@ export function HomeScreen() {
     });
   };
 
+  const scrollToSituation = () => {
+    scrollRef.current?.scrollTo({ y: mapSectionY.current, animated: true });
+  };
+
   return (
     <DashboardLayout>
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
+      <ScrollView
+        ref={scrollRef}
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.scroll}>
+        {isCloudy ? (
+          <DisruptionStatusBanner onViewSituation={scrollToSituation} />
+        ) : (
+          <BlueSkyStatusBanner />
+        )}
+
+        {loading && !emergency ? (
+          <ActivityIndicator style={styles.loader} color={colors.primary} />
+        ) : null}
+
+        {emergency ? (
+          <>
+            {isCloudy ? (
+              <View
+                style={styles.emergencyBlock}
+                onLayout={(e) => {
+                  mapSectionY.current = e.nativeEvent.layout.y;
+                }}>
+                <EmergencyMap region={emergency.mapRegion} markers={emergency.mapMarkers} />
+                <IncidentLog entries={emergency.incidentLog} />
+                <EmergencyNewsFeed items={emergency.news} title="Emergency updates" />
+              </View>
+            ) : (
+              <BlueSkyNewsFeed items={emergency.news} maxVisible={4} />
+            )}
+          </>
+        ) : null}
+
         <WeatherSummaryCard
           onPress={() => navigation.navigate(HOME_STACK_ROUTES.WEATHER)}
           onAlertSettingsPress={() =>
@@ -59,17 +104,21 @@ export function HomeScreen() {
           }
         />
 
-        <View style={styles.sectionHeader}>
-          <AppText variant="h3">Active Alerts</AppText>
-          <Pressable onPress={() => navigateToAlertsTab(navigation)}>
-            <AppText variant="label" color={colors.primary}>
-              View all
-            </AppText>
-          </Pressable>
-        </View>
-        {recentAlerts.map((alert) => (
-          <AlertCard key={alert.id} alert={alert} />
-        ))}
+        {isCloudy ? (
+          <>
+            <View style={styles.sectionHeader}>
+              <AppText variant="h3">Active Alerts</AppText>
+              <Pressable onPress={() => navigateToAlertsTab(navigation)}>
+                <AppText variant="label" color={colors.primary}>
+                  View all
+                </AppText>
+              </Pressable>
+            </View>
+            {recentAlerts.map((alert) => (
+              <AlertCard key={alert.id} alert={alert} />
+            ))}
+          </>
+        ) : null}
 
         <View style={styles.sectionHeader}>
           <AppText variant="h3">Preparedness Guide</AppText>
@@ -92,7 +141,9 @@ export function HomeScreen() {
 }
 
 const styles = StyleSheet.create({
-  scroll: { paddingBottom: spacing.xl },
+  scroll: { paddingBottom: spacing.xl, paddingVertical: spacing.sm },
+  loader: { marginVertical: spacing.lg },
+  emergencyBlock: { gap: spacing.xl, marginBottom: spacing.lg },
   sectionHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',

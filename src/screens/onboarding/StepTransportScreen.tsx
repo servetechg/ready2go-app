@@ -25,16 +25,16 @@ export function StepTransportScreen() {
 
   const onSubmit = (data: YesNoStepData) => {
     dispatch(setTransport(data));
-    dispatch(setCurrentStep(7));
+    dispatch(setCurrentStep(8));
     navigation.navigate(ONBOARDING_ROUTES.STEP_LODGING);
   };
 
   return (
     <FormLayout
-      stepNumber={6}
+      stepNumber={7}
       icon="car"
       onBack={() => {
-        dispatch(setCurrentStep(5));
+        dispatch(setCurrentStep(6));
         navigation.navigate(ONBOARDING_ROUTES.STEP_PETS);
       }}
       onNext={() => submitRef.current()}>

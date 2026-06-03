@@ -36,3 +36,27 @@ export function navigateToTab(navigation: NavLike, tabRoute: TabRoute, params?: 
 export function navigateToAlertsTab(navigation: NavLike) {
   navigateToTab(navigation, TAB_ROUTES.ALERTS);
 }
+
+/** Navigate to a screen on the main stack (Settings, FAQ, etc.) from nested navigators. */
+export function navigateToMainScreen(
+  navigation: NavLike,
+  screen: (typeof MAIN_STACK_ROUTES)[keyof typeof MAIN_STACK_ROUTES],
+  params?: object,
+) {
+  let current: NavLike | undefined = navigation;
+
+  while (current) {
+    const state = current.getState();
+    if (state?.routeNames.includes(MAIN_STACK_ROUTES.TABS)) {
+      current.navigate(screen as never, params as never);
+      return;
+    }
+    current = current.getParent() ?? undefined;
+  }
+
+  let root: NavLike | undefined = navigation;
+  while (root?.getParent()) {
+    root = root.getParent() ?? undefined;
+  }
+  root?.navigate(screen as never, params as never);
+}

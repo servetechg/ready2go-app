@@ -30,9 +30,10 @@ const TAB_CONFIG: Record<
 
 export function DashboardTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
   const insets = useSafeAreaInsets();
+  const bottomInset = Math.max(insets.bottom, spacing.xs);
 
   return (
-    <View style={[styles.outer, { paddingBottom: Math.max(insets.bottom, spacing.sm) }]}>
+    <View style={[styles.outer, { paddingBottom: bottomInset }]}>
       <View style={[styles.bar, shadows.lg]}>
         {state.routes.map((route, index) => {
           const { options } = descriptors[route.key];
@@ -94,23 +95,20 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-around',
     backgroundColor: palette.white,
-    borderTopLeftRadius: borderRadius.xl + 8,
-    borderTopRightRadius: borderRadius.xl + 8,
-    borderBottomLeftRadius: borderRadius.xl,
-    borderBottomRightRadius: borderRadius.xl,
-    paddingTop: spacing.md,
-    paddingBottom: spacing.sm,
-    minHeight: 64,
+    borderRadius: borderRadius.xl,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.xs,
   },
   tab: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
     gap: 2,
-    minHeight: 48,
+    paddingVertical: spacing.xs,
   },
   tabLabel: {
     fontFamily: fontFamily.semiBold,
-    marginTop: 2,
+    fontSize: 11,
+    lineHeight: 14,
   },
 });

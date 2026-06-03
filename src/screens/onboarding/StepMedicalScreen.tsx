@@ -25,16 +25,16 @@ export function StepMedicalScreen() {
 
   const onSubmit = (data: YesNoStepData) => {
     dispatch(setMedical(data));
-    dispatch(setCurrentStep(5));
+    dispatch(setCurrentStep(6));
     navigation.navigate(ONBOARDING_ROUTES.STEP_PETS);
   };
 
   return (
     <FormLayout
-      stepNumber={4}
+      stepNumber={5}
       icon="heart"
       onBack={() => {
-        dispatch(setCurrentStep(3));
+        dispatch(setCurrentStep(4));
         navigation.navigate(ONBOARDING_ROUTES.STEP_ADA);
       }}
       onNext={() => submitRef.current()}>

@@ -22,16 +22,16 @@ export function StepAdaScreen() {
 
   const onSubmit = (data: YesNoStepData) => {
     dispatch(setAda(data));
-    dispatch(setCurrentStep(4));
+    dispatch(setCurrentStep(5));
     navigation.navigate(ONBOARDING_ROUTES.STEP_MEDICAL);
   };
 
   return (
     <FormLayout
-      stepNumber={3}
+      stepNumber={4}
       icon="accessibility"
       onBack={() => {
-        dispatch(setCurrentStep(2));
+        dispatch(setCurrentStep(3));
         navigation.navigate(ONBOARDING_ROUTES.STEP_HOUSEHOLD);
       }}
       onNext={() => submitRef.current()}>

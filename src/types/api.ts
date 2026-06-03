@@ -1,4 +1,4 @@
-import type { AddressData, YesNoStepData } from '@/types/registration';
+import type { AddressData, AlertLocation, YesNoStepData } from '@/types/registration';
 
 /** API error body from `/api/v1` */
 export interface ApiErrorBody {
@@ -58,6 +58,8 @@ export interface ProfilePayload {
   pets: YesNoStepData;
   transport: YesNoStepData;
   lodging: LodgingProfileData;
+  /** Optional — backend may add support later */
+  alertLocations?: AlertLocation[];
 }
 
 export interface ProfileCompleteRequest {

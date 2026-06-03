@@ -116,6 +116,16 @@ export function DrawerContent(props: DrawerContentComponentProps) {
         ),
     },
     {
+      label: 'FAQs',
+      icon: 'help-buoy-outline',
+      onPress: () => {
+        navigation.closeDrawer();
+        navigation.navigate(DRAWER_ROUTES.MAIN, {
+          screen: MAIN_STACK_ROUTES.FAQ,
+        } as never);
+      },
+    },
+    {
       label: 'Help & Feedback',
       icon: 'help-circle-outline',
       onPress: () =>
