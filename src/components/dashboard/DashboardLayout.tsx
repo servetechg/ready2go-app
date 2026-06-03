@@ -27,7 +27,7 @@ export function DashboardLayout({
   );
 }
 
-const TAB_BAR_CLEARANCE = 88;
+const TAB_BAR_CLEARANCE = 72;
 
 const styles = StyleSheet.create({
   header: {

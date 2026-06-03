@@ -1,5 +1,5 @@
 import type { ProfilePayload } from '@/types/api';
-import type { AddressData, RegistrationState, YesNoStepData } from '@/types/registration';
+import type { AddressData, AlertLocation, RegistrationState, YesNoStepData } from '@/types/registration';
 import { initialYesNoStep } from '@/types/registration';
 
 /** Keep only valid address fields (guards against polluted Redux / API shapes). */
@@ -45,6 +45,26 @@ function pickYesNoStep(input: unknown): YesNoStepData {
   };
 }
 
+export function pickAlertLocations(input: unknown): AlertLocation[] {
+  if (!Array.isArray(input)) return [];
+  return input
+    .map((item, index) => {
+      if (!item || typeof item !== 'object') return null;
+      const raw = item as Record<string, unknown>;
+      const city = String(raw.city ?? '').trim();
+      const state = String(raw.state ?? '').trim();
+      if (!city && !state) return null;
+      return {
+        id: String(raw.id ?? `loc-${index}`),
+        label: String(raw.label ?? '').trim(),
+        city,
+        state,
+        zipCode: String(raw.zipCode ?? '').trim(),
+      };
+    })
+    .filter((loc): loc is AlertLocation => loc !== null);
+}
+
 function pickLodging(input: unknown): RegistrationState['lodging'] {
   const raw = input && typeof input === 'object' ? (input as RegistrationState['lodging']) : null;
   return {
@@ -83,7 +103,7 @@ export function normalizeProfilePayload(input: unknown): ProfilePayload | null {
 export function normalizeRegistrationState(state: RegistrationState): RegistrationState {
   return {
     currentStep:
-      typeof state.currentStep === 'number' && state.currentStep >= 1 && state.currentStep <= 7
+      typeof state.currentStep === 'number' && state.currentStep >= 1 && state.currentStep <= 8
         ? state.currentStep
         : 1,
     isComplete: Boolean(state.isComplete),
@@ -96,5 +116,6 @@ export function normalizeRegistrationState(state: RegistrationState): Registrati
     pets: pickYesNoStep(state.pets),
     transport: pickYesNoStep(state.transport),
     lodging: pickLodging(state.lodging),
+    alertLocations: pickAlertLocations(state.alertLocations),
   };
 }

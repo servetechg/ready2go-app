@@ -74,7 +74,7 @@ export function SignupScreen() {
           render={({ field: { onChange, onBlur, value } }) => (
             <AppInput
               label="First Name"
-              placeholder="Enter Your First Name"
+              placeholder="First Name"
               value={value}
               onChangeText={onChange}
               onBlur={onBlur}
@@ -89,7 +89,7 @@ export function SignupScreen() {
           render={({ field: { onChange, onBlur, value } }) => (
             <AppInput
               label="Last Name"
-              placeholder="Enter Your Last Name"
+              placeholder="Last Name"
               value={value}
               onChangeText={onChange}
               onBlur={onBlur}

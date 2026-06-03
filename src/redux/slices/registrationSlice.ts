@@ -2,7 +2,7 @@ import { createSlice, PayloadAction } from '@reduxjs/toolkit';
 
 import { fetchCurrentUser } from '@/redux/slices/authSlice';
 import type { ProfilePayload } from '@/types/api';
-import type { AddressData, RegistrationState, YesNoStepData } from '@/types/registration';
+import type { AddressData, AlertLocation, RegistrationState, YesNoStepData } from '@/types/registration';
 import { initialRegistrationState } from '@/types/registration';
 import { toBoolean } from '@/utils/coerce';
 import {
@@ -10,6 +10,7 @@ import {
   normalizeProfilePayload,
   normalizeRegistrationState,
   pickAddressData,
+  pickAlertLocations,
 } from '@/utils/registration';
 
 function applyProfilePayload(state: RegistrationState, profile: ProfilePayload) {
@@ -24,14 +25,17 @@ function applyProfilePayload(state: RegistrationState, profile: ProfilePayload) 
     selectedOptions: p.lodging.selectedOptions,
     otherDetails: p.lodging.otherDetails ?? '',
   };
-  state.currentStep = 7;
+  if (p.alertLocations) {
+    state.alertLocations = pickAlertLocations(p.alertLocations);
+  }
+  state.currentStep = 8;
 }
 
 function markRegistrationComplete(state: RegistrationState) {
   state.isComplete = true;
   state.isStarted = false;
   state.needsAccount = false;
-  state.currentStep = 7;
+  state.currentStep = 8;
 }
 
 const registrationSlice = createSlice({
@@ -74,11 +78,14 @@ const registrationSlice = createSlice({
     ) => {
       state.lodging = action.payload;
     },
+    setAlertLocations: (state, action: PayloadAction<AlertLocation[]>) => {
+      state.alertLocations = pickAlertLocations(action.payload);
+    },
     completeRegistration: (state) => {
       state.isComplete = true;
       state.isStarted = false;
       state.needsAccount = false;
-      state.currentStep = 7;
+      state.currentStep = 8;
     },
     resetRegistration: () => initialRegistrationState(),
     hydrateProfileFromApi: (state, action: PayloadAction<ProfilePayload>) => {
@@ -114,6 +121,7 @@ export const {
   setPets,
   setTransport,
   setLodging,
+  setAlertLocations,
   completeRegistration,
   resetRegistration,
   hydrateProfileFromApi,

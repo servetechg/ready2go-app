@@ -1,12 +1,12 @@
-import React, { useState } from 'react';
-import { Modal, Pressable, FlatList, StyleSheet, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import React, { useState } from 'react';
+import { FlatList, Modal, Pressable, StyleSheet, View } from 'react-native';
 
 import { useAppTheme } from '@/hooks/useAppTheme';
 import { borderRadius, inputHeight, spacing } from '@/theme';
 
-import { AppText } from '../ui/AppText';
 import { ErrorMessage } from '../common/ErrorMessage';
+import { AppText } from '../ui/AppText';
 
 interface AppSelectProps {
   label?: string;
@@ -102,7 +102,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderRadius: borderRadius.md,
     paddingHorizontal: spacing.md,
-    paddingVertical: spacing.md,
+    paddingVertical: spacing.smm,
     flexDirection: 'row',
     alignItems: 'center',
   },

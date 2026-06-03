@@ -5,6 +5,7 @@ import { ONBOARDING_ROUTES } from '@/constants/routes';
 import { useAppDispatch, useAppSelector } from '@/redux/hooks';
 import { sanitizeRegistration } from '@/redux/slices/registrationSlice';
 import { StepAddressScreen } from '@/screens/onboarding/StepAddressScreen';
+import { StepAlertLocationsScreen } from '@/screens/onboarding/StepAlertLocationsScreen';
 import { StepAdaScreen } from '@/screens/onboarding/StepAdaScreen';
 import { StepHouseholdScreen } from '@/screens/onboarding/StepHouseholdScreen';
 import { StepLodgingScreen } from '@/screens/onboarding/StepLodgingScreen';
@@ -19,12 +20,13 @@ const Stack = createStackNavigator<OnboardingStackParamList>();
 
 const STEP_ROUTE_MAP: Record<number, keyof OnboardingStackParamList> = {
   1: ONBOARDING_ROUTES.STEP_ADDRESS,
-  2: ONBOARDING_ROUTES.STEP_HOUSEHOLD,
-  3: ONBOARDING_ROUTES.STEP_ADA,
-  4: ONBOARDING_ROUTES.STEP_MEDICAL,
-  5: ONBOARDING_ROUTES.STEP_PETS,
-  6: ONBOARDING_ROUTES.STEP_TRANSPORT,
-  7: ONBOARDING_ROUTES.STEP_LODGING,
+  2: ONBOARDING_ROUTES.STEP_ALERT_LOCATIONS,
+  3: ONBOARDING_ROUTES.STEP_HOUSEHOLD,
+  4: ONBOARDING_ROUTES.STEP_ADA,
+  5: ONBOARDING_ROUTES.STEP_MEDICAL,
+  6: ONBOARDING_ROUTES.STEP_PETS,
+  7: ONBOARDING_ROUTES.STEP_TRANSPORT,
+  8: ONBOARDING_ROUTES.STEP_LODGING,
 };
 
 export function OnboardingNavigator() {
@@ -44,6 +46,10 @@ export function OnboardingNavigator() {
   return (
     <Stack.Navigator initialRouteName={initialRoute} screenOptions={stackScreenOptions}>
       <Stack.Screen name={ONBOARDING_ROUTES.STEP_ADDRESS} component={StepAddressScreen} />
+      <Stack.Screen
+        name={ONBOARDING_ROUTES.STEP_ALERT_LOCATIONS}
+        component={StepAlertLocationsScreen}
+      />
       <Stack.Screen name={ONBOARDING_ROUTES.STEP_HOUSEHOLD} component={StepHouseholdScreen} />
       <Stack.Screen name={ONBOARDING_ROUTES.STEP_ADA} component={StepAdaScreen} />
       <Stack.Screen name={ONBOARDING_ROUTES.STEP_MEDICAL} component={StepMedicalScreen} />

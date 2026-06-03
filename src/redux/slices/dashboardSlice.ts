@@ -1,19 +1,40 @@
-import { createSlice, PayloadAction } from '@reduxjs/toolkit';
+import { createAsyncThunk, createSlice, PayloadAction } from '@reduxjs/toolkit';
 
+import { buildMockEmergencyDashboard } from '@/constants/emergency';
 import { DEFAULT_WEATHER_ALERT_PREFERENCES, MOCK_ALERTS } from '@/constants/dashboard';
+import { fetchEmergencyDashboard } from '@/services/emergency.service';
+import type { DashboardMode, EmergencyDashboardData } from '@/types/emergency';
 import type { WeatherAlert, WeatherAlertPreference } from '@/types/dashboard';
 
 interface DashboardState {
   alerts: WeatherAlert[];
   weatherAlertPreferences: WeatherAlertPreference[];
   searchQuery: string;
+  /** Dev/preview override; null = use API/mock default (blue sky) */
+  disruptionModeOverride: DashboardMode | null;
+  emergency: EmergencyDashboardData | null;
+  emergencyLoading: boolean;
+  emergencyError: string | null;
 }
 
 const initialState: DashboardState = {
   alerts: MOCK_ALERTS,
   weatherAlertPreferences: DEFAULT_WEATHER_ALERT_PREFERENCES,
   searchQuery: '',
+  disruptionModeOverride: null,
+  emergency: buildMockEmergencyDashboard('blue_sky'),
+  emergencyLoading: false,
+  emergencyError: null,
 };
+
+export const loadEmergencyDashboard = createAsyncThunk(
+  'dashboard/loadEmergencyDashboard',
+  async (mode: DashboardMode) => fetchEmergencyDashboard(mode),
+);
+
+function resolveMode(state: DashboardState): DashboardMode {
+  return state.disruptionModeOverride ?? state.emergency?.mode ?? 'blue_sky';
+}
 
 const dashboardSlice = createSlice({
   name: 'dashboard',
@@ -42,6 +63,24 @@ const dashboardSlice = createSlice({
       const pref = state.weatherAlertPreferences.find((p) => p.id === action.payload.id);
       if (pref) pref.enabled = action.payload.enabled;
     },
+    setDisruptionModeOverride: (state, action: PayloadAction<DashboardMode | null>) => {
+      state.disruptionModeOverride = action.payload;
+    },
+  },
+  extraReducers: (builder) => {
+    builder
+      .addCase(loadEmergencyDashboard.pending, (state) => {
+        state.emergencyLoading = true;
+        state.emergencyError = null;
+      })
+      .addCase(loadEmergencyDashboard.fulfilled, (state, action) => {
+        state.emergencyLoading = false;
+        state.emergency = action.payload;
+      })
+      .addCase(loadEmergencyDashboard.rejected, (state, action) => {
+        state.emergencyLoading = false;
+        state.emergencyError = action.error.message ?? 'Failed to load emergency data';
+      });
   },
 });
 
@@ -51,9 +90,18 @@ export const {
   markAllAlertsRead,
   toggleWeatherAlertPreference,
   setWeatherAlertPreference,
+  setDisruptionModeOverride,
 } = dashboardSlice.actions;
 
 export const selectUnreadAlertCount = (state: { dashboard: DashboardState }) =>
   state.dashboard.alerts.filter((a) => !a.read).length;
+
+export const selectDashboardMode = (state: { dashboard: DashboardState }): DashboardMode => {
+  const dash = state.dashboard;
+  return dash.disruptionModeOverride ?? dash.emergency?.mode ?? 'blue_sky';
+};
+
+export const selectIsCloudyDay = (state: { dashboard: DashboardState }) =>
+  selectDashboardMode(state) === 'cloudy';
 
 export default dashboardSlice.reducer;

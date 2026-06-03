@@ -4,39 +4,33 @@ import { StackNavigationProp } from '@react-navigation/stack';
 import React from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
+import { AlertLocationsEditor } from '@/components/dashboard/AlertLocationsEditor';
 import { DashboardScreenHeader } from '@/components/dashboard/DashboardTopBar';
 import { ScreenWrapper } from '@/components/layout/ScreenWrapper';
 import { AppCard } from '@/components/ui/AppCard';
 import { AppText } from '@/components/ui/AppText';
-import { PROFILE_STACK_ROUTES } from '@/constants/routes';
+import { EMERGENCY_PROFILE_MESSAGE } from '@/constants/faq';
+import { MAIN_STACK_ROUTES, PROFILE_STACK_ROUTES } from '@/constants/routes';
 import { useAppTheme } from '@/hooks/useAppTheme';
-import { useAppSelector } from '@/redux/hooks';
+import { navigateToMainScreen } from '@/navigation/navigationHelpers';
+import { useAppDispatch, useAppSelector } from '@/redux/hooks';
+import { setAlertLocations } from '@/redux/slices/registrationSlice';
 import { fontSize, spacing } from '@/theme';
 import type { ProfileStackParamList } from '@/types/navigation';
 import { formatAddressLine } from '@/utils/formatAddress';
 
-function ProfileRow({
-  label,
-  value,
-}: {
-  label: string;
-  value: string;
-}) {
-  const { colors } = useAppTheme();
+function ProfileRow({ label, value }: { label: string; value: string }) {
   return (
     <View style={styles.row}>
-      <Text style={styles.label}>
-        {label}:
-      </Text>
-      <AppText variant="body">
-        {value}
-      </AppText>
+      <Text style={styles.label}>{label}:</Text>
+      <AppText variant="body">{value}</AppText>
     </View>
   );
 }
 
 export function ProfileScreen() {
   const navigation = useNavigation<StackNavigationProp<ProfileStackParamList>>();
+  const dispatch = useAppDispatch();
   const { colors } = useAppTheme();
   const user = useAppSelector((s) => s.auth.user);
   const registration = useAppSelector((s) => s.registration);
@@ -82,9 +76,27 @@ export function ProfileScreen() {
         </AppText>
         <AppCard>
           <AppText variant="body" color={colors.textSecondary}>
-            Your onboarding data (medical, pets, transport, lodging) is stored securely and will be
-            used for emergency planning features.
+            {EMERGENCY_PROFILE_MESSAGE}
           </AppText>
+          <Pressable
+            onPress={() => navigateToMainScreen(navigation, MAIN_STACK_ROUTES.FAQ)}
+            style={styles.faqLink}
+            accessibilityRole="link">
+            <AppText variant="label" color={colors.primary}>
+              Refer to the FAQs for more information →
+            </AppText>
+          </Pressable>
+        </AppCard>
+
+        <AppText variant="h3" style={styles.sectionTitle}>
+          Alert locations
+        </AppText>
+        <AppCard>
+          <AlertLocationsEditor
+            locations={registration.alertLocations}
+            onChange={(locations) => dispatch(setAlertLocations(locations))}
+            compact={true}
+          />
         </AppCard>
       </ScrollView>
     </ScreenWrapper>
@@ -92,10 +104,14 @@ export function ProfileScreen() {
 }
 
 const styles = StyleSheet.create({
-  // headerPad: { paddingHorizontal: spacing.lg },
-  content: { paddingHorizontal: spacing.lg, paddingBottom: spacing.xxxl },
-  tabBarInset: { paddingBottom: 88 },
-  profileHeader: { flexDirection: 'column', gap: spacing.lg, marginBottom: spacing.xxl, alignItems: 'center' },
+  content: { paddingHorizontal: spacing.sm, paddingBottom: spacing.xxxl },
+  tabBarInset: { paddingBottom: 72 },
+  profileHeader: {
+    flexDirection: 'column',
+    gap: spacing.lg,
+    marginBottom: spacing.xxl,
+    alignItems: 'center',
+  },
   avatar: {
     width: 95,
     height: 95,
@@ -107,7 +123,17 @@ const styles = StyleSheet.create({
     borderColor: '#33375D',
   },
   profileInfo: { flex: 1, gap: spacing.sm },
-  row: {paddingBottom: spacing.sm, marginBottom: spacing.md, borderWidth: 0, borderColor: '#E2E3E6', borderBottomWidth: 1, flexDirection: 'row', gap: spacing.sm, justifyContent: 'space-between', width: '100%' }, 
+  row: {
+    paddingBottom: spacing.sm,
+    marginBottom: spacing.md,
+    borderBottomWidth: 1,
+    borderColor: '#E2E3E6',
+    flexDirection: 'row',
+    gap: spacing.sm,
+    justifyContent: 'space-between',
+    width: '100%',
+  },
   label: { fontSize: fontSize.lg, fontWeight: '600' },
-  sectionTitle: { marginBottom: spacing.md },
+  sectionTitle: { marginBottom: spacing.md, marginTop: spacing.lg },
+  faqLink: { marginTop: spacing.md },
 });

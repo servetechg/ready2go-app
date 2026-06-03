@@ -15,5 +15,6 @@ export function toProfilePayload(state: RegistrationState): ProfilePayload {
       selectedOptions: state.lodging.selectedOptions,
       otherDetails: state.lodging.otherDetails ?? '',
     },
+    ...(state.alertLocations.length > 0 ? { alertLocations: state.alertLocations } : {}),
   };
 }
