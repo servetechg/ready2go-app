@@ -3,7 +3,7 @@ import { Modal, Pressable, FlatList, StyleSheet, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
 import { useAppTheme } from '@/hooks/useAppTheme';
-import { borderRadius, spacing } from '@/theme';
+import { borderRadius, inputHeight, spacing } from '@/theme';
 
 import { AppText } from '../ui/AppText';
 import { ErrorMessage } from '../common/ErrorMessage';
@@ -16,6 +16,7 @@ interface AppSelectProps {
   placeholder?: string;
   error?: string;
   containerStyle?: object;
+  pill?: boolean;
 }
 
 export function AppSelect({
@@ -26,6 +27,7 @@ export function AppSelect({
   placeholder = 'Select',
   error,
   containerStyle,
+  pill = false,
 }: AppSelectProps) {
   const { colors } = useAppTheme();
   const [open, setOpen] = useState(false);
@@ -40,6 +42,7 @@ export function AppSelect({
       <Pressable
         style={[
           styles.trigger,
+          pill && styles.triggerPill,
           {
             backgroundColor: colors.surface,
             borderColor: error ? colors.error : colors.border,
@@ -102,6 +105,13 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.md,
     flexDirection: 'row',
     alignItems: 'center',
+  },
+  triggerPill: {
+    height: inputHeight + 8,
+    borderRadius: borderRadius.full,
+    paddingHorizontal: spacing.xl,
+    paddingVertical: 0,
+    borderWidth: 0,
   },
   triggerText: {
     flex: 1,

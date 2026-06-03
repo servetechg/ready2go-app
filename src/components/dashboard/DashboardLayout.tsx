@@ -18,7 +18,7 @@ export function DashboardLayout({
   tabBarInset = true,
 }: DashboardLayoutProps) {
   return (
-    <ScreenWrapper>
+    <ScreenWrapper scrollable={false}>
       <View style={styles.header}>
         <DashboardTopBar showSearch={showSearch} />
       </View>

@@ -9,6 +9,36 @@ import { useAppDispatch, useAppSelector } from '@/redux/hooks';
 import { markAlertRead, markAllAlertsRead } from '@/redux/slices/dashboardSlice';
 import { palette, spacing } from '@/theme';
 
+function AlertsListHeader({ onMarkAllRead }: { onMarkAllRead: () => void }) {
+  const { colors } = useAppTheme();
+
+  return (
+    <View>
+      <View style={styles.header}>
+        <AppText variant="h2">Alerts</AppText>
+        <Pressable onPress={onMarkAllRead}>
+          <AppText variant="label" color={colors.primary}>
+            Mark all read
+          </AppText>
+        </Pressable>
+      </View>
+
+      <View style={styles.filters}>
+        <View style={[styles.filterActive, { backgroundColor: palette.tabActive }]}>
+          <AppText variant="label" color={palette.white}>
+            Most Recent
+          </AppText>
+        </View>
+        <View style={[styles.filterInactive, { borderColor: colors.border }]}>
+          <AppText variant="label" color={colors.text}>
+            By Severity
+          </AppText>
+        </View>
+      </View>
+    </View>
+  );
+}
+
 export function AlertsScreen() {
   const dispatch = useAppDispatch();
   const { colors } = useAppTheme();
@@ -28,33 +58,15 @@ export function AlertsScreen() {
 
   return (
     <DashboardLayout>
-      <View style={styles.header}>
-        <AppText variant="h2">Alerts</AppText>
-        <Pressable onPress={() => dispatch(markAllAlertsRead())}>
-          <AppText variant="label" color={colors.primary}>
-            Mark all read
-          </AppText>
-        </Pressable>
-      </View>
-
-      <View style={styles.filters}>
-        <View style={[styles.filterActive, { backgroundColor: palette.tabActive }]}>
-          <AppText variant="label" color={palette.white}>
-            Most Recent
-          </AppText>
-        </View>
-        <View style={[styles.filterInactive, { borderColor: colors.border }]}>
-          <AppText variant="label" color={colors.text}>
-            By Severity
-          </AppText>
-        </View>
-      </View>
-
       <FlatList
         data={filtered}
         keyExtractor={(item) => item.id}
+        style={styles.list}
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.list}
+        contentContainerStyle={styles.listContent}
+        ListHeaderComponent={
+          <AlertsListHeader onMarkAllRead={() => dispatch(markAllAlertsRead())} />
+        }
         renderItem={({ item }) => (
           <AlertCard alert={item} onTakeAction={() => dispatch(markAlertRead(item.id))} />
         )}
@@ -91,5 +103,6 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     borderWidth: 1,
   },
-  list: { paddingBottom: spacing.xl },
+  list: { flex: 1 },
+  listContent: { paddingBottom: spacing.xl },
 });

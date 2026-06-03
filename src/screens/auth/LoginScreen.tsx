@@ -115,7 +115,7 @@ export function LoginScreen() {
 
         <Pressable onPress={() => navigation.navigate(AUTH_ROUTES.FORGOT_PASSWORD)}>
           <AppText variant="bodySmall" style={[styles.link, { color: colors.primary }]}>
-            Forgot password?
+            Forgot Password?
           </AppText>
         </Pressable>
 
@@ -123,6 +123,7 @@ export function LoginScreen() {
           title="SIGN IN"
           onPress={handleSubmit(onSubmit)}
           loading={toBoolean(isLoading)}
+          size="lg"
         />
 
         <View style={styles.footer}>
