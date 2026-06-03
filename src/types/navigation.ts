@@ -7,6 +7,7 @@ import {
   MAIN_STACK_ROUTES,
   ONBOARDING_ROUTES,
   PREPAREDNESS_STACK_ROUTES,
+  PROFILE_STACK_ROUTES,
   ROOT_ROUTES,
   TAB_ROUTES,
 } from '@/constants/routes';
@@ -45,11 +46,16 @@ export type PreparednessStackParamList = {
   [PREPAREDNESS_STACK_ROUTES.CATEGORY]: { categoryId: string; title: string };
 };
 
+export type ProfileStackParamList = {
+  [PROFILE_STACK_ROUTES.PROFILE]: undefined;
+  [PROFILE_STACK_ROUTES.EDIT_PROFILE]: undefined;
+};
+
 export type MainTabParamList = {
   [TAB_ROUTES.HOME]: NavigatorScreenParams<HomeStackParamList>;
   [TAB_ROUTES.ALERTS]: undefined;
   [TAB_ROUTES.PREPAREDNESS]: NavigatorScreenParams<PreparednessStackParamList>;
-  [TAB_ROUTES.PROFILE]: undefined;
+  [TAB_ROUTES.PROFILE]: NavigatorScreenParams<ProfileStackParamList>;
 };
 
 export type MainStackParamList = {

@@ -1,28 +1,34 @@
 import { Ionicons } from '@expo/vector-icons';
+import { useNavigation } from '@react-navigation/native';
+import { StackNavigationProp } from '@react-navigation/stack';
 import React from 'react';
-import { ScrollView, StyleSheet, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { DashboardScreenHeader } from '@/components/dashboard/DashboardTopBar';
 import { ScreenWrapper } from '@/components/layout/ScreenWrapper';
 import { AppCard } from '@/components/ui/AppCard';
 import { AppText } from '@/components/ui/AppText';
+import { PROFILE_STACK_ROUTES } from '@/constants/routes';
 import { useAppTheme } from '@/hooks/useAppTheme';
 import { useAppSelector } from '@/redux/hooks';
-import { spacing } from '@/theme';
+import { fontSize, spacing } from '@/theme';
+import type { ProfileStackParamList } from '@/types/navigation';
 import { formatAddressLine } from '@/utils/formatAddress';
 
 function ProfileRow({
-  icon,
+  label,
   value,
 }: {
-  icon: keyof typeof Ionicons.glyphMap;
+  label: string;
   value: string;
 }) {
   const { colors } = useAppTheme();
   return (
     <View style={styles.row}>
-      <Ionicons name={icon} size={18} color={colors.primary} />
-      <AppText variant="body" style={styles.rowText}>
+      <Text style={styles.label}>
+        {label}:
+      </Text>
+      <AppText variant="body">
         {value}
       </AppText>
     </View>
@@ -30,6 +36,7 @@ function ProfileRow({
 }
 
 export function ProfileScreen() {
+  const navigation = useNavigation<StackNavigationProp<ProfileStackParamList>>();
   const { colors } = useAppTheme();
   const user = useAppSelector((s) => s.auth.user);
   const registration = useAppSelector((s) => s.registration);
@@ -38,8 +45,18 @@ export function ProfileScreen() {
 
   return (
     <ScreenWrapper>
-      <View style={styles.headerPad}>
-        <DashboardScreenHeader title="Profile" />
+      <View>
+        <DashboardScreenHeader
+          title="Profile"
+          rightElement={
+            <Pressable
+              onPress={() => navigation.navigate(PROFILE_STACK_ROUTES.EDIT_PROFILE)}
+              hitSlop={12}
+              accessibilityLabel="Edit profile">
+              <Ionicons name="create-outline" size={24} color="black" />
+            </Pressable>
+          }
+        />
       </View>
       <ScrollView
         contentContainerStyle={[styles.content, styles.tabBarInset]}
@@ -49,12 +66,12 @@ export function ProfileScreen() {
             <Ionicons name="person" size={48} color={colors.primary} />
           </View>
           <View style={styles.profileInfo}>
-            <AppText variant="h2">{fullName}</AppText>
-            <ProfileRow icon="mail" value={user?.email ?? '—'} />
-            <ProfileRow icon="home" value={formatAddressLine(registration.address)} />
-            <ProfileRow icon="people" value={String(registration.householdSize)} />
+            <ProfileRow label="Name" value={fullName} />
+            <ProfileRow label="Email" value={user?.email ?? '—'} />
+            <ProfileRow label="Home" value={formatAddressLine(registration.address)} />
+            <ProfileRow label="People" value={String(registration.householdSize)} />
             <ProfileRow
-              icon="checkmark-circle"
+              label="Status"
               value={registration.isComplete ? 'Complete' : 'In progress'}
             />
           </View>
@@ -75,19 +92,22 @@ export function ProfileScreen() {
 }
 
 const styles = StyleSheet.create({
-  headerPad: { paddingHorizontal: spacing.lg },
+  // headerPad: { paddingHorizontal: spacing.lg },
   content: { paddingHorizontal: spacing.lg, paddingBottom: spacing.xxxl },
   tabBarInset: { paddingBottom: 88 },
-  profileHeader: { flexDirection: 'row', gap: spacing.lg, marginBottom: spacing.xxl, alignItems: 'center' },
+  profileHeader: { flexDirection: 'column', gap: spacing.lg, marginBottom: spacing.xxl, alignItems: 'center' },
   avatar: {
-    width: 88,
-    height: 88,
-    borderRadius: 44,
+    width: 95,
+    height: 95,
+    borderRadius: 50,
     alignItems: 'center',
     justifyContent: 'center',
+    marginBottom: spacing.lg,
+    borderWidth: 1,
+    borderColor: '#33375D',
   },
   profileInfo: { flex: 1, gap: spacing.sm },
-  row: { flexDirection: 'row', gap: spacing.sm, alignItems: 'center' },
-  rowText: { flex: 1, flexShrink: 1 },
+  row: {paddingBottom: spacing.sm, marginBottom: spacing.md, borderWidth: 0, borderColor: '#E2E3E6', borderBottomWidth: 1, flexDirection: 'row', gap: spacing.sm, justifyContent: 'space-between', width: '100%' }, 
+  label: { fontSize: fontSize.lg, fontWeight: '600' },
   sectionTitle: { marginBottom: spacing.md },
 });

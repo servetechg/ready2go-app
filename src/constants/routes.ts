@@ -35,6 +35,11 @@ export const PREPAREDNESS_STACK_ROUTES = {
   CATEGORY: 'PreparednessCategory',
 } as const;
 
+export const PROFILE_STACK_ROUTES = {
+  PROFILE: 'Profile',
+  EDIT_PROFILE: 'EditProfile',
+} as const;
+
 export const MAIN_STACK_ROUTES = {
   TABS: 'MainTabs',
   SETTINGS: 'Settings',

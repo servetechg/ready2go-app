@@ -17,8 +17,8 @@ const TAB_CONFIG: Record<
   [TAB_ROUTES.HOME]: { label: 'Home', icon: 'home-outline', activeIcon: 'home' },
   [TAB_ROUTES.ALERTS]: {
     label: 'Alerts',
-    icon: 'thumbs-up-outline',
-    activeIcon: 'thumbs-up',
+    icon: 'warning-outline',
+    activeIcon: 'warning',
   },
   [TAB_ROUTES.PREPAREDNESS]: {
     label: 'Guide',

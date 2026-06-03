@@ -4,11 +4,11 @@ import React from 'react';
 import { DashboardTabBar } from '@/components/dashboard/DashboardTabBar';
 import { TAB_ROUTES } from '@/constants/routes';
 import { AlertsScreen } from '@/screens/dashboard/AlertsScreen';
-import { ProfileScreen } from '@/screens/dashboard/ProfileScreen';
 import type { MainTabParamList } from '@/types/navigation';
 
 import { HomeStackNavigator } from './stacks/HomeStackNavigator';
 import { PreparednessStackNavigator } from './stacks/PreparednessStackNavigator';
+import { ProfileStackNavigator } from './stacks/ProfileStackNavigator';
 
 const Tab = createBottomTabNavigator<MainTabParamList>();
 
@@ -23,7 +23,7 @@ export function MainTabNavigator() {
       <Tab.Screen name={TAB_ROUTES.HOME} component={HomeStackNavigator} />
       <Tab.Screen name={TAB_ROUTES.ALERTS} component={AlertsScreen} />
       <Tab.Screen name={TAB_ROUTES.PREPAREDNESS} component={PreparednessStackNavigator} />
-      <Tab.Screen name={TAB_ROUTES.PROFILE} component={ProfileScreen} />
+      <Tab.Screen name={TAB_ROUTES.PROFILE} component={ProfileStackNavigator} />
     </Tab.Navigator>
   );
 }

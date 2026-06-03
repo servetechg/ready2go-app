@@ -65,6 +65,7 @@ export const typography: Record<string, TextStyle> = {
   button: {
     fontFamily: fontFamily.bold,
     fontSize: fontSize.md,
+    lineHeight: fontSize.md,
     letterSpacing: 0.5,
   },
 };
