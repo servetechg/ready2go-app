@@ -80,7 +80,7 @@ export function StepLodgingScreen() {
 
   return (
     <FormLayout
-      stepNumber={7}
+      stepNumber={8}
       icon="bed"
       nextLabel="FINISH"
       loading={!!loading}

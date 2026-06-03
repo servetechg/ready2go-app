@@ -22,16 +22,16 @@ export function StepPetsScreen() {
 
   const onSubmit = (data: YesNoStepData) => {
     dispatch(setPets(data));
-    dispatch(setCurrentStep(6));
+    dispatch(setCurrentStep(7));
     navigation.navigate(ONBOARDING_ROUTES.STEP_TRANSPORT);
   };
 
   return (
     <FormLayout
-      stepNumber={5}
+      stepNumber={6}
       icon="paw"
       onBack={() => {
-        dispatch(setCurrentStep(4));
+        dispatch(setCurrentStep(5));
         navigation.navigate(ONBOARDING_ROUTES.STEP_MEDICAL);
       }}
       onNext={() => submitRef.current()}>

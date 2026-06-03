@@ -1,11 +1,13 @@
 import React, { useRef } from 'react';
 import {
-    NativeSyntheticEvent,
-    Pressable,
-    StyleSheet,
-    TextInput,
-    TextInputKeyPressEventData,
-    View,
+  NativeSyntheticEvent,
+  Platform,
+  Pressable,
+  StyleSheet,
+  Text,
+  TextInput,
+  TextInputKeyPressEventData,
+  View,
 } from 'react-native';
 
 import { useAppTheme } from '@/hooks/useAppTheme';
@@ -61,12 +63,9 @@ export function OtpInput({ value, onChange, error }: OtpInputProps) {
                 borderWidth: isActive ? 2 : 1,
               },
             ]}>
-            <TextInput
-              style={[styles.digit, { color: colors.text }]}
-              value={digit.trim()}
-              editable={false}
-              pointerEvents="none"
-            />
+            <Text style={[styles.digit, { color: colors.text }]}>
+              {digit.trim()}
+            </Text>
           </View>
           );
         })}
@@ -101,6 +100,7 @@ const styles = StyleSheet.create({
     flex: 1,
     aspectRatio: 1,
     maxWidth: 52,
+    minHeight: 52,
     borderWidth: 1,
     borderRadius: borderRadius.md,
     alignItems: 'center',
@@ -109,8 +109,10 @@ const styles = StyleSheet.create({
   digit: {
     fontFamily: fontFamily.semiBold,
     fontSize: 22,
+    lineHeight: Platform.OS === 'android' ? 26 : 22,
     textAlign: 'center',
-    padding: 0,
+    includeFontPadding: false,
+    textAlignVertical: 'center',
   },
   hiddenInput: {
     position: 'absolute',

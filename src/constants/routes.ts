@@ -9,6 +9,7 @@ export const AUTH_ROUTES = {
 
 export const ONBOARDING_ROUTES = {
   STEP_ADDRESS: 'StepAddress',
+  STEP_ALERT_LOCATIONS: 'StepAlertLocations',
   STEP_HOUSEHOLD: 'StepHousehold',
   STEP_ADA: 'StepAda',
   STEP_MEDICAL: 'StepMedical',
@@ -44,6 +45,7 @@ export const MAIN_STACK_ROUTES = {
   TABS: 'MainTabs',
   SETTINGS: 'Settings',
   STATIC_INFO: 'StaticInfo',
+  FAQ: 'Faq',
 } as const;
 
 export const DRAWER_ROUTES = {

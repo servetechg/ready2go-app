@@ -23,17 +23,17 @@ export function StepHouseholdScreen() {
 
   const handleNext = () => {
     dispatch(setHouseholdSize(householdSize));
-    dispatch(setCurrentStep(3));
+    dispatch(setCurrentStep(4));
     navigation.navigate(ONBOARDING_ROUTES.STEP_ADA);
   };
 
   const handleBack = () => {
-    dispatch(setCurrentStep(1));
-    navigation.navigate(ONBOARDING_ROUTES.STEP_ADDRESS);
+    dispatch(setCurrentStep(2));
+    navigation.navigate(ONBOARDING_ROUTES.STEP_ALERT_LOCATIONS);
   };
 
   return (
-    <FormLayout stepNumber={2} icon="people" onBack={handleBack} onNext={handleNext}>
+    <FormLayout stepNumber={3} icon="people" onBack={handleBack} onNext={handleNext}>
       <NumericStepper
         value={householdSize}
         onChange={(v) => dispatch(setHouseholdSize(v))}

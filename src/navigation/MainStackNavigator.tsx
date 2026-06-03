@@ -2,6 +2,7 @@ import { createStackNavigator } from '@react-navigation/stack';
 import React from 'react';
 
 import { MAIN_STACK_ROUTES } from '@/constants/routes';
+import { FaqScreen } from '@/screens/dashboard/FaqScreen';
 import { SettingsScreen } from '@/screens/dashboard/SettingsScreen';
 import { StaticInfoScreen } from '@/screens/dashboard/StaticInfoScreen';
 import type { MainStackParamList } from '@/types/navigation';
@@ -27,6 +28,11 @@ export function MainStackNavigator() {
       <Stack.Screen
         name={MAIN_STACK_ROUTES.STATIC_INFO}
         component={StaticInfoScreen}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name={MAIN_STACK_ROUTES.FAQ}
+        component={FaqScreen}
         options={{ headerShown: false }}
       />
     </Stack.Navigator>

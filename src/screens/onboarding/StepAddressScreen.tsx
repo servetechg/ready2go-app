@@ -46,7 +46,7 @@ export function StepAddressScreen() {
     (data: AddressFormData) => {
       dispatch(setAddress(pickAddressData(data)));
       dispatch(setCurrentStep(2));
-      navigation.navigate(ONBOARDING_ROUTES.STEP_HOUSEHOLD);
+      navigation.navigate(ONBOARDING_ROUTES.STEP_ALERT_LOCATIONS);
     },
     [dispatch, navigation],
   );

@@ -11,6 +11,7 @@ import {
   View,
 } from 'react-native';
 
+import { AlertLocationsEditor } from '@/components/dashboard/AlertLocationsEditor';
 import { AppSelect } from '@/components/form/AppSelect';
 import { ScreenWrapper } from '@/components/layout/ScreenWrapper';
 import { AppText } from '@/components/ui/AppText';
@@ -19,7 +20,7 @@ import { PROFILE_STACK_ROUTES } from '@/constants/routes';
 import { useAppTheme } from '@/hooks/useAppTheme';
 import { useAppDispatch, useAppSelector } from '@/redux/hooks';
 import { setUser } from '@/redux/slices/authSlice';
-import { setAddress, setHouseholdSize } from '@/redux/slices/registrationSlice';
+import { setAddress, setAlertLocations, setHouseholdSize } from '@/redux/slices/registrationSlice';
 import { borderRadius, fontSize, googleSans, inputHeight, palette, spacing } from '@/theme';
 import type { ProfileStackParamList } from '@/types/navigation';
 import { sanitizeTextInputProps } from '@/utils/nativeProps';
@@ -62,7 +63,11 @@ function EditField({
   return (
     <View style={styles.fieldWrap}>
       <TextInput
-        style={[styles.fieldInput, !editable && styles.fieldDisabled, rightIcon && styles.fieldWithIcon]}
+        style={[
+          styles.fieldInput,
+          !editable ? styles.fieldDisabled : undefined,
+          rightIcon ? styles.fieldWithIcon : undefined,
+        ]}
         {...nativeProps}
       />
       {rightIcon ? <View style={styles.fieldIcon}>{rightIcon}</View> : null}
@@ -86,7 +91,7 @@ export function EditProfileScreen() {
   const [email, setEmail] = useState(user?.email ?? '');
   const [phone, setPhone] = useState('');
   const [householdSize, setHouseholdSizeText] = useState(String(registration.householdSize));
-  const [country, setCountry] = useState(COUNTRIES[0]);
+  const [country, setCountry] = useState<string>(COUNTRIES[0]);
   const [state, setState] = useState(registration.address.state);
   const [city, setCity] = useState(registration.address.city);
   const [streetAddress, setStreetAddress] = useState(registration.address.streetAddress);
@@ -206,6 +211,17 @@ export function EditProfileScreen() {
               placeholder="867 Snowbird Lane Hampton Bays, New York"
               rightIcon={<Ionicons name="locate" size={22} color={palette.tabActive} />}
             />
+
+            <View style={styles.alertSection}>
+              <AppText variant="label" style={styles.alertSectionTitle}>
+                Other alert locations
+              </AppText>
+              <AlertLocationsEditor
+                locations={registration.alertLocations}
+                onChange={(locations) => dispatch(setAlertLocations(locations))}
+                compact={true}
+              />
+            </View>
           </View>
         </ScrollView>
 
@@ -319,10 +335,17 @@ const styles = StyleSheet.create({
   selectField: {
     marginBottom: 0,
   },
+  alertSection: {
+    marginTop: spacing.lg,
+    gap: spacing.sm,
+  },
+  alertSectionTitle: {
+    marginBottom: spacing.sm,
+  },
   footer: {
     paddingHorizontal: spacing.lg,
     paddingTop: spacing.md,
-    paddingBottom: 88 + spacing.lg,
+    paddingBottom: 72 + spacing.lg,
   },
   saveButton: {
     height: FIELD_HEIGHT,

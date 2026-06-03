@@ -2,9 +2,9 @@ import { useNavigation } from '@react-navigation/native';
 import React from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
+import { WeatherSummaryCard } from '@/components/dashboard/WeatherSummaryCard';
 import { AppHeader } from '@/components/layout/AppHeader';
 import { ScreenWrapper } from '@/components/layout/ScreenWrapper';
-import { WeatherSummaryCard } from '@/components/dashboard/WeatherSummaryCard';
 import { AppCard } from '@/components/ui/AppCard';
 import { AppText } from '@/components/ui/AppText';
 import { MOCK_WEATHER } from '@/constants/dashboard';
@@ -61,8 +61,8 @@ export function WeatherScreen() {
 }
 
 const styles = StyleSheet.create({
-  headerPad: { paddingHorizontal: spacing.lg },
-  content: { padding: spacing.lg, paddingBottom: spacing.xxxl },
+  headerPad: { paddingHorizontal: spacing.sm },
+  content: { padding: spacing.sm, paddingBottom: spacing.xxxl },
   card: { marginBottom: spacing.lg },
   cardTitle: { marginBottom: spacing.md },
   forecastRow: {
