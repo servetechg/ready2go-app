@@ -1,17 +1,24 @@
-import React, { useEffect, useState } from 'react';
+import { DefaultTheme, NavigationContainer } from '@react-navigation/native';
 import { StatusBar } from 'expo-status-bar';
-import { NavigationContainer, DefaultTheme } from '@react-navigation/native';
+import * as SplashScreen from 'expo-splash-screen';
+import React, { useEffect, useState } from 'react';
+import { Platform } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { Provider } from 'react-redux';
 import { PersistGate } from 'redux-persist/integration/react';
 
-import { LoadingSpinner } from '@/components/common/LoadingSpinner';
+import { AppSplashScreen } from '@/components/splash/AppSplashScreen';
+import { SplashReadyView } from '@/components/splash/SplashReadyView';
+import { useAppFonts } from '@/hooks/useAppFonts';
 import { useSessionBootstrap } from '@/hooks/useSessionBootstrap';
 import { RootNavigator } from '@/navigation';
 import { persistor, store } from '@/redux/store';
 import { palette } from '@/theme';
+import { fontFamily } from '@/theme/fonts';
 import { runStorageMigration } from '@/utils/storageMigration';
+
+SplashScreen.preventAutoHideAsync().catch(() => {});
 
 const navTheme = {
   ...DefaultTheme,
@@ -22,6 +29,12 @@ const navTheme = {
     card: palette.surface,
     text: palette.text,
     border: palette.border,
+  },
+  fonts: {
+    regular: { fontFamily: fontFamily.regular, fontWeight: '400' as const },
+    medium: { fontFamily: fontFamily.medium, fontWeight: '500' as const },
+    bold: { fontFamily: fontFamily.bold, fontWeight: '700' as const },
+    heavy: { fontFamily: fontFamily.bold, fontWeight: '700' as const },
   },
 };
 
@@ -40,30 +53,54 @@ function AppNavigation() {
   );
 }
 
-function AppContent({ bootstrapped }: { bootstrapped: boolean }) {
-  if (!bootstrapped) {
-    return <LoadingSpinner fullScreen={true} message="Loading..." />;
+function AppContent({
+  bootstrapped,
+  fontsLoaded,
+}: {
+  bootstrapped: boolean;
+  fontsLoaded: boolean;
+}) {
+  const showWebSplash = Platform.OS === 'web';
+
+  if (!bootstrapped || !fontsLoaded) {
+    return showWebSplash ? (
+      <SafeAreaProvider>
+        <AppSplashScreen />
+      </SafeAreaProvider>
+    ) : null;
   }
 
   return (
     <PersistGate
-      loading={<LoadingSpinner fullScreen={true} message="Loading..." />}
+      loading={
+        showWebSplash ? (
+          <SafeAreaProvider>
+            <AppSplashScreen />
+          </SafeAreaProvider>
+        ) : null
+      }
       persistor={persistor}>
-      <AppNavigation />
+      <SplashReadyView>
+        <AppNavigation />
+      </SplashReadyView>
     </PersistGate>
   );
 }
 
 export default function App() {
   const [bootstrapped, setBootstrapped] = useState(false);
+  const { fontsLoaded } = useAppFonts();
 
   useEffect(() => {
+    if (!fontsLoaded) {
+      return;
+    }
     runStorageMigration().finally(() => setBootstrapped(true));
-  }, []);
+  }, [fontsLoaded]);
 
   return (
     <Provider store={store}>
-      <AppContent bootstrapped={bootstrapped} />
+      <AppContent bootstrapped={bootstrapped} fontsLoaded={fontsLoaded} />
     </Provider>
   );
 }

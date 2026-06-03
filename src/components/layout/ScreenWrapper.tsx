@@ -57,5 +57,5 @@ export function ScreenWrapper({
 
 const styles = StyleSheet.create({
   flex: { flex: 1 },
-  scrollContent: { flexGrow: 1, paddingBottom: 24 },
+  scrollContent: { flexGrow: 1, paddingBottom: 4 },
 });

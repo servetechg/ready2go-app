@@ -24,6 +24,12 @@ export const palette = {
   progressTrack: '#E0EAF4',
   progressFill: '#1B4F8A',
   trustBanner: '#0F3460',
+  tabActive: '#33375D',
+  alertCta: '#33375D',
+  badge: '#33375D',
+  tomato: '#FF6347',
+  moderateBadge: '#FFF8E1',
+  moderateBadgeText: '#F9A825',
 } as const;
 
 export type ColorScheme = 'light' | 'dark';

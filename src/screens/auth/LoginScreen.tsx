@@ -15,7 +15,7 @@ import { useAppTheme } from '@/hooks/useAppTheme';
 import { useToast } from '@/hooks/useToast';
 import { useAppDispatch, useAppSelector } from '@/redux/hooks';
 import { clearAuthError, loginUser, sendOtp } from '@/redux/slices/authSlice';
-import { spacing } from '@/theme';
+import { fontFamily, spacing } from '@/theme';
 import type { AuthStackParamList } from '@/types/navigation';
 import { toBoolean } from '@/utils/coerce';
 import { loginSchema, type LoginFormData } from '@/validations/auth.schemas';
@@ -115,7 +115,7 @@ export function LoginScreen() {
 
         <Pressable onPress={() => navigation.navigate(AUTH_ROUTES.FORGOT_PASSWORD)}>
           <AppText variant="bodySmall" style={[styles.link, { color: colors.primary }]}>
-            Forgot password?
+            Forgot Password?
           </AppText>
         </Pressable>
 
@@ -123,6 +123,7 @@ export function LoginScreen() {
           title="SIGN IN"
           onPress={handleSubmit(onSubmit)}
           loading={toBoolean(isLoading)}
+          size="lg"
         />
 
         <View style={styles.footer}>
@@ -146,6 +147,6 @@ const styles = StyleSheet.create({
   },
   subtitle: { marginTop: spacing.sm, marginBottom: spacing.xl },
   error: { marginBottom: spacing.sm },
-  link: { fontWeight: '600', marginBottom: spacing.xs },
+  link: { fontFamily: fontFamily.semiBold, marginBottom: spacing.xs },
   footer: { flexDirection: 'row', justifyContent: 'center', marginTop: spacing.lg },
 });

@@ -14,7 +14,7 @@ import { useAppTheme } from '@/hooks/useAppTheme';
 import { useToast } from '@/hooks/useToast';
 import { useAppDispatch, useAppSelector } from '@/redux/hooks';
 import { clearAuthError, signupUser } from '@/redux/slices/authSlice';
-import { spacing } from '@/theme';
+import { fontFamily, spacing } from '@/theme';
 import type { AuthStackParamList } from '@/types/navigation';
 import { signupSchema, type SignupFormData } from '@/validations/auth.schemas';
 
@@ -173,7 +173,7 @@ export function SignupScreen() {
 const styles = StyleSheet.create({
   row: { flexDirection: 'row', gap: 12 },
   half: { flex: 1 },
-  link: { fontWeight: '600' },
+  link: { fontFamily: fontFamily.semiBold },
   footer: { flexDirection: 'row', justifyContent: 'center', marginTop: spacing.lg },
   logo: {
     width: 200,
