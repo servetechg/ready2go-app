@@ -10,7 +10,7 @@ interface DashboardState {
   alerts: WeatherAlert[];
   weatherAlertPreferences: WeatherAlertPreference[];
   searchQuery: string;
-  /** Dev/preview override; null = use API/mock default (blue sky) */
+  /** Optional override; null = use API/mock default */
   disruptionModeOverride: DashboardMode | null;
   emergency: EmergencyDashboardData | null;
   emergencyLoading: boolean;
@@ -22,7 +22,7 @@ const initialState: DashboardState = {
   weatherAlertPreferences: DEFAULT_WEATHER_ALERT_PREFERENCES,
   searchQuery: '',
   disruptionModeOverride: null,
-  emergency: buildMockEmergencyDashboard('blue_sky'),
+  emergency: buildMockEmergencyDashboard('cloudy'),
   emergencyLoading: false,
   emergencyError: null,
 };
@@ -33,7 +33,7 @@ export const loadEmergencyDashboard = createAsyncThunk(
 );
 
 function resolveMode(state: DashboardState): DashboardMode {
-  return state.disruptionModeOverride ?? state.emergency?.mode ?? 'blue_sky';
+  return state.disruptionModeOverride ?? state.emergency?.mode ?? 'cloudy';
 }
 
 const dashboardSlice = createSlice({
@@ -98,7 +98,7 @@ export const selectUnreadAlertCount = (state: { dashboard: DashboardState }) =>
 
 export const selectDashboardMode = (state: { dashboard: DashboardState }): DashboardMode => {
   const dash = state.dashboard;
-  return dash.disruptionModeOverride ?? dash.emergency?.mode ?? 'blue_sky';
+  return dash.disruptionModeOverride ?? dash.emergency?.mode ?? 'cloudy';
 };
 
 export const selectIsCloudyDay = (state: { dashboard: DashboardState }) =>

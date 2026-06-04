@@ -20,7 +20,7 @@ interface AppButtonProps extends PressableProps {
   variant?: ButtonVariant;
   loading?: boolean;
   fullWidth?: boolean;
-  size?: 'sm' | 'md' | 'lg';
+  size?: 'xs' | 'sm' | 'md' | 'lg';
 }
 
 export function AppButton({
@@ -76,7 +76,12 @@ export function AppButton({
   );
 }
 
-const sizeStyles: Record<'sm' | 'md' | 'lg', ViewStyle> = {
+const sizeStyles: Record<'xs' | 'sm' | 'md' | 'lg', ViewStyle> = {
+  xs: {
+    height: inputHeight - 8,
+    minHeight: inputHeight - 8,
+    paddingHorizontal: spacing.lg,
+  },
   sm: {
     height: inputHeight - 4,
     minHeight: inputHeight - 4,

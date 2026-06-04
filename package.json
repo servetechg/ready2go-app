@@ -8,7 +8,9 @@
     "android": "expo start --android",
     "ios": "expo start --ios",
     "web": "expo start --web",
-    "lint": "expo lint"
+    "lint": "expo lint",
+    "build:android:share": "eas build --platform android --profile share",
+    "apk:link": "eas build:list --platform android --limit 1 --json"
   },
   "dependencies": {
     "@expo-google-fonts/google-sans": "^0.4.0",
@@ -22,6 +24,7 @@
     "@react-navigation/stack": "^7.9.2",
     "@reduxjs/toolkit": "^2.12.0",
     "expo": "~54.0.0",
+    "expo-build-properties": "~1.0.10",
     "expo-constants": "~18.0.13",
     "expo-device": "~8.0.10",
     "expo-font": "~14.0.11",
