@@ -2,6 +2,7 @@ import { createStackNavigator } from '@react-navigation/stack';
 import React from 'react';
 
 import { HOME_STACK_ROUTES } from '@/constants/routes';
+import { EmergencyNewsScreen } from '@/screens/dashboard/EmergencyNewsScreen';
 import { HomeScreen } from '@/screens/dashboard/HomeScreen';
 import { WeatherAlertSettingsScreen } from '@/screens/dashboard/WeatherAlertSettingsScreen';
 import { WeatherScreen } from '@/screens/dashboard/WeatherScreen';
@@ -27,6 +28,11 @@ export function HomeStackNavigator() {
       <Stack.Screen
         name={HOME_STACK_ROUTES.WEATHER_ALERT_SETTINGS}
         component={WeatherAlertSettingsScreen}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name={HOME_STACK_ROUTES.EMERGENCY_NEWS}
+        component={EmergencyNewsScreen}
         options={{ headerShown: false }}
       />
     </Stack.Navigator>

@@ -11,6 +11,12 @@ import { formatRelativeTime } from '@/utils/formatTimestamp';
 interface BlueSkyNewsFeedProps {
   items: EmergencyNewsItem[];
   maxVisible?: number;
+  /** When set, "View all" navigates instead of expanding inline. */
+  onViewAll?: () => void;
+  /** Hide section title/subtitle (e.g. full-screen view has its own header). */
+  showSectionHeader?: boolean;
+  /** List every item (full-screen feed). */
+  showAll?: boolean;
 }
 
 const CATEGORY_STYLES: Record<
@@ -72,7 +78,13 @@ function NewsFeedCard({ item }: { item: EmergencyNewsItem }) {
   );
 }
 
-export function BlueSkyNewsFeed({ items, maxVisible = 4 }: BlueSkyNewsFeedProps) {
+export function BlueSkyNewsFeed({
+  items,
+  maxVisible = 4,
+  onViewAll,
+  showSectionHeader = true,
+  showAll = false,
+}: BlueSkyNewsFeedProps) {
   const { colors } = useAppTheme();
   const [expanded, setExpanded] = useState(false);
 
@@ -81,8 +93,9 @@ export function BlueSkyNewsFeed({ items, maxVisible = 4 }: BlueSkyNewsFeedProps)
     [items],
   );
 
-  const visible = expanded ? sorted : sorted.slice(0, maxVisible);
-  const hasMore = sorted.length > maxVisible;
+  const showAllInline = showAll || expanded || maxVisible >= sorted.length;
+  const visible = showAllInline ? sorted : sorted.slice(0, maxVisible);
+  const hasMore = !showAll && sorted.length > maxVisible;
 
   if (sorted.length === 0) {
     return (
@@ -96,24 +109,36 @@ export function BlueSkyNewsFeed({ items, maxVisible = 4 }: BlueSkyNewsFeedProps)
     );
   }
 
+  const handleViewAll = () => {
+    if (onViewAll) {
+      onViewAll();
+      return;
+    }
+    setExpanded((v) => !v);
+  };
+
   return (
     <View style={styles.section}>
-      <View style={styles.sectionHeader}>
-        <AppText variant="h3" color={colors.primary}>
-          Emergency News
-        </AppText>
-        {hasMore ? (
-          <Pressable onPress={() => setExpanded((v) => !v)} hitSlop={8}>
-            <AppText variant="label" color={colors.primary}>
-              {expanded ? 'Show less' : 'View all'}
+      {showSectionHeader ? (
+        <>
+          <View style={styles.sectionHeader}>
+            <AppText variant="h3" color={colors.primary}>
+              Emergency News
             </AppText>
-          </Pressable>
-        ) : null}
-      </View>
+            {hasMore ? (
+              <Pressable onPress={handleViewAll} hitSlop={8}>
+                <AppText variant="label" color={colors.primary}>
+                  {onViewAll ? 'View all' : expanded ? 'Show less' : 'View all'}
+                </AppText>
+              </Pressable>
+            ) : null}
+          </View>
 
-      <AppText variant="bodySmall" color={colors.textSecondary} style={styles.subtitle}>
-        Emergency-related updates and messages from administrators only.
-      </AppText>
+          <AppText variant="bodySmall" color={colors.textSecondary} style={styles.subtitle}>
+            Emergency-related updates and messages from administrators only.
+          </AppText>
+        </>
+      ) : null}
 
       {visible.map((item) => (
         <NewsFeedCard key={item.id} item={item} />

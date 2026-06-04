@@ -29,6 +29,13 @@ export interface PreparednessCategory {
   taskCount: number;
 }
 
+export interface PreparednessTask {
+  id: string;
+  categoryId: string;
+  title: string;
+  body: string;
+}
+
 export interface WeatherAlertPreference {
   id: string;
   label: string;
