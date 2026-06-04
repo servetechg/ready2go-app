@@ -123,7 +123,6 @@ export function LoginScreen() {
           title="SIGN IN"
           onPress={handleSubmit(onSubmit)}
           loading={toBoolean(isLoading)}
-          size="lg"
         />
 
         <View style={styles.footer}>

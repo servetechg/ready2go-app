@@ -22,6 +22,24 @@ module.exports = {
         googleMapsApiKey,
       },
     },
+    plugins: [
+      ...(appJson.expo.plugins ?? []),
+      [
+        'expo-build-properties',
+        {
+          android: {
+            // Smaller APK: 64-bit phones only + strip unused code/resources
+            buildArchs: ['arm64-v8a'],
+            enableMinifyInReleaseBuilds: true,
+            enableShrinkResourcesInReleaseBuilds: true,
+            extraProguardRules: `
+              -keep class com.google.android.gms.maps.** { *; }
+              -keep interface com.google.android.gms.maps.** { *; }
+            `,
+          },
+        },
+      ],
+    ],
     extra: {
       ...appJson.expo.extra,
       googleMapsApiKey,

@@ -27,8 +27,10 @@ export function DisruptionStatusBanner({ onViewSituation }: DisruptionStatusBann
           Severe weather and flooding reported.
         </AppText>
         <AppButton
-          title="VIEW CURRENT SITUATION"
+          title="Current Status"
           onPress={onViewSituation}
+          size="xs"
+          fullWidth={false}
           style={styles.cta}
         />
       </View>
@@ -63,5 +65,5 @@ const styles = StyleSheet.create({
   },
   textBlock: { flex: 1, gap: spacing.sm },
   title: { marginBottom: 0 },
-  cta: { marginTop: spacing.sm },
+  cta: { marginTop: spacing.sm, alignSelf: 'flex-start', fontSize: 10 },
 });
