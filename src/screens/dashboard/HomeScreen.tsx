@@ -9,7 +9,6 @@ import { BlueSkyStatusBanner } from '@/components/dashboard/BlueSkyStatusBanner'
 import { DashboardLayout } from '@/components/dashboard/DashboardLayout';
 import { DisruptionStatusBanner } from '@/components/dashboard/DisruptionStatusBanner';
 import { EmergencyMap } from '@/components/dashboard/EmergencyMap';
-import { EmergencyNewsFeed } from '@/components/dashboard/EmergencyNewsFeed';
 import { IncidentLog } from '@/components/dashboard/IncidentLog';
 import { PreparednessCategoryCard } from '@/components/dashboard/PreparednessCategoryCard';
 import { WeatherSummaryCard } from '@/components/dashboard/WeatherSummaryCard';
@@ -84,6 +83,11 @@ export function HomeScreen() {
 
         {emergency ? (
           <>
+            <BlueSkyNewsFeed
+              items={emergency.news}
+              maxVisible={4}
+              onViewAll={() => navigation.navigate(HOME_STACK_ROUTES.EMERGENCY_NEWS)}
+            />
             {isCloudy ? (
               <View
                 style={styles.emergencyBlock}
@@ -92,11 +96,8 @@ export function HomeScreen() {
                 }}>
                 <EmergencyMap region={emergency.mapRegion} markers={emergency.mapMarkers} />
                 <IncidentLog entries={emergency.incidentLog} />
-                <EmergencyNewsFeed items={emergency.news} title="Emergency updates" />
               </View>
-            ) : (
-              <BlueSkyNewsFeed items={emergency.news} maxVisible={4} />
-            )}
+            ) : null}
           </>
         ) : null}
 

@@ -1,3 +1,4 @@
+import { getPreparednessTaskCount } from '@/constants/preparedness';
 import type {
   PreparednessCategory,
   WeatherAlert,
@@ -52,30 +53,30 @@ export const PREPAREDNESS_CATEGORIES: PreparednessCategory[] = [
   {
     id: 'active-shooter',
     title: 'Active Shooter Preparedness',
-    subtitle: 'Active Shooter Preparedness',
+    subtitle: 'Run, hide, fight & reunification',
     icon: 'flame',
-    taskCount: 0,
+    taskCount: getPreparednessTaskCount('active-shooter'),
   },
   {
     id: 'choking',
     title: 'Choking First Aid',
-    subtitle: 'Choking First Aid',
+    subtitle: 'Back blows & abdominal thrusts',
     icon: 'medkit',
-    taskCount: 0,
+    taskCount: getPreparednessTaskCount('choking'),
   },
   {
     id: 'evacuation',
     title: 'Community Evacuation',
-    subtitle: 'Community Evacuation',
+    subtitle: 'Routes, go-bag & official orders',
     icon: 'globe',
-    taskCount: 0,
+    taskCount: getPreparednessTaskCount('evacuation'),
   },
   {
     id: 'shelter',
     title: 'General Shelter-in-Place',
-    subtitle: 'General Shelter-in-Place',
+    subtitle: 'Safe room & 72-hour supplies',
     icon: 'location',
-    taskCount: 0,
+    taskCount: getPreparednessTaskCount('shelter'),
   },
 ];
 

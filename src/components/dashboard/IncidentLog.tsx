@@ -21,9 +21,6 @@ export function IncidentLog({ entries }: IncidentLogProps) {
       <AppText variant="h3" style={styles.title}>
         Incident log
       </AppText>
-      <AppText variant="bodySmall" color={colors.textSecondary} style={styles.subtitle}>
-        Timestamped updates for those who cannot use the map.
-      </AppText>
       <AppCard style={styles.card}>
         {entries.length === 0 ? (
           <AppText variant="body" color={colors.textSecondary}>

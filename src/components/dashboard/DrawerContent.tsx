@@ -60,6 +60,17 @@ export function DrawerContent(props: DrawerContentComponentProps) {
     } as never);
   };
 
+  const goEmergencyNews = () => {
+    navigation.closeDrawer();
+    navigation.navigate(DRAWER_ROUTES.MAIN, {
+      screen: MAIN_STACK_ROUTES.TABS,
+      params: {
+        screen: TAB_ROUTES.HOME,
+        params: { screen: HOME_STACK_ROUTES.EMERGENCY_NEWS },
+      },
+    } as never);
+  };
+
   const goSettings = () => {
     navigation.closeDrawer();
     navigation.navigate(DRAWER_ROUTES.MAIN, {
@@ -83,6 +94,11 @@ export function DrawerContent(props: DrawerContentComponentProps) {
 
   const menuItems: MenuItem[] = [
     { label: 'Home', icon: 'home', onPress: goHome },
+    {
+      label: 'Emergency News',
+      icon: 'newspaper-outline',
+      onPress: goEmergencyNews,
+    },
     {
       label: 'Weather Alert Settings',
       icon: 'cloud-outline',
