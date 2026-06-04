@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useCallback, useEffect } from 'react';
 
 import { useAppDispatch, useAppSelector } from '@/redux/hooks';
 import { loadEmergencyDashboard, selectDashboardMode } from '@/redux/slices/dashboardSlice';
@@ -15,5 +15,10 @@ export function useEmergencyDashboard() {
     void dispatch(loadEmergencyDashboard(mode));
   }, [dispatch, mode]);
 
-  return { mode, emergency, loading, error, isCloudy: mode === 'cloudy' };
+  const reload = useCallback(
+    () => dispatch(loadEmergencyDashboard(mode)).unwrap(),
+    [dispatch, mode],
+  );
+
+  return { mode, emergency, loading, error, isCloudy: mode === 'cloudy', reload };
 }

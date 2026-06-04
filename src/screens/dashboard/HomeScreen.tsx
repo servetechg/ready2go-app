@@ -1,7 +1,7 @@
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import React, { useMemo, useRef } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Pressable, RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
 
 import { AlertCard } from '@/components/dashboard/AlertCard';
 import { BlueSkyNewsFeed } from '@/components/dashboard/BlueSkyNewsFeed';
@@ -22,6 +22,7 @@ import {
 } from '@/constants/routes';
 import { useAppTheme } from '@/hooks/useAppTheme';
 import { useEmergencyDashboard } from '@/hooks/useEmergencyDashboard';
+import { usePullToRefresh } from '@/hooks/usePullToRefresh';
 import { navigateToAlertsTab } from '@/navigation/navigationHelpers';
 import { useAppSelector } from '@/redux/hooks';
 import { spacing } from '@/theme';
@@ -41,7 +42,8 @@ export function HomeScreen() {
   const mapSectionY = useRef(0);
   const searchQuery = useAppSelector((s) => s.dashboard.searchQuery);
   const alerts = useAppSelector((s) => s.dashboard.alerts);
-  const { isCloudy, emergency, loading } = useEmergencyDashboard();
+  const { isCloudy, emergency, loading, reload } = useEmergencyDashboard();
+  const { refreshControlProps } = usePullToRefresh(reload);
 
   const filteredCategories = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
@@ -68,7 +70,8 @@ export function HomeScreen() {
       <ScrollView
         ref={scrollRef}
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.scroll}>
+        contentContainerStyle={styles.scroll}
+        refreshControl={<RefreshControl {...refreshControlProps} />}>
         {isCloudy ? (
           <DisruptionStatusBanner onViewSituation={scrollToSituation} />
         ) : (

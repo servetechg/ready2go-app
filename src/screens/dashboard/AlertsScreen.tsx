@@ -1,12 +1,13 @@
-import React, { useMemo } from 'react';
-import { FlatList, Pressable, StyleSheet, View } from 'react-native';
+import React, { useCallback, useMemo } from 'react';
+import { FlatList, Pressable, RefreshControl, StyleSheet, View } from 'react-native';
 
 import { AlertCard } from '@/components/dashboard/AlertCard';
 import { DashboardLayout } from '@/components/dashboard/DashboardLayout';
 import { AppText } from '@/components/ui/AppText';
 import { useAppTheme } from '@/hooks/useAppTheme';
+import { usePullToRefresh } from '@/hooks/usePullToRefresh';
 import { useAppDispatch, useAppSelector } from '@/redux/hooks';
-import { markAlertRead, markAllAlertsRead } from '@/redux/slices/dashboardSlice';
+import { loadEmergencyDashboard, markAlertRead, markAllAlertsRead, selectDashboardMode } from '@/redux/slices/dashboardSlice';
 import { palette, spacing } from '@/theme';
 
 function AlertsListHeader({ onMarkAllRead }: { onMarkAllRead: () => void }) {
@@ -42,8 +43,15 @@ function AlertsListHeader({ onMarkAllRead }: { onMarkAllRead: () => void }) {
 export function AlertsScreen() {
   const dispatch = useAppDispatch();
   const { colors } = useAppTheme();
+  const mode = useAppSelector(selectDashboardMode);
   const alerts = useAppSelector((s) => s.dashboard.alerts);
   const searchQuery = useAppSelector((s) => s.dashboard.searchQuery);
+
+  const reload = useCallback(
+    () => dispatch(loadEmergencyDashboard(mode)).unwrap(),
+    [dispatch, mode],
+  );
+  const { refreshControlProps } = usePullToRefresh(reload);
 
   const filtered = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
@@ -64,6 +72,7 @@ export function AlertsScreen() {
         style={styles.list}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.listContent}
+        refreshControl={<RefreshControl {...refreshControlProps} />}
         ListHeaderComponent={
           <AlertsListHeader onMarkAllRead={() => dispatch(markAllAlertsRead())} />
         }
