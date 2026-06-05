@@ -1,38 +1,66 @@
 import { Ionicons } from '@expo/vector-icons';
 import React, { useState } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { Platform, Pressable, StyleSheet, View } from 'react-native';
 
 import { AppInput } from '@/components/form/AppInput';
 import { AppSelect } from '@/components/form/AppSelect';
+import { PlacesAddressAutocomplete } from '@/components/form/PlacesAddressAutocomplete';
 import { AppText } from '@/components/ui/AppText';
 import { US_STATES } from '@/constants/registration';
 import { useAppTheme } from '@/hooks/useAppTheme';
+import { isPlacesSearchAvailable } from '@/services/places.service';
 import { borderRadius, palette, spacing } from '@/theme';
 import type { AlertLocation } from '@/types/registration';
+import type { ParsedPlaceAddress } from '@/utils/googlePlaces';
 
 interface AlertLocationsEditorProps {
   locations: AlertLocation[];
   onChange: (locations: AlertLocation[]) => void;
   compact?: boolean;
+  maxLocations?: number;
 }
 
 function newLocationId() {
   return `loc-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
 }
 
+function formatPlacePreview(place: ParsedPlaceAddress): string {
+  const parts = [place.city, place.state, place.zipCode].filter(Boolean);
+  return place.formattedAddress || parts.join(', ');
+}
+
 export function AlertLocationsEditor({
   locations,
   onChange,
   compact = false,
+  maxLocations = 5,
 }: AlertLocationsEditorProps) {
   const { colors } = useAppTheme();
+  const usePlacesSearch = isPlacesSearchAvailable() && Platform.OS !== 'web';
+
   const [label, setLabel] = useState('');
   const [city, setCity] = useState('');
   const [state, setState] = useState('');
   const [zipCode, setZipCode] = useState('');
+  const [selectedPlace, setSelectedPlace] = useState<ParsedPlaceAddress | null>(null);
+
+  const applyPlace = (place: ParsedPlaceAddress) => {
+    setSelectedPlace(place);
+    setCity(place.city);
+    setState(place.state);
+    setZipCode(place.zipCode);
+  };
+
+  const clearPlace = () => {
+    setSelectedPlace(null);
+    setCity('');
+    setState('');
+    setZipCode('');
+  };
 
   const addLocation = () => {
     if (!city.trim() || !state) return;
+    if (locations.length >= maxLocations) return;
     onChange([
       ...locations,
       {
@@ -44,14 +72,14 @@ export function AlertLocationsEditor({
       },
     ]);
     setLabel('');
-    setCity('');
-    setState('');
-    setZipCode('');
+    clearPlace();
   };
 
   const removeLocation = (id: string) => {
     onChange(locations.filter((loc) => loc.id !== id));
   };
+
+  const atMax = locations.length >= maxLocations;
 
   return (
     <View style={styles.wrap}>
@@ -80,47 +108,83 @@ export function AlertLocationsEditor({
         </View>
       ))}
 
-      <AppInput
-        label="Label (optional)"
-        placeholder="e.g. Family in California"
-        value={label}
-        onChangeText={setLabel}
-      />
-      <AppInput
-        label="City"
-        placeholder="City"
-        value={city}
-        onChangeText={setCity}
-      />
-      <View style={styles.row}>
-        <View style={styles.stateCol}>
-          <AppSelect
-            label="State"
-            value={state}
-            options={US_STATES}
-            onChange={setState}
-            placeholder="State"
-            containerStyle={styles.select}
-          />
-        </View>
-        <AppInput
-          label="ZIP (optional)"
-          placeholder="ZIP"
-          value={zipCode}
-          onChangeText={setZipCode}
-          keyboardType="number-pad"
-          containerStyle={styles.zip}
-        />
-      </View>
-      <Pressable
-        style={[styles.addBtn, { borderColor: colors.primary }]}
-        onPress={addLocation}
-        accessibilityRole="button">
-        <Ionicons name="add-circle-outline" size={20} color={colors.primary} />
-        <AppText variant="label" color={colors.primary}>
-          Add location
+      {atMax ? (
+        <AppText variant="caption" color={colors.textMuted}>
+          Maximum {maxLocations} locations reached.
         </AppText>
-      </Pressable>
+      ) : (
+        <>
+          <AppInput
+            label="Label (optional)"
+            placeholder="e.g. Family in California"
+            value={label}
+            onChangeText={setLabel}
+          />
+
+          {usePlacesSearch ? (
+            <>
+              <PlacesAddressAutocomplete
+                label="Search address"
+                placeholder="Type an address or city…"
+                onPlaceSelected={applyPlace}
+                onClear={clearPlace}
+              />
+              {selectedPlace ? (
+                <View style={[styles.selectedPlace, { backgroundColor: colors.accent }]}>
+                  <Ionicons name="checkmark-circle" size={18} color={colors.primary} />
+                  <AppText variant="bodySmall" style={styles.selectedPlaceText}>
+                    {formatPlacePreview(selectedPlace)}
+                  </AppText>
+                </View>
+              ) : null}
+            </>
+          ) : (
+            <>
+              <AppInput
+                label="City"
+                placeholder="City"
+                value={city}
+                onChangeText={setCity}
+              />
+              <View style={styles.row}>
+                <View style={styles.stateCol}>
+                  <AppSelect
+                    label="State"
+                    value={state}
+                    options={US_STATES}
+                    onChange={setState}
+                    placeholder="State"
+                    containerStyle={styles.select}
+                  />
+                </View>
+                <AppInput
+                  label="ZIP (optional)"
+                  placeholder="ZIP"
+                  value={zipCode}
+                  onChangeText={setZipCode}
+                  keyboardType="number-pad"
+                  containerStyle={styles.zip}
+                />
+              </View>
+            </>
+          )}
+
+          <Pressable
+            style={[
+              styles.addBtn,
+              { borderColor: colors.primary },
+              (!city.trim() || !state) && styles.addBtnDisabled,
+            ]}
+            onPress={addLocation}
+            disabled={!city.trim() || !state}
+            accessibilityRole="button">
+            <Ionicons name="add-circle-outline" size={20} color={colors.primary} />
+            <AppText variant="label" color={colors.primary}>
+              Add location
+            </AppText>
+          </Pressable>
+        </>
+      )}
     </View>
   );
 }
@@ -146,6 +210,16 @@ const styles = StyleSheet.create({
     borderRadius: borderRadius.md,
   },
   chipText: { flex: 1 },
+  selectedPlace: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
+    borderRadius: borderRadius.md,
+    marginTop: -spacing.sm,
+  },
+  selectedPlaceText: { flex: 1 },
   row: { flexDirection: 'row', gap: spacing.md, alignItems: 'flex-start' },
   stateCol: { width: 108, flexShrink: 0 },
   select: { marginBottom: 0 },
@@ -160,4 +234,5 @@ const styles = StyleSheet.create({
     borderRadius: borderRadius.full,
     marginTop: spacing.sm,
   },
+  addBtnDisabled: { opacity: 0.5 },
 });

@@ -25,6 +25,14 @@ module.exports = {
     plugins: [
       ...(appJson.expo.plugins ?? []),
       [
+        'expo-image-picker',
+        {
+          photosPermission:
+            'Allow Ready2Go to access your photos to set your profile picture.',
+          cameraPermission: 'Allow Ready2Go to use the camera for your profile picture.',
+        },
+      ],
+      [
         'expo-build-properties',
         {
           android: {
