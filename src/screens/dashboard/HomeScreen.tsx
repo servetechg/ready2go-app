@@ -1,6 +1,6 @@
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
-import React, { useMemo, useRef } from 'react';
+import React, { useCallback, useMemo, useRef } from 'react';
 import { ActivityIndicator, Pressable, RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
 
 import { AlertCard } from '@/components/dashboard/AlertCard';
@@ -11,9 +11,9 @@ import { DisruptionStatusBanner } from '@/components/dashboard/DisruptionStatusB
 import { EmergencyMap } from '@/components/dashboard/EmergencyMap';
 import { IncidentLog } from '@/components/dashboard/IncidentLog';
 import { PreparednessCategoryCard } from '@/components/dashboard/PreparednessCategoryCard';
+import { PreparednessEmptyMessage } from '@/components/dashboard/PreparednessEmptyMessage';
 import { WeatherSummaryCard } from '@/components/dashboard/WeatherSummaryCard';
 import { AppText } from '@/components/ui/AppText';
-import { PREPAREDNESS_CATEGORIES } from '@/constants/dashboard';
 import {
   HOME_STACK_ROUTES,
   PREPAREDNESS_STACK_ROUTES,
@@ -21,10 +21,16 @@ import {
 } from '@/constants/routes';
 import { useAppTheme } from '@/hooks/useAppTheme';
 import { useEmergencyDashboard } from '@/hooks/useEmergencyDashboard';
+import { usePreparednessCategories } from '@/hooks/usePreparednessCategories';
 import { usePullToRefresh } from '@/hooks/usePullToRefresh';
 import { navigateToAlertsTab } from '@/navigation/navigationHelpers';
-import { useAppSelector } from '@/redux/hooks';
+import { useAppDispatch, useAppSelector } from '@/redux/hooks';
+import {
+  clearPreparednessCache,
+  fetchCategories,
+} from '@/redux/slices/preparednessSlice';
 import { spacing } from '@/theme';
+import { toBoolean } from '@/utils/coerce';
 import type { HomeStackParamList, MainTabParamList } from '@/types/navigation';
 import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import type { CompositeNavigationProp } from '@react-navigation/native';
@@ -41,14 +47,39 @@ export function HomeScreen() {
   const mapSectionY = useRef(0);
   const searchQuery = useAppSelector((s) => s.dashboard.searchQuery);
   const alerts = useAppSelector((s) => s.dashboard.alerts);
-  const { isCloudy, emergency, loading, reload } = useEmergencyDashboard();
+  const categories = useAppSelector((s) => s.preparedness.categories);
+  const categoriesLoading = useAppSelector((s) => s.preparedness.loading);
+  const profileComplete = toBoolean(useAppSelector((s) => s.auth.user?.profileComplete));
+  const dispatch = useAppDispatch();
+  const { isCloudy, emergency, loading, reload: reloadEmergency } = useEmergencyDashboard();
+  const reload = useCallback(async () => {
+    dispatch(clearPreparednessCache());
+    await Promise.all([
+      reloadEmergency(),
+      dispatch(fetchCategories(undefined)).unwrap(),
+    ]);
+  }, [dispatch, reloadEmergency]);
   const { refreshControlProps } = usePullToRefresh(reload);
+
+  usePreparednessCategories();
+
+  const hasSearch = Boolean(searchQuery.trim());
 
   const filteredCategories = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
-    if (!q) return PREPAREDNESS_CATEGORIES;
-    return PREPAREDNESS_CATEGORIES.filter((c) => c.title.toLowerCase().includes(q));
-  }, [searchQuery]);
+    const source = categories;
+    const matched = !q
+      ? source
+      : source.filter(
+          (c) =>
+            c.title.toLowerCase().includes(q) ||
+            c.subtitle.toLowerCase().includes(q),
+        );
+    return matched.slice(0, 4);
+  }, [categories, searchQuery]);
+
+  const showPreparednessEmpty =
+    profileComplete && !categoriesLoading && filteredCategories.length === 0;
 
   const recentAlerts = alerts.slice(0, 2);
 
@@ -126,10 +157,21 @@ export function HomeScreen() {
 
         <View style={styles.sectionHeader}>
           <AppText variant="h3">Preparedness Guide</AppText>
+          {categories.length > 4 ? (
+            <Pressable onPress={() => navigation.getParent()?.navigate(TAB_ROUTES.PREPAREDNESS)}>
+              <AppText variant="label" color={colors.primary}>
+                See all
+              </AppText>
+            </Pressable>
+          ) : null}
         </View>
         <AppText variant="bodySmall" color={colors.textSecondary} style={styles.subtitle}>
-          Review preparedness tasks grouped by category. This view is read-only.
+          Local preparedness tasks for your registered address. This view is read-only.
         </AppText>
+        {profileComplete && categoriesLoading && categories.length === 0 ? (
+          <ActivityIndicator color={colors.primary} style={styles.prepLoader} />
+        ) : null}
+        {showPreparednessEmpty ? <PreparednessEmptyMessage hasSearch={hasSearch} /> : null}
         <View style={styles.grid}>
           {filteredCategories.map((category) => (
             <PreparednessCategoryCard
@@ -147,6 +189,7 @@ export function HomeScreen() {
 const styles = StyleSheet.create({
   scroll: { paddingBottom: spacing.xl, paddingVertical: spacing.sm },
   loader: { marginVertical: spacing.lg },
+  prepLoader: { marginBottom: spacing.lg },
   emergencyBlock: { gap: spacing.xl, marginBottom: spacing.lg },
   sectionHeader: {
     flexDirection: 'row',

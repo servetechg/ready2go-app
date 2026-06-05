@@ -1,17 +1,24 @@
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import React, { useMemo } from 'react';
-import { ScrollView, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
 
 import { DashboardLayout } from '@/components/dashboard/DashboardLayout';
 import { PreparednessCategoryCard } from '@/components/dashboard/PreparednessCategoryCard';
+import { PreparednessEmptyMessage } from '@/components/dashboard/PreparednessEmptyMessage';
 import { AppText } from '@/components/ui/AppText';
-import { PREPAREDNESS_CATEGORIES } from '@/constants/dashboard';
 import { PREPAREDNESS_STACK_ROUTES } from '@/constants/routes';
 import { useAppTheme } from '@/hooks/useAppTheme';
-import { useAppSelector } from '@/redux/hooks';
+import { usePreparednessCategories } from '@/hooks/usePreparednessCategories';
+import { usePullToRefresh } from '@/hooks/usePullToRefresh';
+import { useAppDispatch, useAppSelector } from '@/redux/hooks';
+import {
+  clearPreparednessCache,
+  fetchCategories,
+} from '@/redux/slices/preparednessSlice';
 import { spacing } from '@/theme';
 import type { PreparednessStackParamList } from '@/types/navigation';
+import { toBoolean } from '@/utils/coerce';
 
 type Nav = StackNavigationProp<
   PreparednessStackParamList,
@@ -20,14 +27,35 @@ type Nav = StackNavigationProp<
 
 export function PreparednessScreen() {
   const navigation = useNavigation<Nav>();
+  const dispatch = useAppDispatch();
   const { colors } = useAppTheme();
   const searchQuery = useAppSelector((s) => s.dashboard.searchQuery);
+  const categories = useAppSelector((s) => s.preparedness.categories);
+  const loading = useAppSelector((s) => s.preparedness.loading);
+  const error = useAppSelector((s) => s.preparedness.error);
+  const profileComplete = toBoolean(useAppSelector((s) => s.auth.user?.profileComplete));
+
+  usePreparednessCategories();
+
+  const reload = async () => {
+    dispatch(clearPreparednessCache());
+    await dispatch(fetchCategories(undefined)).unwrap();
+  };
+  const { refreshControlProps } = usePullToRefresh(reload);
+
+  const hasSearch = Boolean(searchQuery.trim());
 
   const filtered = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
-    if (!q) return PREPAREDNESS_CATEGORIES;
-    return PREPAREDNESS_CATEGORIES.filter((c) => c.title.toLowerCase().includes(q));
-  }, [searchQuery]);
+    if (!q) return categories;
+    return categories.filter(
+      (c) =>
+        c.title.toLowerCase().includes(q) ||
+        c.subtitle.toLowerCase().includes(q),
+    );
+  }, [categories, searchQuery]);
+
+  const showEmpty = !loading && filtered.length === 0;
 
   return (
     <DashboardLayout>
@@ -36,11 +64,32 @@ export function PreparednessScreen() {
           Preparedness Guide
         </AppText>
         <AppText variant="bodySmall" color={colors.textSecondary} style={styles.bannerSub}>
-          Review preparedness tasks grouped by category. This view is read-only.
+          Local preparedness tasks for your registered address. This view is read-only.
         </AppText>
       </View>
 
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.gridWrap}>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.gridWrap}
+        refreshControl={<RefreshControl {...refreshControlProps} />}>
+        {!profileComplete ? (
+          <PreparednessEmptyMessage hasSearch={false} />
+        ) : null}
+
+        {profileComplete && loading && categories.length === 0 ? (
+          <ActivityIndicator color={colors.primary} style={styles.loader} />
+        ) : null}
+
+        {profileComplete && error && categories.length === 0 ? (
+          <AppText variant="body" color={colors.error} center={true} style={styles.error}>
+            {error}
+          </AppText>
+        ) : null}
+
+        {profileComplete && showEmpty ? (
+          <PreparednessEmptyMessage hasSearch={hasSearch} />
+        ) : null}
+
         <View style={styles.grid}>
           {filtered.map((category) => (
             <PreparednessCategoryCard
@@ -68,6 +117,8 @@ const styles = StyleSheet.create({
   },
   bannerSub: { marginTop: spacing.sm },
   gridWrap: { paddingBottom: spacing.xl },
+  loader: { marginVertical: spacing.xl },
+  error: { marginVertical: spacing.lg },
   grid: {
     flexDirection: 'row',
     flexWrap: 'wrap',

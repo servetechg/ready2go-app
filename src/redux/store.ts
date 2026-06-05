@@ -15,6 +15,7 @@ import { safePersistStorage } from '@/utils/persistStorage';
 
 import authReducer from './slices/authSlice';
 import dashboardReducer from './slices/dashboardSlice';
+import preparednessReducer from './slices/preparednessSlice';
 import registrationReducer from './slices/registrationSlice';
 import uiReducer from './slices/uiSlice';
 import { authTransform, registrationTransform } from './transforms';
@@ -36,6 +37,7 @@ const rootReducer = combineReducers({
   auth: persistReducer(authPersistConfig, authReducer),
   registration: persistReducer(registrationPersistConfig, registrationReducer),
   dashboard: dashboardReducer,
+  preparedness: preparednessReducer,
   ui: uiReducer,
 });
 

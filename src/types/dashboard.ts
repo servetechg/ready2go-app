@@ -21,20 +21,7 @@ export interface WeatherSnapshot {
   locationLabel: string;
 }
 
-export interface PreparednessCategory {
-  id: string;
-  title: string;
-  subtitle: string;
-  icon: 'flame' | 'medkit' | 'globe' | 'location';
-  taskCount: number;
-}
-
-export interface PreparednessTask {
-  id: string;
-  categoryId: string;
-  title: string;
-  body: string;
-}
+export type { PreparednessCategory, PreparednessTask } from '@/types/preparedness';
 
 export interface WeatherAlertPreference {
   id: string;
