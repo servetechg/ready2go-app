@@ -2,6 +2,10 @@ import { createAsyncThunk } from '@reduxjs/toolkit';
 
 import { profileService } from '@/services/profile.service';
 import { setUser } from '@/redux/slices/authSlice';
+import {
+  clearPreparednessCache,
+  fetchCategories,
+} from '@/redux/slices/preparednessSlice';
 import { hydrateProfileFromApi, setAlertLocations } from '@/redux/slices/registrationSlice';
 import type { PatchUserRequest, ProfilePayload } from '@/types/api';
 import type { AuthState } from '@/types/auth';
@@ -35,6 +39,10 @@ export const patchEmergencyProfile = createAsyncThunk(
     try {
       const response = await profileService.patchProfile(token, body);
       dispatch(hydrateProfileFromApi(response.profile));
+      if (body.address) {
+        dispatch(clearPreparednessCache());
+        void dispatch(fetchCategories(undefined));
+      }
       return response;
     } catch (error) {
       return rejectWithValue(getErrorMessage(error, 'Could not update profile'));

@@ -6,7 +6,7 @@ import { AppCard } from '@/components/ui/AppCard';
 import { AppText } from '@/components/ui/AppText';
 import { useAppTheme } from '@/hooks/useAppTheme';
 import { palette, spacing } from '@/theme';
-import type { PreparednessTask } from '@/types/dashboard';
+import type { PreparednessTask } from '@/types/preparedness';
 
 function TaskRow({
   task,
