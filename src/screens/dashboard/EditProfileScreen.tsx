@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import {
   Platform,
   Pressable,
@@ -12,18 +12,37 @@ import {
 } from 'react-native';
 
 import { AlertLocationsEditor } from '@/components/dashboard/AlertLocationsEditor';
+import { FormattedPhoneField } from '@/components/form/FormattedPhoneField';
+import { ProfileAvatarEditor } from '@/components/profile/ProfileAvatarEditor';
 import { AppSelect } from '@/components/form/AppSelect';
 import { ScreenWrapper } from '@/components/layout/ScreenWrapper';
 import { AppText } from '@/components/ui/AppText';
 import { US_STATES } from '@/constants/registration';
 import { PROFILE_STACK_ROUTES } from '@/constants/routes';
-import { useAppTheme } from '@/hooks/useAppTheme';
+import { useToast } from '@/hooks/useToast';
 import { useAppDispatch, useAppSelector } from '@/redux/hooks';
-import { setUser } from '@/redux/slices/authSlice';
-import { setAddress, setAlertLocations, setHouseholdSize } from '@/redux/slices/registrationSlice';
+import {
+  patchEmergencyProfile,
+  patchUserAccount,
+  saveAlertLocations,
+} from '@/redux/thunks/profileThunks';
 import { borderRadius, fontSize, googleSans, inputHeight, palette, spacing } from '@/theme';
 import type { ProfileStackParamList } from '@/types/navigation';
+import type { AlertLocation } from '@/types/registration';
+import { getErrorMessage } from '@/utils/error';
 import { sanitizeTextInputProps } from '@/utils/nativeProps';
+import {
+  alertLocationsChanged,
+  buildPatchProfileBody,
+  buildPatchUserBody,
+} from '@/utils/profileApi';
+import {
+  e164ToPhoneDisplay,
+  isCompleteUsPhoneDisplay,
+  isValidPhoneForApi,
+  normalizePhoneForApi,
+  US_PHONE_DISPLAY_PLACEHOLDER,
+} from '@/utils/phone';
 
 type Nav = StackNavigationProp<
   ProfileStackParamList,
@@ -31,6 +50,7 @@ type Nav = StackNavigationProp<
 >;
 
 const COUNTRIES = ['United States'] as const;
+const MAX_ALERT_LOCATIONS = 5;
 
 interface EditFieldProps {
   value: string;
@@ -78,55 +98,114 @@ function EditField({
 export function EditProfileScreen() {
   const navigation = useNavigation<Nav>();
   const dispatch = useAppDispatch();
-  const { colors } = useAppTheme();
+  const { showSuccess, showError } = useToast();
   const user = useAppSelector((s) => s.auth.user);
+  const token = useAppSelector((s) => s.auth.token);
   const registration = useAppSelector((s) => s.registration);
 
   const initialFullName = useMemo(
     () => [user?.firstName, user?.lastName].filter(Boolean).join(' '),
     [user?.firstName, user?.lastName],
   );
+  const initialAlertLocations = useRef<AlertLocation[]>(registration.alertLocations);
 
   const [fullName, setFullName] = useState(initialFullName);
   const [email, setEmail] = useState(user?.email ?? '');
-  const [phone, setPhone] = useState('');
+  const [phone, setPhone] = useState(() => e164ToPhoneDisplay(user?.phone));
   const [householdSize, setHouseholdSizeText] = useState(String(registration.householdSize));
   const [country, setCountry] = useState<string>(COUNTRIES[0]);
   const [state, setState] = useState(registration.address.state);
   const [city, setCity] = useState(registration.address.city);
   const [streetAddress, setStreetAddress] = useState(registration.address.streetAddress);
+  const [alertLocations, setAlertLocationsLocal] = useState<AlertLocation[]>(
+    registration.alertLocations,
+  );
   const [saving, setSaving] = useState(false);
 
-  const handleSave = () => {
-    if (!user) {
+  const handleSave = async () => {
+    if (!user || !token) {
+      showError('Please sign in to save your profile');
       return;
     }
 
     setSaving(true);
-    const nameParts = fullName.trim().split(/\s+/).filter(Boolean);
-    const firstName = nameParts[0] ?? user.firstName;
-    const lastName = nameParts.slice(1).join(' ') || user.lastName;
-    const parsedHousehold = Math.max(1, Number.parseInt(householdSize, 10) || registration.householdSize);
+    try {
+      const nameParts = fullName.trim().split(/\s+/).filter(Boolean);
+      const firstName = nameParts[0] ?? user.firstName;
+      const lastName = nameParts.slice(1).join(' ') || user.lastName;
+      const parsedHousehold = Math.max(
+        1,
+        Number.parseInt(householdSize, 10) || registration.householdSize,
+      );
 
-    dispatch(
-      setUser({
-        ...user,
+      if (alertLocations.length > MAX_ALERT_LOCATIONS) {
+        showError('Maximum 5 alert locations allowed');
+        return;
+      }
+
+      const phoneTrimmed = phone.trim();
+      if (phoneTrimmed && !isCompleteUsPhoneDisplay(phoneTrimmed)) {
+        showError(`Enter the full number (${US_PHONE_DISPLAY_PLACEHOLDER})`);
+        return;
+      }
+      if (phoneTrimmed && !isValidPhoneForApi(phoneTrimmed)) {
+        showError(`Enter a valid US number (${US_PHONE_DISPLAY_PLACEHOLDER})`);
+        return;
+      }
+      const phoneE164 = phoneTrimmed ? (normalizePhoneForApi(phoneTrimmed) ?? '') : '';
+
+      const accountBody = buildPatchUserBody(user, {
         firstName,
         lastName,
-        email: email.trim() || user.email,
-      }),
-    );
-    dispatch(
-      setAddress({
-        ...registration.address,
-        streetAddress: streetAddress.trim(),
-        city: city.trim(),
+        email: email.trim(),
+        phone: phoneE164,
+      });
+      const profileBody = buildPatchProfileBody(registration, {
+        streetAddress,
+        city,
         state,
-      }),
-    );
-    dispatch(setHouseholdSize(parsedHousehold));
-    setSaving(false);
-    navigation.goBack();
+        householdSize: parsedHousehold,
+      });
+      const locationsChanged = alertLocationsChanged(
+        alertLocations,
+        initialAlertLocations.current,
+      );
+
+      if (!accountBody && !profileBody && !locationsChanged) {
+        showSuccess('No changes to save');
+        navigation.goBack();
+        return;
+      }
+
+      if (accountBody) {
+        const result = await dispatch(patchUserAccount(accountBody));
+        if (!patchUserAccount.fulfilled.match(result)) {
+          throw new Error(String(result.payload));
+        }
+      }
+
+      if (profileBody) {
+        const result = await dispatch(patchEmergencyProfile(profileBody));
+        if (!patchEmergencyProfile.fulfilled.match(result)) {
+          throw new Error(String(result.payload));
+        }
+      }
+
+      if (locationsChanged) {
+        const result = await dispatch(saveAlertLocations(alertLocations));
+        if (!saveAlertLocations.fulfilled.match(result)) {
+          throw new Error(String(result.payload));
+        }
+        initialAlertLocations.current = alertLocations;
+      }
+
+      showSuccess('Profile updated');
+      navigation.goBack();
+    } catch (error) {
+      showError(getErrorMessage(error, 'Could not save profile'));
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -150,18 +229,7 @@ export function EditProfileScreen() {
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled">
-          <View style={styles.avatarSection}>
-            <View style={[styles.avatarRing, { borderColor: palette.tabActive }]}>
-              <View style={[styles.avatar, { backgroundColor: colors.accent }]}>
-                <Ionicons name="person" size={56} color={colors.primary} />
-              </View>
-              <Pressable
-                style={[styles.cameraButton, { backgroundColor: palette.tabActive }]}
-                accessibilityLabel="Change profile photo">
-                <Ionicons name="camera" size={16} color={palette.white} />
-              </Pressable>
-            </View>
-          </View>
+          <ProfileAvatarEditor />
 
           <View style={styles.form}>
             <EditField
@@ -169,12 +237,7 @@ export function EditProfileScreen() {
               onChangeText={setFullName}
               placeholder="John Smith"
             />
-            <EditField
-              value={phone}
-              onChangeText={setPhone}
-              placeholder="+1 5421 564651 54"
-              keyboardType="phone-pad"
-            />
+            <FormattedPhoneField value={phone} onChangeText={setPhone} />
             <EditField
               value={email}
               onChangeText={setEmail}
@@ -217,8 +280,9 @@ export function EditProfileScreen() {
                 Other alert locations
               </AppText>
               <AlertLocationsEditor
-                locations={registration.alertLocations}
-                onChange={(locations) => dispatch(setAlertLocations(locations))}
+                locations={alertLocations}
+                maxLocations={MAX_ALERT_LOCATIONS}
+                onChange={setAlertLocationsLocal}
                 compact={true}
               />
             </View>
@@ -232,7 +296,7 @@ export function EditProfileScreen() {
             disabled={saving}
             accessibilityRole="button">
             <AppText variant="button" color={palette.white}>
-              Save
+              {saving ? 'Saving...' : 'Save'}
             </AppText>
           </Pressable>
         </View>
@@ -271,38 +335,6 @@ const styles = StyleSheet.create({
   scrollContent: {
     paddingHorizontal: spacing.lg,
     paddingBottom: spacing.xxxl,
-  },
-  avatarSection: {
-    alignItems: 'center',
-    marginTop: spacing.md,
-    marginBottom: spacing.xxl,
-  },
-  avatarRing: {
-    width: 132,
-    height: 132,
-    borderRadius: 66,
-    borderWidth: 2,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  avatar: {
-    width: 118,
-    height: 118,
-    borderRadius: 59,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  cameraButton: {
-    position: 'absolute',
-    right: 4,
-    bottom: 4,
-    width: 34,
-    height: 34,
-    borderRadius: 17,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 2,
-    borderColor: palette.white,
   },
   form: {
     gap: spacing.md,

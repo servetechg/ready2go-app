@@ -7,6 +7,7 @@ import React from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { ProfileAvatarDisplay } from '@/components/profile/ProfileAvatarDisplay';
 import { AppText } from '@/components/ui/AppText';
 import {
   DRAWER_ROUTES,
@@ -164,9 +165,7 @@ export function DrawerContent(props: DrawerContentComponentProps) {
 
       <DrawerContentScrollView {...props} contentContainerStyle={styles.scroll}>
         <View style={styles.profile}>
-          <View style={[styles.avatar, { backgroundColor: colors.accent }]}>
-            <Ionicons name="person" size={40} color={colors.primary} />
-          </View>
+          <ProfileAvatarDisplay size={88} />
           <AppText variant="h3" style={styles.name}>
             {fullName}
           </AppText>
@@ -214,15 +213,7 @@ const styles = StyleSheet.create({
     marginBottom: spacing.xxxl,
     marginTop: spacing.xl,
   },
-  avatar: {
-    width: 88,
-    height: 88,
-    borderRadius: 44,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: spacing.lg,
-  },
-  name: { marginBottom: spacing.sm },
+  name: { marginBottom: spacing.sm, marginTop: spacing.lg },
   menuRow: {
     flexDirection: 'row',
     alignItems: 'center',

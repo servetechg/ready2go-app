@@ -14,8 +14,33 @@ export interface ApiUser {
   email: string;
   firstName: string;
   lastName: string;
+  phone?: string;
+  profilePic?: string;
   emailVerified: boolean;
   profileComplete: boolean;
+}
+
+export interface AvatarResponse {
+  message: string;
+  user: ApiUser;
+}
+
+/** Body for `PATCH /users/me` — at least one field required. */
+export type PatchUserRequest = Partial<
+  Pick<ApiUser, 'firstName' | 'lastName' | 'email' | 'phone'>
+>;
+
+export interface PatchUserResponse {
+  user: ApiUser;
+}
+
+export interface PatchProfileResponse {
+  message: string;
+  profile: ProfilePayload;
+}
+
+export interface PutAlertLocationsResponse {
+  alertLocations: AlertLocation[];
 }
 
 /** Raw auth payload from the backend */
