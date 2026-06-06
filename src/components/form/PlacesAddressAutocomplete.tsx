@@ -33,7 +33,7 @@ interface PlacesAddressAutocompleteProps {
 
 export function PlacesAddressAutocomplete({
   label = 'Search location',
-  placeholder = 'Start typing an address or city…',
+  placeholder = 'City, area, or address',
   error,
   onPlaceSelected,
   onClear,
@@ -171,6 +171,8 @@ export function PlacesAddressAutocomplete({
               color: colors.text,
             },
           ]}
+          textAlignVertical="center"
+          {...(Platform.OS === 'android' ? { includeFontPadding: false as const } : {})}
           {...nativeProps}
         />
         {loading ? (
@@ -206,6 +208,9 @@ export function PlacesAddressAutocomplete({
   );
 }
 
+const SEARCH_ICON_SIZE = 18;
+const INPUT_SIDE_INSET = spacing.md + SEARCH_ICON_SIZE + spacing.sm;
+
 const styles = StyleSheet.create({
   container: {
     marginBottom: spacing.md,
@@ -225,8 +230,8 @@ const styles = StyleSheet.create({
     height: inputHeight,
     borderWidth: 1,
     borderRadius: borderRadius.full,
-    paddingLeft: spacing.xxxl,
-    paddingRight: spacing.xxxl + spacing.sm,
+    paddingLeft: INPUT_SIDE_INSET,
+    paddingRight: INPUT_SIDE_INSET,
     ...inputTextStyle,
   },
   loader: {

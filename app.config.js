@@ -1,7 +1,10 @@
 /** @type {import('expo/config').ExpoConfig} */
 const appJson = require('./app.json');
 
-const googleMapsApiKey = process.env.GOOGLE_MAPS_API_KEY ?? '';
+const googleMapsApiKey =
+  process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY ??
+  process.env.GOOGLE_MAPS_API_KEY ??
+  '';
 
 module.exports = {
   expo: {
@@ -30,6 +33,13 @@ module.exports = {
           photosPermission:
             'Allow Ready2Go to access your photos to set your profile picture.',
           cameraPermission: 'Allow Ready2Go to use the camera for your profile picture.',
+        },
+      ],
+      [
+        'expo-location',
+        {
+          locationWhenInUsePermission:
+            'Ready2Go uses your location to fill in your home address during registration.',
         },
       ],
       [

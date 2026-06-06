@@ -5,12 +5,16 @@ export interface AddressData {
   state: string;
   zipCode: string;
   useCurrentLocation: boolean;
+  /** Optional — sent to backend when supported */
+  latitude?: number;
+  longitude?: number;
 }
 
 /** Optional locations to receive alerts (e.g. family in another state). */
 export interface AlertLocation {
   id: string;
   label: string;
+  streetAddress: string;
   city: string;
   state: string;
   zipCode: string;

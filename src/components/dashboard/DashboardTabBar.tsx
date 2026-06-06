@@ -1,12 +1,14 @@
-import { Ionicons } from '@expo/vector-icons';
-import { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import React from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AppText } from '@/components/ui/AppText';
 import { TAB_ROUTES } from '@/constants/routes';
+import { useAppSelector } from '@/redux/hooks';
+import { selectUnreadAlertCount } from '@/redux/slices/dashboardSlice';
 import { borderRadius, fontFamily, palette, shadows, spacing } from '@/theme';
+import { Ionicons } from '@expo/vector-icons';
+import { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 
 type TabIconName = keyof typeof Ionicons.glyphMap;
 
@@ -31,6 +33,7 @@ const TAB_CONFIG: Record<
 export function DashboardTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
   const insets = useSafeAreaInsets();
   const bottomInset = Math.max(insets.bottom, spacing.xs);
+  const unreadAlerts = useAppSelector(selectUnreadAlertCount);
 
   return (
     <View style={[styles.outer, { paddingBottom: bottomInset }]}>
@@ -55,6 +58,8 @@ export function DashboardTabBar({ state, descriptors, navigation }: BottomTabBar
             }
           };
 
+          const showBadge = route.name === TAB_ROUTES.ALERTS && unreadAlerts > 0;
+
           return (
             <Pressable
               key={route.key}
@@ -63,11 +68,20 @@ export function DashboardTabBar({ state, descriptors, navigation }: BottomTabBar
               accessibilityLabel={options.tabBarAccessibilityLabel}
               onPress={onPress}
               style={styles.tab}>
-              <Ionicons
-                name={isFocused ? config.activeIcon : config.icon}
-                size={24}
-                color={isFocused ? palette.tabActive : palette.textMuted}
-              />
+              <View style={styles.iconWrap}>
+                <Ionicons
+                  name={isFocused ? config.activeIcon : config.icon}
+                  size={24}
+                  color={isFocused ? palette.tabActive : palette.textMuted}
+                />
+                {showBadge ? (
+                  <View style={styles.badge}>
+                    <AppText variant="caption" style={styles.badgeText}>
+                      {unreadAlerts > 99 ? '99+' : unreadAlerts}
+                    </AppText>
+                  </View>
+                ) : null}
+              </View>
               {isFocused ? (
                 <AppText variant="caption" color={palette.tabActive} style={styles.tabLabel}>
                   {config.label}
@@ -105,6 +119,27 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 2,
     paddingVertical: spacing.xs,
+  },
+  iconWrap: {
+    position: 'relative',
+  },
+  badge: {
+    position: 'absolute',
+    top: -6,
+    right: -10,
+    minWidth: 16,
+    height: 16,
+    borderRadius: 8,
+    backgroundColor: palette.badge,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 4,
+  },
+  badgeText: {
+    color: palette.white,
+    fontFamily: fontFamily.bold,
+    fontSize: 9,
+    lineHeight: 12,
   },
   tabLabel: {
     fontFamily: fontFamily.semiBold,

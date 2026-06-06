@@ -17,6 +17,12 @@ export function pickAddressData(input: unknown): AddressData {
     state: String(nested.state ?? ''),
     zipCode: String(nested.zipCode ?? ''),
     useCurrentLocation: Boolean(nested.useCurrentLocation),
+    ...(typeof nested.latitude === 'number' && !Number.isNaN(nested.latitude)
+      ? { latitude: nested.latitude }
+      : {}),
+    ...(typeof nested.longitude === 'number' && !Number.isNaN(nested.longitude)
+      ? { longitude: nested.longitude }
+      : {}),
   };
 }
 
@@ -57,6 +63,7 @@ export function pickAlertLocations(input: unknown): AlertLocation[] {
       return {
         id: String(raw.id ?? `loc-${index}`),
         label: String(raw.label ?? '').trim(),
+        streetAddress: String(raw.streetAddress ?? '').trim(),
         city,
         state,
         zipCode: String(raw.zipCode ?? '').trim(),

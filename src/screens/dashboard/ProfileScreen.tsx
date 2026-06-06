@@ -30,8 +30,10 @@ const MAX_ALERT_LOCATIONS = 5;
 function ProfileRow({ label, value }: { label: string; value: string }) {
   return (
     <View style={styles.row}>
-      <Text style={styles.label}>{label}:</Text>
-      <AppText variant="body">{value}</AppText>
+      <Text style={styles.label}>{label}</Text>
+      <AppText variant="body" style={styles.value}>
+        {value}
+      </AppText>
     </View>
   );
 }
@@ -140,7 +142,7 @@ export function ProfileScreen() {
 }
 
 const styles = StyleSheet.create({
-  content: { paddingHorizontal: spacing.sm, paddingBottom: spacing.xxxl },
+  content: { paddingHorizontal: spacing.lg, paddingBottom: spacing.xxxl },
   tabBarInset: { paddingBottom: 72 },
   profileHeader: {
     flexDirection: 'column',
@@ -148,18 +150,20 @@ const styles = StyleSheet.create({
     marginBottom: spacing.xxl,
     alignItems: 'center',
   },
-  profileInfo: { flex: 1, gap: spacing.sm },
+  profileInfo: {
+    width: '100%',
+    alignSelf: 'stretch',
+    gap: spacing.sm,
+  },
   row: {
     paddingBottom: spacing.sm,
     marginBottom: spacing.md,
     borderBottomWidth: 1,
     borderColor: '#E2E3E6',
-    flexDirection: 'row',
-    gap: spacing.sm,
-    justifyContent: 'space-between',
-    width: '100%',
+    gap: spacing.xs,
   },
   label: { fontSize: fontSize.lg, fontWeight: '600' },
+  value: { flexShrink: 1 },
   sectionTitle: { marginBottom: spacing.md, marginTop: spacing.lg },
   faqLink: { marginTop: spacing.md },
   locationsLoader: { marginBottom: spacing.sm },

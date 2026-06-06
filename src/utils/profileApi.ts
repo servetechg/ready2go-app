@@ -11,8 +11,8 @@ const UUID_RE =
 export function toAlertLocationsRequestBody(
   locations: AlertLocation[],
 ): Array<Omit<AlertLocation, 'id'> & { id?: string }> {
-  return locations.map(({ id, label, city, state, zipCode }) => {
-    const row = { label, city, state, zipCode };
+  return locations.map(({ id, label, streetAddress, city, state, zipCode }) => {
+    const row = { label, streetAddress, city, state, zipCode };
     return UUID_RE.test(id) ? { id, ...row } : row;
   });
 }
@@ -83,6 +83,7 @@ export function alertLocationsChanged(a: AlertLocation[], b: AlertLocation[]): b
     return (
       loc.id !== other.id ||
       loc.label !== other.label ||
+      loc.streetAddress !== other.streetAddress ||
       loc.city !== other.city ||
       loc.state !== other.state ||
       loc.zipCode !== other.zipCode
