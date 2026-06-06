@@ -1,4 +1,55 @@
+import type { DashboardMode } from '@/types/emergency';
+
 export type AlertSeverity = 'LOW' | 'MODERATE' | 'HIGH' | 'EXTREME';
+
+/** Alert shape returned by GET /dashboard/home (recentAlerts). */
+export interface MobileWeatherAlert {
+  id: string;
+  severity: AlertSeverity;
+  title: string;
+  location: string;
+  source: string;
+  issuedAt: string;
+  expiresAt?: string | null;
+  read: boolean;
+}
+
+export type DashboardStatus = {
+  headline: string;
+  summary: string;
+  severity: AlertSeverity;
+  updatedAt: string;
+};
+
+export type DashboardHomeNewsItem = {
+  id: string;
+  title: string;
+  body: string;
+  timestamp: string;
+  source: string;
+  severity: string;
+  category: string;
+  location: string;
+  icon: string;
+};
+
+export type MobilePreparednessCategory = {
+  id: string;
+  title: string;
+  subtitle: string;
+  icon: string;
+  taskCount: number;
+};
+
+export type DashboardHomeResponse = {
+  mode: DashboardMode;
+  status: DashboardStatus;
+  news: DashboardHomeNewsItem[];
+  weather: WeatherSnapshot | null;
+  recentAlerts: MobileWeatherAlert[];
+  preparednessCategories: MobilePreparednessCategory[];
+  badges: { unreadAlerts: number };
+};
 
 export interface WeatherAlert {
   id: string;
@@ -21,13 +72,7 @@ export interface WeatherSnapshot {
   locationLabel: string;
 }
 
-export interface PreparednessCategory {
-  id: string;
-  title: string;
-  subtitle: string;
-  icon: 'flame' | 'medkit' | 'globe' | 'location';
-  taskCount: number;
-}
+export type { PreparednessCategory, PreparednessTask } from '@/types/preparedness';
 
 export interface WeatherAlertPreference {
   id: string;

@@ -26,6 +26,7 @@ interface FormLayoutProps {
   loading?: boolean;
   showBack?: boolean;
   instruction?: string;
+  nestedScrollEnabled?: boolean;
 }
 
 export function FormLayout({
@@ -38,13 +39,17 @@ export function FormLayout({
   loading = false,
   showBack = true,
   instruction,
+  nestedScrollEnabled = false,
 }: FormLayoutProps) {
   const step = REGISTRATION_STEPS[stepNumber - 1];
   const instructionText = instruction ?? step.instruction;
 
   return (
     <View style={styles.wrapper}>
-      <ScreenWrapper contentContainerStyle={styles.scroll}>
+      <ScreenWrapper
+        contentContainerStyle={styles.scroll}
+        nestedScrollEnabled={nestedScrollEnabled}
+        keyboardShouldPersistTaps={nestedScrollEnabled ? 'always' : 'handled'}>
         <AppHeader showBack={toBoolean(showBack)} onBack={onBack} icon={icon} />
         <View style={styles.content}>
           <StepIndicator

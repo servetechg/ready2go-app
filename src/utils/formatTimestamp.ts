@@ -28,6 +28,25 @@ export function formatRelativeTime(iso: string): string {
   return formatNewsTimestamp(iso);
 }
 
+/** Relative issued time for alerts, e.g. "Issued 12 min ago" */
+export function formatIssuedAgo(iso: string): string {
+  const relative = formatRelativeTime(iso);
+  if (relative === 'Just now') return 'Issued less than a minute ago';
+  return `Issued ${relative}`;
+}
+
+export function formatExpiresLabel(expiresAt?: string | null): string {
+  if (!expiresAt) return 'EXPIRES: SEE ALERT DETAILS';
+  const date = new Date(expiresAt);
+  if (Number.isNaN(date.getTime())) return `EXPIRES: ${expiresAt}`;
+  return `EXPIRES: ${date.toLocaleString(undefined, {
+    month: 'short',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+  })}`;
+}
+
 export function formatIncidentTimestamp(iso: string): string {
   const date = new Date(iso);
   if (Number.isNaN(date.getTime())) return iso;

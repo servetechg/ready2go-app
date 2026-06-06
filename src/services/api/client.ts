@@ -45,5 +45,31 @@ export async function apiRequest<T>(
   return data as T;
 }
 
+/** Multipart upload (e.g. profile avatar). Do not set Content-Type — fetch sets boundary. */
+export async function apiFormRequest<T>(
+  endpoint: string,
+  formData: FormData,
+  token: string,
+  method: 'POST' | 'PUT' = 'POST',
+): Promise<T> {
+  const response = await fetch(`${ENV.API_BASE_URL}${endpoint}`, {
+    method,
+    headers: { Authorization: `Bearer ${token}` },
+    body: formData,
+  });
+
+  const data = (await response.json().catch(() => ({}))) as ApiErrorBody & T;
+
+  if (!response.ok) {
+    throw new ApiClientError(response.status, {
+      message: data.message ?? `Request failed (${response.status})`,
+      code: data.code,
+      errors: data.errors,
+    });
+  }
+
+  return data as T;
+}
+
 /** @deprecated Use apiRequest — kept for any legacy imports */
 export const apiClient = apiRequest;

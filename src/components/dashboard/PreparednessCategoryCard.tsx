@@ -5,14 +5,8 @@ import { Pressable, StyleSheet, View } from 'react-native';
 import { AppText } from '@/components/ui/AppText';
 import { useAppTheme } from '@/hooks/useAppTheme';
 import { borderRadius, spacing } from '@/theme';
-import type { PreparednessCategory } from '@/types/dashboard';
-
-const ICON_MAP: Record<PreparednessCategory['icon'], keyof typeof Ionicons.glyphMap> = {
-  flame: 'flame',
-  medkit: 'medkit',
-  globe: 'globe-outline',
-  location: 'location',
-};
+import type { PreparednessCategory } from '@/types/preparedness';
+import { preparednessIconName } from '@/utils/preparednessIcons';
 
 interface PreparednessCategoryCardProps {
   category: PreparednessCategory;
@@ -21,13 +15,14 @@ interface PreparednessCategoryCardProps {
 
 export function PreparednessCategoryCard({ category, onPress }: PreparednessCategoryCardProps) {
   const { colors } = useAppTheme();
+  const iconName = preparednessIconName(category.icon);
 
   return (
     <Pressable
       style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.borderLight }]}
       onPress={onPress}>
       <View style={styles.header}>
-        <View style={styles.titles}> 
+        <View style={styles.titles}>
           <AppText variant="label" color={colors.primary} numberOfLines={2}>
             {category.title}
           </AppText>
@@ -36,7 +31,7 @@ export function PreparednessCategoryCard({ category, onPress }: PreparednessCate
           </AppText>
         </View>
         <View style={[styles.iconCircle, { backgroundColor: '#FFF3E0' }]}>
-          <Ionicons name={ICON_MAP[category.icon]} size={18} color="#ED6C02" />
+          <Ionicons name={iconName} size={18} color="#ED6C02" />
         </View>
       </View>
       <AppText variant="bodySmall" color={colors.textMuted} style={styles.empty}>
@@ -54,7 +49,6 @@ const styles = StyleSheet.create({
     minWidth: '46%',
     maxWidth: '50%',
     borderRadius: borderRadius.lg,
-    // borderWidth: 1,
     padding: spacing.lg,
   },
   header: {
@@ -64,7 +58,7 @@ const styles = StyleSheet.create({
     marginBottom: spacing.sm,
     gap: spacing.sm,
   },
-  titles: { flex: 1, },
+  titles: { flex: 1 },
   iconCircle: {
     width: 32,
     height: 32,

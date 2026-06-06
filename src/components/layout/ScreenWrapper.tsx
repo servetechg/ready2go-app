@@ -15,6 +15,8 @@ interface ScreenWrapperProps {
   scrollable?: boolean;
   keyboardAvoiding?: boolean;
   contentContainerStyle?: ViewStyle;
+  nestedScrollEnabled?: boolean;
+  keyboardShouldPersistTaps?: 'always' | 'handled' | 'never';
 }
 
 export function ScreenWrapper({
@@ -22,14 +24,16 @@ export function ScreenWrapper({
   scrollable = true,
   keyboardAvoiding = true,
   contentContainerStyle,
+  nestedScrollEnabled = false,
+  keyboardShouldPersistTaps = 'handled',
 }: ScreenWrapperProps) {
   const useKeyboardAvoiding = keyboardAvoiding;
 
   const scrollProps = sanitizeScrollViewProps({
     contentContainerStyle: [styles.scrollContent, contentContainerStyle],
-    keyboardShouldPersistTaps: 'handled' as const,
+    keyboardShouldPersistTaps,
     showsVerticalScrollIndicator: false,
-    nestedScrollEnabled: false,
+    nestedScrollEnabled,
   });
 
   const content = scrollable ? (

@@ -1,9 +1,4 @@
-import type {
-  PreparednessCategory,
-  WeatherAlert,
-  WeatherAlertPreference,
-  WeatherSnapshot,
-} from '@/types/dashboard';
+import type { WeatherAlert, WeatherAlertPreference, WeatherSnapshot } from '@/types/dashboard';
 
 export const MOCK_WEATHER: WeatherSnapshot = {
   temperatureF: 72,
@@ -45,37 +40,6 @@ export const MOCK_ALERTS: WeatherAlert[] = [
     issuedAgo: 'Issued 1 hour ago',
     expires: 'EXPIRES: 6:00 PM LOCAL',
     read: true,
-  },
-];
-
-export const PREPAREDNESS_CATEGORIES: PreparednessCategory[] = [
-  {
-    id: 'active-shooter',
-    title: 'Active Shooter Preparedness',
-    subtitle: 'Active Shooter Preparedness',
-    icon: 'flame',
-    taskCount: 0,
-  },
-  {
-    id: 'choking',
-    title: 'Choking First Aid',
-    subtitle: 'Choking First Aid',
-    icon: 'medkit',
-    taskCount: 0,
-  },
-  {
-    id: 'evacuation',
-    title: 'Community Evacuation',
-    subtitle: 'Community Evacuation',
-    icon: 'globe',
-    taskCount: 0,
-  },
-  {
-    id: 'shelter',
-    title: 'General Shelter-in-Place',
-    subtitle: 'General Shelter-in-Place',
-    icon: 'location',
-    taskCount: 0,
   },
 ];
 

@@ -5,6 +5,10 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AppText } from '@/components/ui/AppText';
 import { palette, spacing } from '@/theme';
 
+/** logo.png is 1044×786 — keep aspect ratio so corners are not clipped in a square box. */
+const LOGO_WIDTH = 260;
+const LOGO_ASPECT = 1044 / 786;
+
 /** Branded splash UI — used on web and as a fallback while the native splash is visible. */
 export function AppSplashScreen() {
   const insets = useSafeAreaInsets();
@@ -38,10 +42,12 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: spacing.xxl,
+    width: '100%',
   },
   logo: {
-    width: 180,
-    height: 180,
+    width: LOGO_WIDTH,
+    height: LOGO_WIDTH / LOGO_ASPECT,
+    maxWidth: '90%',
     resizeMode: 'contain',
   },
   tagline: {

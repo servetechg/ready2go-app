@@ -7,11 +7,14 @@ import React from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { ProfileAvatarDisplay } from '@/components/profile/ProfileAvatarDisplay';
 import { AppText } from '@/components/ui/AppText';
 import {
   DRAWER_ROUTES,
   HOME_STACK_ROUTES,
   MAIN_STACK_ROUTES,
+  PREPAREDNESS_STACK_ROUTES,
+  PROFILE_STACK_ROUTES,
   TAB_ROUTES,
 } from '@/constants/routes';
 import { useAppTheme } from '@/hooks/useAppTheme';
@@ -49,6 +52,36 @@ export function DrawerContent(props: DrawerContentComponentProps) {
     } as never);
   };
 
+  const goAlerts = () => {
+    navigation.closeDrawer();
+    navigation.navigate(DRAWER_ROUTES.MAIN, {
+      screen: MAIN_STACK_ROUTES.TABS,
+      params: { screen: TAB_ROUTES.ALERTS },
+    } as never);
+  };
+
+  const goPreparedness = () => {
+    navigation.closeDrawer();
+    navigation.navigate(DRAWER_ROUTES.MAIN, {
+      screen: MAIN_STACK_ROUTES.TABS,
+      params: {
+        screen: TAB_ROUTES.PREPAREDNESS,
+        params: { screen: PREPAREDNESS_STACK_ROUTES.LIST },
+      },
+    } as never);
+  };
+
+  const goProfile = () => {
+    navigation.closeDrawer();
+    navigation.navigate(DRAWER_ROUTES.MAIN, {
+      screen: MAIN_STACK_ROUTES.TABS,
+      params: {
+        screen: TAB_ROUTES.PROFILE,
+        params: { screen: PROFILE_STACK_ROUTES.PROFILE },
+      },
+    } as never);
+  };
+
   const goWeatherAlerts = () => {
     navigation.closeDrawer();
     navigation.navigate(DRAWER_ROUTES.MAIN, {
@@ -56,6 +89,17 @@ export function DrawerContent(props: DrawerContentComponentProps) {
       params: {
         screen: TAB_ROUTES.HOME,
         params: { screen: HOME_STACK_ROUTES.WEATHER_ALERT_SETTINGS },
+      },
+    } as never);
+  };
+
+  const goEmergencyNews = () => {
+    navigation.closeDrawer();
+    navigation.navigate(DRAWER_ROUTES.MAIN, {
+      screen: MAIN_STACK_ROUTES.TABS,
+      params: {
+        screen: TAB_ROUTES.HOME,
+        params: { screen: HOME_STACK_ROUTES.EMERGENCY_NEWS },
       },
     } as never);
   };
@@ -83,6 +127,14 @@ export function DrawerContent(props: DrawerContentComponentProps) {
 
   const menuItems: MenuItem[] = [
     { label: 'Home', icon: 'home', onPress: goHome },
+    { label: 'Alerts', icon: 'warning-outline', onPress: goAlerts },
+    { label: 'Preparedness Guide', icon: 'briefcase-outline', onPress: goPreparedness },
+    { label: 'Profile', icon: 'person-outline', onPress: goProfile },
+    {
+      label: 'Emergency News',
+      icon: 'newspaper-outline',
+      onPress: goEmergencyNews,
+    },
     {
       label: 'Weather Alert Settings',
       icon: 'cloud-outline',
@@ -148,9 +200,7 @@ export function DrawerContent(props: DrawerContentComponentProps) {
 
       <DrawerContentScrollView {...props} contentContainerStyle={styles.scroll}>
         <View style={styles.profile}>
-          <View style={[styles.avatar, { backgroundColor: colors.accent }]}>
-            <Ionicons name="person" size={40} color={colors.primary} />
-          </View>
+          <ProfileAvatarDisplay size={88} />
           <AppText variant="h3" style={styles.name}>
             {fullName}
           </AppText>
@@ -198,15 +248,7 @@ const styles = StyleSheet.create({
     marginBottom: spacing.xxxl,
     marginTop: spacing.xl,
   },
-  avatar: {
-    width: 88,
-    height: 88,
-    borderRadius: 44,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: spacing.lg,
-  },
-  name: { marginBottom: spacing.sm },
+  name: { marginBottom: spacing.sm, marginTop: spacing.lg },
   menuRow: {
     flexDirection: 'row',
     alignItems: 'center',

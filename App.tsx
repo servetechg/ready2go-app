@@ -16,6 +16,7 @@ import { RootNavigator } from '@/navigation';
 import { persistor, store } from '@/redux/store';
 import { palette } from '@/theme';
 import { fontFamily } from '@/theme/fonts';
+import Toast from 'react-native-toast-message';
 import { runStorageMigration } from '@/utils/storageMigration';
 
 SplashScreen.preventAutoHideAsync().catch(() => {});
@@ -47,6 +48,7 @@ function AppNavigation() {
         <NavigationContainer theme={navTheme}>
           <StatusBar style="auto" />
           <RootNavigator />
+          <Toast />
         </NavigationContainer>
       </SafeAreaProvider>
     </GestureHandlerRootView>

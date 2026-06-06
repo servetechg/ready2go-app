@@ -1,24 +1,17 @@
-import { useCallback, useEffect } from 'react';
+import { useCallback } from 'react';
 
 import { useAppDispatch, useAppSelector } from '@/redux/hooks';
-import { loadEmergencyDashboard, selectDashboardMode } from '@/redux/slices/dashboardSlice';
+import { fetchHome, selectDashboardMode } from '@/redux/slices/dashboardSlice';
 
-/** Loads mock/API emergency dashboard data when mode changes. */
+/** Loads home dashboard data; used by Emergency News screen. */
 export function useEmergencyDashboard() {
   const dispatch = useAppDispatch();
   const mode = useAppSelector(selectDashboardMode);
   const emergency = useAppSelector((s) => s.dashboard.emergency);
-  const loading = useAppSelector((s) => s.dashboard.emergencyLoading);
-  const error = useAppSelector((s) => s.dashboard.emergencyError);
+  const loading = useAppSelector((s) => s.dashboard.homeLoading);
+  const error = useAppSelector((s) => s.dashboard.homeError);
 
-  useEffect(() => {
-    void dispatch(loadEmergencyDashboard(mode));
-  }, [dispatch, mode]);
-
-  const reload = useCallback(
-    () => dispatch(loadEmergencyDashboard(mode)).unwrap(),
-    [dispatch, mode],
-  );
+  const reload = useCallback(() => dispatch(fetchHome()).unwrap(), [dispatch]);
 
   return { mode, emergency, loading, error, isCloudy: mode === 'cloudy', reload };
 }

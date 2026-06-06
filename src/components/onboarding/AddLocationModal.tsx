@@ -2,20 +2,24 @@ import { Ionicons } from '@expo/vector-icons';
 import { zodResolver } from '@hookform/resolvers/zod';
 import React from 'react';
 import { Controller, useForm } from 'react-hook-form';
-import { Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Modal, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { z } from 'zod';
 
+import { ErrorMessage } from '@/components/common/ErrorMessage';
 import { AppInput } from '@/components/form/AppInput';
 import { AppSelect } from '@/components/form/AppSelect';
+import { PlacesAddressAutocomplete } from '@/components/form/PlacesAddressAutocomplete';
 import { AppButton } from '@/components/ui/AppButton';
 import { AppText } from '@/components/ui/AppText';
 import { US_STATES } from '@/constants/registration';
 import { useAppTheme } from '@/hooks/useAppTheme';
+import { isPlacesSearchAvailable } from '@/services/places.service';
 import { borderRadius, spacing } from '@/theme';
 import { fieldErrorMessage } from '@/utils/form';
 
 const addLocationSchema = z.object({
   label: z.string().min(1, 'Name is required'),
+  streetAddress: z.string().optional(),
   city: z.string().min(1, 'City is required'),
   state: z.string().min(1, 'State is required'),
   zipCode: z.string().optional(),
@@ -31,10 +35,16 @@ interface AddLocationModalProps {
 
 export function AddLocationModal({ visible, onClose, onSave }: AddLocationModalProps) {
   const { colors } = useAppTheme();
-  const { control, handleSubmit, reset } = useForm<AddLocationFormData>({
+  const usePlacesSearch = isPlacesSearchAvailable() && Platform.OS !== 'web';
+  const { control, handleSubmit, reset, setValue, watch, formState: { errors } } = useForm<AddLocationFormData>({
     resolver: zodResolver(addLocationSchema),
-    defaultValues: { label: '', city: '', state: '', zipCode: '' },
+    defaultValues: { label: '', streetAddress: '', city: '', state: '', zipCode: '' },
   });
+
+  const streetAddress = watch('streetAddress');
+  const city = watch('city');
+  const state = watch('state');
+  const zipCode = watch('zipCode');
 
   const handleClose = () => {
     reset();
@@ -76,52 +86,95 @@ export function AddLocationModal({ visible, onClose, onSave }: AddLocationModalP
             />
             <Controller
               control={control}
-              name="city"
-              render={({ field: { onChange, onBlur, value }, fieldState: { error } }) => (
+              name="streetAddress"
+              render={({ field: { onChange, onBlur, value } }) => (
                 <AppInput
-                  label="City"
-                  placeholder="City"
-                  value={value}
+                  label="Street (optional)"
+                  placeholder="Street address"
+                  value={value ?? ''}
                   onChangeText={onChange}
                   onBlur={onBlur}
-                  error={fieldErrorMessage(error)}
                 />
               )}
             />
-            <View style={styles.row}>
-              <View style={styles.stateCol}>
+            {usePlacesSearch ? (
+              <>
+                <PlacesAddressAutocomplete
+                  label="Search address"
+                  onPlaceSelected={(place) => {
+                    setValue('streetAddress', place.streetAddress, { shouldValidate: true });
+                    setValue('city', place.city, { shouldValidate: true });
+                    setValue('state', place.state, { shouldValidate: true });
+                    setValue('zipCode', place.zipCode, { shouldValidate: true });
+                  }}
+                  onClear={() => {
+                    setValue('streetAddress', '', { shouldValidate: true });
+                    setValue('city', '', { shouldValidate: true });
+                    setValue('state', '', { shouldValidate: true });
+                    setValue('zipCode', '', { shouldValidate: true });
+                  }}
+                />
+                {streetAddress || city || state ? (
+                  <AppText variant="bodySmall" color={colors.textSecondary} style={styles.preview}>
+                    {[streetAddress, city, state, zipCode].filter(Boolean).join(', ')}
+                  </AppText>
+                ) : null}
+                {errors.city?.message || errors.state?.message ? (
+                  <ErrorMessage message={errors.city?.message ?? errors.state?.message ?? ''} />
+                ) : null}
+              </>
+            ) : (
+              <>
                 <Controller
                   control={control}
-                  name="state"
-                  render={({ field: { onChange, value }, fieldState: { error } }) => (
-                    <AppSelect
-                      label="State"
+                  name="city"
+                  render={({ field: { onChange, onBlur, value }, fieldState: { error } }) => (
+                    <AppInput
+                      label="City"
+                      placeholder="City"
                       value={value}
-                      options={US_STATES}
-                      onChange={onChange}
-                      placeholder="State"
+                      onChangeText={onChange}
+                      onBlur={onBlur}
                       error={fieldErrorMessage(error)}
-                      containerStyle={styles.select}
                     />
                   )}
                 />
-              </View>
-              <Controller
-                control={control}
-                name="zipCode"
-                render={({ field: { onChange, onBlur, value } }) => (
-                  <AppInput
-                    label="ZIP (optional)"
-                    placeholder="ZIP"
-                    value={value ?? ''}
-                    onChangeText={onChange}
-                    onBlur={onBlur}
-                    keyboardType="number-pad"
-                    containerStyle={styles.zip}
+                <View style={styles.row}>
+                  <View style={styles.stateCol}>
+                    <Controller
+                      control={control}
+                      name="state"
+                      render={({ field: { onChange, value }, fieldState: { error } }) => (
+                        <AppSelect
+                          label="State"
+                          value={value}
+                          options={US_STATES}
+                          onChange={onChange}
+                          placeholder="State"
+                          error={fieldErrorMessage(error)}
+                          containerStyle={styles.select}
+                        />
+                      )}
+                    />
+                  </View>
+                  <Controller
+                    control={control}
+                    name="zipCode"
+                    render={({ field: { onChange, onBlur, value } }) => (
+                      <AppInput
+                        label="ZIP (optional)"
+                        placeholder="ZIP"
+                        value={value ?? ''}
+                        onChangeText={onChange}
+                        onBlur={onBlur}
+                        keyboardType="number-pad"
+                        containerStyle={styles.zip}
+                      />
+                    )}
                   />
-                )}
-              />
-            </View>
+                </View>
+              </>
+            )}
           </ScrollView>
           <AppButton title="SAVE LOCATION" onPress={handleSubmit(submit)} style={styles.saveBtn} />
         </Pressable>
@@ -152,5 +205,6 @@ const styles = StyleSheet.create({
   stateCol: { width: 108, flexShrink: 0 },
   select: { marginBottom: 0 },
   zip: { flex: 1, minWidth: 0 },
+  preview: { marginBottom: spacing.sm },
   saveBtn: { marginTop: spacing.lg },
 });

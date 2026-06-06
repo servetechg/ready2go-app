@@ -75,7 +75,7 @@ function MapControls({ onAction, fullscreen = false, style }: MapControlsProps) 
           ]}
           accessibilityRole="button"
           accessibilityLabel={action}>
-          <Ionicons name={icon} size={18} color={colors.textPrimary} />
+          <Ionicons name={icon} size={18} color={colors.text} />
         </Pressable>
       ))}
     </View>
@@ -229,7 +229,7 @@ export function EmergencyMap({ region: initialRegion, markers }: EmergencyMapPro
               style={styles.closeBtn}
               accessibilityRole="button"
               accessibilityLabel="Close map">
-              <Ionicons name="close" size={24} color={colors.textPrimary} />
+              <Ionicons name="close" size={24} color={colors.text} />
             </Pressable>
           </View>
           <View style={styles.fullscreenMapWrap}>
