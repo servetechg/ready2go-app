@@ -2,7 +2,6 @@ import React from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import { spacing } from '@/theme';
-
 import { AppHeader } from './AppHeader';
 import { ScreenWrapper } from './ScreenWrapper';
 

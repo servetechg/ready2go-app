@@ -1,5 +1,6 @@
+import { Ionicons } from '@expo/vector-icons';
 import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   RefreshControl,
@@ -13,6 +14,7 @@ import { AppHeader } from '@/components/layout/AppHeader';
 import { ScreenWrapper } from '@/components/layout/ScreenWrapper';
 import { AppButton } from '@/components/ui/AppButton';
 import { AppText } from '@/components/ui/AppText';
+import { PREPAREDNESS_STACK_ROUTES } from '@/constants/routes';
 import { useAppTheme } from '@/hooks/useAppTheme';
 import { usePullToRefresh } from '@/hooks/usePullToRefresh';
 import { useAppDispatch, useAppSelector } from '@/redux/hooks';
@@ -20,8 +22,14 @@ import {
   fetchCategoryDetail,
   fetchCategoryTasks,
 } from '@/redux/slices/preparednessSlice';
-import { spacing } from '@/theme';
+import { borderRadius, spacing } from '@/theme';
 import type { PreparednessStackParamList } from '@/types/navigation';
+import { preparednessIconName } from '@/utils/preparednessIcons';
+import {
+  formatPreparednessIntro,
+  formatPreparednessText,
+  formatPreparednessTitle,
+} from '@/utils/preparednessLabels';
 import { PREPAREDNESS_CATEGORY_NOT_FOUND_MESSAGE } from '@/utils/preparednessMessages';
 
 type Route = RouteProp<
@@ -37,11 +45,17 @@ export function PreparednessCategoryScreen() {
 
   const categoryId = params.categoryId;
   const detail = useAppSelector((s) => s.preparedness.categoryDetails[categoryId]);
+  const categories = useAppSelector((s) => s.preparedness.categories);
   const tasks = useAppSelector((s) => s.preparedness.tasksByCategoryId[categoryId] ?? []);
   const tasksLoading = useAppSelector((s) => s.preparedness.tasksLoading[categoryId]);
 
   const [notFound, setNotFound] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
+
+  const categoryMeta = useMemo(
+    () => detail ?? categories.find((category) => category.id === categoryId),
+    [categories, categoryId, detail],
+  );
 
   const loadCategory = async (force = false) => {
     setNotFound(false);
@@ -74,16 +88,22 @@ export function PreparednessCategoryScreen() {
   const reload = () => loadCategory(true);
   const { refreshControlProps } = usePullToRefresh(reload);
 
-  const title = detail?.title ?? params.title;
-  const intro =
-    detail?.intro ??
-    'Review local preparedness tasks for your area. Tap a task to expand details.';
+  const title = formatPreparednessTitle(detail?.title ?? params.title, categoryId);
+  const intro = formatPreparednessIntro(detail?.intro);
+  const subtitle = categoryMeta?.subtitle
+    ? formatPreparednessText(categoryMeta.subtitle)
+    : null;
+  const iconName = preparednessIconName(categoryMeta?.icon ?? 'shield');
 
   if (notFound) {
     return (
       <ScreenWrapper>
         <View style={styles.headerPad}>
-          <AppHeader title={params.title} showBack={true} onBack={() => navigation.goBack()} />
+          <AppHeader
+            title={formatPreparednessTitle(params.title, categoryId)}
+            showBack={true}
+            onBack={() => navigation.goBack()}
+          />
         </View>
         <View style={styles.notFound}>
           <AppText variant="body" color={colors.textSecondary} center={true}>
@@ -104,9 +124,21 @@ export function PreparednessCategoryScreen() {
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
         refreshControl={<RefreshControl {...refreshControlProps} />}>
-        <AppText variant="body" color={colors.textSecondary} style={styles.intro}>
-          {intro}
-        </AppText>
+        <View style={[styles.summary, { backgroundColor: colors.accent }]}>
+          <View style={[styles.iconCircle, { backgroundColor: colors.surface }]}>
+            <Ionicons name={iconName} size={22} color={colors.primary} />
+          </View>
+          <View style={styles.summaryText}>
+            <AppText variant="body" color={colors.text} style={styles.summaryIntro}>
+              {intro}
+            </AppText>
+            {subtitle ? (
+              <AppText variant="caption" color={colors.textSecondary} style={styles.summarySubtitle}>
+                {subtitle}
+              </AppText>
+            ) : null}
+          </View>
+        </View>
 
         {tasksLoading && tasks.length === 0 ? (
           <ActivityIndicator color={colors.primary} style={styles.loader} />
@@ -118,17 +150,43 @@ export function PreparednessCategoryScreen() {
           </AppText>
         ) : null}
 
-        <PreparednessTaskList tasks={tasks} />
+        {!tasksLoading || tasks.length > 0 ? <PreparednessTaskList tasks={tasks} /> : null}
       </ScrollView>
     </ScreenWrapper>
   );
 }
 
 const styles = StyleSheet.create({
-  headerPad: { paddingHorizontal: spacing.lg },
-  content: { padding: spacing.lg, paddingBottom: 100 },
-  intro: { marginBottom: spacing.lg },
-  loader: { marginBottom: spacing.lg },
+  headerPad: {},
+  content: {
+    paddingBottom: 100,
+    gap: spacing.lg,
+  },
+  summary: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: spacing.md,
+    borderRadius: borderRadius.lg,
+    padding: spacing.lg,
+  },
+  iconCircle: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  summaryText: {
+    flex: 1,
+    gap: spacing.xs,
+  },
+  summaryIntro: {
+    lineHeight: 22,
+  },
+  summarySubtitle: {
+    lineHeight: 18,
+  },
+  loader: { marginVertical: spacing.xl },
   error: { marginBottom: spacing.lg },
   notFound: {
     flex: 1,

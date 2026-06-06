@@ -40,7 +40,7 @@ export function BottomButtonBar({
 
 const styles = StyleSheet.create({
   bar: {
-    paddingHorizontal: spacing.lg,
+    paddingHorizontal: spacing.xxl,
     paddingTop: spacing.md,
     gap: spacing.sm,
   },

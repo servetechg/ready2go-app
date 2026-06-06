@@ -83,7 +83,7 @@ export function HomeScreen() {
             c.title.toLowerCase().includes(q) ||
             c.subtitle.toLowerCase().includes(q),
         );
-    return matched.slice(0, 4);
+    return matched.slice(0, 2);
   }, [preparednessCategories, searchQuery]);
 
   const showPreparednessEmpty = home && !loading && filteredCategories.length === 0;
@@ -193,13 +193,6 @@ export function HomeScreen() {
 
         <View style={styles.sectionHeader}>
           <AppText variant="h3">Preparedness Guide</AppText>
-          {preparednessCategories.length > 4 ? (
-            <Pressable onPress={() => navigation.getParent()?.navigate(TAB_ROUTES.PREPAREDNESS)}>
-              <AppText variant="label" color={colors.primary}>
-                See all
-              </AppText>
-            </Pressable>
-          ) : null}
         </View>
         <AppText variant="bodySmall" color={colors.textSecondary} style={styles.subtitle}>
           Local preparedness tasks for your registered address. This view is read-only.
@@ -213,10 +206,20 @@ export function HomeScreen() {
             <PreparednessCategoryCard
               key={category.id}
               category={category}
+              fullWidth={true}
               onPress={() => openCategory(category.id, category.title)}
             />
           ))}
         </View>
+        {preparednessCategories.length > 2 ? (
+          <Pressable
+            style={styles.seeAll}
+            onPress={() => navigation.getParent()?.navigate(TAB_ROUTES.PREPAREDNESS)}>
+            <AppText variant="label" color={colors.primary}>
+              See all
+            </AppText>
+          </Pressable>
+        ) : null}
       </ScrollView>
     </DashboardLayout>
   );
@@ -229,7 +232,7 @@ const styles = StyleSheet.create({
   errorWrap: {
     flex: 1,
     justifyContent: 'center',
-    padding: spacing.xl,
+    paddingVertical: spacing.xl,
     gap: spacing.lg,
   },
   errorBody: { marginBottom: spacing.sm },
@@ -244,9 +247,11 @@ const styles = StyleSheet.create({
   subtitle: { marginBottom: spacing.lg },
   emptyAlerts: { marginBottom: spacing.lg },
   grid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
     gap: spacing.sm,
+  },
+  seeAll: {
+    alignSelf: 'flex-start',
+    marginTop: spacing.md,
+    paddingVertical: spacing.sm,
   },
 });

@@ -8,6 +8,10 @@ import type {
   PreparednessTask,
 } from '@/types/preparedness';
 import { getErrorMessage } from '@/utils/error';
+import {
+  formatPreparednessText,
+  formatPreparednessTitle,
+} from '@/utils/preparednessLabels';
 
 interface PreparednessState {
   categories: PreparednessCategory[];
@@ -29,6 +33,25 @@ const initialState: PreparednessState = {
 
 function getToken(getState: () => unknown): string | null {
   return (getState() as { auth: AuthState }).auth.token;
+}
+
+function normalizeCategory(category: PreparednessCategory): PreparednessCategory {
+  return {
+    ...category,
+    title: formatPreparednessTitle(category.title, category.id),
+    subtitle: formatPreparednessText(category.subtitle),
+  };
+}
+
+function normalizeCategoryDetail(
+  detail: PreparednessCategoryDetail,
+): PreparednessCategoryDetail {
+  return {
+    ...detail,
+    title: formatPreparednessTitle(detail.title, detail.id),
+    subtitle: formatPreparednessText(detail.subtitle),
+    intro: formatPreparednessText(detail.intro),
+  };
 }
 
 export const fetchCategories = createAsyncThunk(
@@ -104,16 +127,16 @@ const preparednessSlice = createSlice({
       })
       .addCase(fetchCategories.fulfilled, (state, action) => {
         state.loading = false;
-        state.categories = [...action.payload.items].sort(
-          (a, b) => a.sortOrder - b.sortOrder,
-        );
+        state.categories = [...action.payload.items]
+          .map(normalizeCategory)
+          .sort((a, b) => a.sortOrder - b.sortOrder);
       })
       .addCase(fetchCategories.rejected, (state, action) => {
         state.loading = false;
         state.error = (action.payload as string) ?? 'Could not load guides';
       })
       .addCase(fetchCategoryDetail.fulfilled, (state, action) => {
-        state.categoryDetails[action.payload.id] = action.payload;
+        state.categoryDetails[action.payload.id] = normalizeCategoryDetail(action.payload);
       })
       .addCase(fetchCategoryTasks.pending, (state, action) => {
         state.tasksLoading[action.meta.arg.categoryId] = true;

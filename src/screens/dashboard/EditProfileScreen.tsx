@@ -312,7 +312,6 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: spacing.lg,
     paddingVertical: spacing.sm,
     minHeight: 52,
   },
@@ -333,7 +332,6 @@ const styles = StyleSheet.create({
   },
   headerSpacer: { width: 44 },
   scrollContent: {
-    paddingHorizontal: spacing.lg,
     paddingBottom: spacing.xxxl,
   },
   form: {
@@ -375,7 +373,6 @@ const styles = StyleSheet.create({
     marginBottom: spacing.sm,
   },
   footer: {
-    paddingHorizontal: spacing.lg,
     paddingTop: spacing.md,
     paddingBottom: 72 + spacing.lg,
   },

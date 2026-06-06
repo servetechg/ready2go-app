@@ -177,7 +177,7 @@ export function StepAlertLocationsScreen() {
 
 const styles = StyleSheet.create({
   wrapper: { flex: 1 },
-  scroll: { paddingHorizontal: spacing.lg, paddingBottom: spacing.xxxl },
+  scroll: { paddingBottom: spacing.xxxl },
   header: {
     flexDirection: 'row',
     alignItems: 'center',

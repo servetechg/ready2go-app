@@ -1,47 +1,29 @@
-import { Ionicons } from '@expo/vector-icons';
-import React, { useState } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import React from 'react';
+import { StyleSheet, View } from 'react-native';
 
 import { AppCard } from '@/components/ui/AppCard';
 import { AppText } from '@/components/ui/AppText';
 import { useAppTheme } from '@/hooks/useAppTheme';
-import { palette, spacing } from '@/theme';
+import { spacing } from '@/theme';
 import type { PreparednessTask } from '@/types/preparedness';
 
-function TaskRow({
-  task,
-  open,
-  onToggle,
-}: {
-  task: PreparednessTask;
-  open: boolean;
-  onToggle: () => void;
-}) {
-  const { colors } = useAppTheme();
+function getTaskDisplayText(task: PreparednessTask): string {
+  const title = task.title.trim();
+  const body = task.body?.trim();
 
-  return (
-    <AppCard style={styles.card}>
-      <Pressable
-        onPress={onToggle}
-        style={styles.header}
-        accessibilityRole="button"
-        accessibilityState={{ expanded: open }}>
-        <AppText variant="label" style={styles.title}>
-          {task.title}
-        </AppText>
-        <Ionicons
-          name={open ? 'chevron-up' : 'chevron-down'}
-          size={20}
-          color={colors.primary}
-        />
-      </Pressable>
-      {open ? (
-        <AppText variant="body" color={colors.textSecondary} style={styles.body}>
-          {task.body}
-        </AppText>
-      ) : null}
-    </AppCard>
-  );
+  if (!body) return title;
+
+  const redundantPrefixes = [
+    `Complete this step: ${title}`,
+    `Complete this step: ${title}.`,
+  ];
+
+  if (redundantPrefixes.includes(body)) return title;
+
+  const stripped = body.replace(/^Complete this step:\s*/i, '').trim();
+  if (!stripped || stripped === title) return title;
+
+  return stripped;
 }
 
 interface PreparednessTaskListProps {
@@ -50,45 +32,86 @@ interface PreparednessTaskListProps {
 
 export function PreparednessTaskList({ tasks }: PreparednessTaskListProps) {
   const { colors } = useAppTheme();
-  const [openId, setOpenId] = useState<string>(tasks[0]?.id ?? '');
 
   if (tasks.length === 0) {
     return (
-      <AppText variant="body" color={colors.textSecondary}>
-        No tasks available in this category yet.
-      </AppText>
+      <AppCard>
+        <AppText variant="body" color={colors.textSecondary} center={true}>
+          No steps available in this guide yet.
+        </AppText>
+      </AppCard>
     );
   }
 
   return (
-    <View style={styles.list}>
-      {tasks.map((task) => (
-        <TaskRow
-          key={task.id}
-          task={task}
-          open={openId === task.id}
-          onToggle={() => setOpenId(task.id)}
-        />
-      ))}
-    </View>
+    <AppCard style={styles.card}>
+      <View style={styles.header}>
+        <AppText variant="label" color={colors.primary}>
+          Key Steps
+        </AppText>
+        <View style={[styles.countBadge, { backgroundColor: colors.accent }]}>
+          <AppText variant="caption" color={colors.primary}>
+            {tasks.length}
+          </AppText>
+        </View>
+      </View>
+
+      <View style={styles.list}>
+        {tasks.map((task, index) => (
+          <View key={task.id}>
+            <View style={styles.row}>
+              <View style={[styles.bullet, { backgroundColor: colors.primary }]} />
+              <AppText variant="body" color={colors.text} style={styles.text}>
+                {getTaskDisplayText(task)}
+              </AppText>
+            </View>
+            {index < tasks.length - 1 ? (
+              <View style={[styles.divider, { backgroundColor: colors.borderLight }]} />
+            ) : null}
+          </View>
+        ))}
+      </View>
+    </AppCard>
   );
 }
 
 const styles = StyleSheet.create({
-  list: { gap: spacing.md },
-  card: { paddingVertical: spacing.md },
+  card: {
+    paddingVertical: spacing.lg,
+  },
   header: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
+    alignItems: 'center',
     justifyContent: 'space-between',
-    gap: spacing.md,
+    marginBottom: spacing.lg,
   },
-  title: { flex: 1 },
-  body: {
-    marginTop: spacing.md,
-    paddingTop: spacing.md,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: palette.borderLight,
-    lineHeight: 22,
+  countBadge: {
+    minWidth: 24,
+    height: 24,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: spacing.sm,
+  },
+  list: { gap: 0 },
+  row: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: spacing.md,
+    paddingVertical: spacing.sm,
+  },
+  bullet: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    marginTop: 8,
+  },
+  text: {
+    flex: 1,
+    lineHeight: 24,
+  },
+  divider: {
+    height: StyleSheet.hairlineWidth,
+    marginLeft: spacing.md + 6,
   },
 });
