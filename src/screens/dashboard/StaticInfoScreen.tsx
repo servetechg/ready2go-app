@@ -32,6 +32,6 @@ export function StaticInfoScreen() {
 }
 
 const styles = StyleSheet.create({
-  headerPad: { paddingHorizontal: spacing.lg },
-  content: { padding: spacing.lg },
+  headerPad: {},
+  content: { paddingBottom: spacing.xxxl },
 });

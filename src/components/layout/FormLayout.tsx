@@ -47,7 +47,6 @@ export function FormLayout({
   return (
     <View style={styles.wrapper}>
       <ScreenWrapper
-        contentContainerStyle={styles.scroll}
         nestedScrollEnabled={nestedScrollEnabled}
         keyboardShouldPersistTaps={nestedScrollEnabled ? 'always' : 'handled'}>
         <AppHeader showBack={toBoolean(showBack)} onBack={onBack} icon={icon} />
@@ -73,6 +72,6 @@ export function FormLayout({
 
 const styles = StyleSheet.create({
   wrapper: { flex: 1 },
-  scroll: { paddingHorizontal: spacing.lg },
-  content: { marginTop: spacing.lg },
+  scroll: { paddingHorizontal: spacing.xxl },
+  content: { marginTop: spacing.lg, paddingHorizontal: spacing.lg },
 });

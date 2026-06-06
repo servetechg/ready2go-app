@@ -61,8 +61,8 @@ export function WeatherScreen() {
 }
 
 const styles = StyleSheet.create({
-  headerPad: { paddingHorizontal: spacing.sm },
-  content: { padding: spacing.sm, paddingBottom: spacing.xxxl },
+  headerPad: {},
+  content: { paddingBottom: spacing.xxxl },
   card: { marginBottom: spacing.lg },
   cardTitle: { marginBottom: spacing.md },
   forecastRow: {

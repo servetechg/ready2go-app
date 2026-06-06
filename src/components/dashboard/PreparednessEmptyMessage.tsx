@@ -24,5 +24,5 @@ export function PreparednessEmptyMessage({ hasSearch }: PreparednessEmptyMessage
 }
 
 const styles = StyleSheet.create({
-  message: { marginVertical: spacing.lg, paddingHorizontal: spacing.md },
+  message: { marginVertical: spacing.lg },
 });

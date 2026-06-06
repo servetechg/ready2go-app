@@ -57,7 +57,7 @@ const styles = StyleSheet.create({
     paddingBottom: spacing.xl,
   },
   inner: {
-    paddingHorizontal: spacing.lg,
+    paddingHorizontal: 0,
     alignItems: 'center',
     borderBottomWidth: 0,
   },

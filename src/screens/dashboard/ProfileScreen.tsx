@@ -142,7 +142,7 @@ export function ProfileScreen() {
 }
 
 const styles = StyleSheet.create({
-  content: { paddingHorizontal: spacing.lg, paddingBottom: spacing.xxxl },
+  content: { paddingBottom: spacing.xxxl },
   tabBarInset: { paddingBottom: 72 },
   profileHeader: {
     flexDirection: 'column',

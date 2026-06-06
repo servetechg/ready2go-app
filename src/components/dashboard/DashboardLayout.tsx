@@ -2,6 +2,7 @@ import React from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import { ScreenWrapper } from '@/components/layout/ScreenWrapper';
+import { spacing } from '@/theme';
 
 import { DashboardTopBar } from './DashboardTopBar';
 
@@ -31,7 +32,7 @@ const TAB_BAR_CLEARANCE = 72;
 
 const styles = StyleSheet.create({
   header: {
-    paddingHorizontal: 0,
+    paddingHorizontal: spacing.sm,
   },
   content: {
     flex: 1,
