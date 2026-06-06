@@ -13,6 +13,8 @@ import {
   DRAWER_ROUTES,
   HOME_STACK_ROUTES,
   MAIN_STACK_ROUTES,
+  PREPAREDNESS_STACK_ROUTES,
+  PROFILE_STACK_ROUTES,
   TAB_ROUTES,
 } from '@/constants/routes';
 import { useAppTheme } from '@/hooks/useAppTheme';
@@ -46,6 +48,36 @@ export function DrawerContent(props: DrawerContentComponentProps) {
       params: {
         screen: TAB_ROUTES.HOME,
         params: { screen: HOME_STACK_ROUTES.HOME },
+      },
+    } as never);
+  };
+
+  const goAlerts = () => {
+    navigation.closeDrawer();
+    navigation.navigate(DRAWER_ROUTES.MAIN, {
+      screen: MAIN_STACK_ROUTES.TABS,
+      params: { screen: TAB_ROUTES.ALERTS },
+    } as never);
+  };
+
+  const goPreparedness = () => {
+    navigation.closeDrawer();
+    navigation.navigate(DRAWER_ROUTES.MAIN, {
+      screen: MAIN_STACK_ROUTES.TABS,
+      params: {
+        screen: TAB_ROUTES.PREPAREDNESS,
+        params: { screen: PREPAREDNESS_STACK_ROUTES.LIST },
+      },
+    } as never);
+  };
+
+  const goProfile = () => {
+    navigation.closeDrawer();
+    navigation.navigate(DRAWER_ROUTES.MAIN, {
+      screen: MAIN_STACK_ROUTES.TABS,
+      params: {
+        screen: TAB_ROUTES.PROFILE,
+        params: { screen: PROFILE_STACK_ROUTES.PROFILE },
       },
     } as never);
   };
@@ -95,6 +127,9 @@ export function DrawerContent(props: DrawerContentComponentProps) {
 
   const menuItems: MenuItem[] = [
     { label: 'Home', icon: 'home', onPress: goHome },
+    { label: 'Alerts', icon: 'warning-outline', onPress: goAlerts },
+    { label: 'Preparedness Guide', icon: 'briefcase-outline', onPress: goPreparedness },
+    { label: 'Profile', icon: 'person-outline', onPress: goProfile },
     {
       label: 'Emergency News',
       icon: 'newspaper-outline',

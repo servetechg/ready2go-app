@@ -19,6 +19,7 @@ import { fieldErrorMessage } from '@/utils/form';
 
 const addLocationSchema = z.object({
   label: z.string().min(1, 'Name is required'),
+  streetAddress: z.string().optional(),
   city: z.string().min(1, 'City is required'),
   state: z.string().min(1, 'State is required'),
   zipCode: z.string().optional(),
@@ -37,9 +38,10 @@ export function AddLocationModal({ visible, onClose, onSave }: AddLocationModalP
   const usePlacesSearch = isPlacesSearchAvailable() && Platform.OS !== 'web';
   const { control, handleSubmit, reset, setValue, watch, formState: { errors } } = useForm<AddLocationFormData>({
     resolver: zodResolver(addLocationSchema),
-    defaultValues: { label: '', city: '', state: '', zipCode: '' },
+    defaultValues: { label: '', streetAddress: '', city: '', state: '', zipCode: '' },
   });
 
+  const streetAddress = watch('streetAddress');
   const city = watch('city');
   const state = watch('state');
   const zipCode = watch('zipCode');
@@ -82,25 +84,39 @@ export function AddLocationModal({ visible, onClose, onSave }: AddLocationModalP
                 />
               )}
             />
+            <Controller
+              control={control}
+              name="streetAddress"
+              render={({ field: { onChange, onBlur, value } }) => (
+                <AppInput
+                  label="Street (optional)"
+                  placeholder="Street address"
+                  value={value ?? ''}
+                  onChangeText={onChange}
+                  onBlur={onBlur}
+                />
+              )}
+            />
             {usePlacesSearch ? (
               <>
                 <PlacesAddressAutocomplete
                   label="Search address"
-                  placeholder="Type an address or city…"
                   onPlaceSelected={(place) => {
+                    setValue('streetAddress', place.streetAddress, { shouldValidate: true });
                     setValue('city', place.city, { shouldValidate: true });
                     setValue('state', place.state, { shouldValidate: true });
                     setValue('zipCode', place.zipCode, { shouldValidate: true });
                   }}
                   onClear={() => {
+                    setValue('streetAddress', '', { shouldValidate: true });
                     setValue('city', '', { shouldValidate: true });
                     setValue('state', '', { shouldValidate: true });
                     setValue('zipCode', '', { shouldValidate: true });
                   }}
                 />
-                {city || state ? (
+                {streetAddress || city || state ? (
                   <AppText variant="bodySmall" color={colors.textSecondary} style={styles.preview}>
-                    {[city, state, zipCode].filter(Boolean).join(', ')}
+                    {[streetAddress, city, state, zipCode].filter(Boolean).join(', ')}
                   </AppText>
                 ) : null}
                 {errors.city?.message || errors.state?.message ? (

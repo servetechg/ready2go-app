@@ -5,12 +5,21 @@ import { StyleSheet, View } from 'react-native';
 import { AppButton } from '@/components/ui/AppButton';
 import { AppText } from '@/components/ui/AppText';
 import { borderRadius, palette, shadows, spacing } from '@/theme';
+import type { DashboardStatus } from '@/types/dashboard';
+import { formatRelativeTime } from '@/utils/formatTimestamp';
 
 interface DisruptionStatusBannerProps {
+  status?: DashboardStatus;
   onViewSituation?: () => void;
 }
 
-export function DisruptionStatusBanner({ onViewSituation }: DisruptionStatusBannerProps) {
+export function DisruptionStatusBanner({ status, onViewSituation }: DisruptionStatusBannerProps) {
+  const headline = status?.headline ?? 'Active disruption in your area';
+  const summary = status?.summary ?? 'Severe weather and flooding reported.';
+  const updatedLabel = status?.updatedAt
+    ? `Updated ${formatRelativeTime(status.updatedAt)}`
+    : null;
+
   return (
     <View style={[styles.banner, shadows.md]}>
       <View style={styles.iconWrap}>
@@ -21,11 +30,16 @@ export function DisruptionStatusBanner({ onViewSituation }: DisruptionStatusBann
       </View>
       <View style={styles.textBlock}>
         <AppText variant="h3" color="#C62828" style={styles.title}>
-          Active disruption in your area
+          {headline}
         </AppText>
         <AppText variant="bodySmall" color={palette.textSecondary}>
-          Severe weather and flooding reported.
+          {summary}
         </AppText>
+        {updatedLabel ? (
+          <AppText variant="caption" color={palette.textMuted}>
+            {updatedLabel}
+          </AppText>
+        ) : null}
         <AppButton
           title="Current Status"
           onPress={onViewSituation}

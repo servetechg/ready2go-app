@@ -10,6 +10,8 @@ export const addressSchema = z.object({
     .min(1, 'ZIP code is required')
     .regex(/^\d{5}(-\d{4})?$/, 'Enter a valid ZIP code'),
   useCurrentLocation: z.boolean(),
+  latitude: z.number().optional(),
+  longitude: z.number().optional(),
 });
 
 export const householdSchema = z.object({

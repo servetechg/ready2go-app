@@ -7,7 +7,7 @@ import { AppText } from '@/components/ui/AppText';
 import { useAppTheme } from '@/hooks/useAppTheme';
 import { usePullToRefresh } from '@/hooks/usePullToRefresh';
 import { useAppDispatch, useAppSelector } from '@/redux/hooks';
-import { loadEmergencyDashboard, markAlertRead, markAllAlertsRead, selectDashboardMode } from '@/redux/slices/dashboardSlice';
+import { fetchHome, markAlertRead, markAllAlertsRead } from '@/redux/slices/dashboardSlice';
 import { palette, spacing } from '@/theme';
 
 function AlertsListHeader({ onMarkAllRead }: { onMarkAllRead: () => void }) {
@@ -43,14 +43,10 @@ function AlertsListHeader({ onMarkAllRead }: { onMarkAllRead: () => void }) {
 export function AlertsScreen() {
   const dispatch = useAppDispatch();
   const { colors } = useAppTheme();
-  const mode = useAppSelector(selectDashboardMode);
   const alerts = useAppSelector((s) => s.dashboard.alerts);
   const searchQuery = useAppSelector((s) => s.dashboard.searchQuery);
 
-  const reload = useCallback(
-    () => dispatch(loadEmergencyDashboard(mode)).unwrap(),
-    [dispatch, mode],
-  );
+  const reload = useCallback(() => dispatch(fetchHome()).unwrap(), [dispatch]);
   const { refreshControlProps } = usePullToRefresh(reload);
 
   const filtered = useMemo(() => {

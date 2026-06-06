@@ -27,8 +27,7 @@ function newLocationId() {
 }
 
 function formatOtherLocationLine(loc: AlertLocation): string {
-  const parts = [loc.city, loc.state, loc.zipCode].filter(Boolean);
-  return parts.join(', ');
+  return [loc.streetAddress, loc.city, loc.state, loc.zipCode].filter(Boolean).join(', ');
 }
 
 export function StepAlertLocationsScreen() {
@@ -63,6 +62,7 @@ export function StepAlertLocationsScreen() {
         {
           id: newLocationId(),
           label: data.label.trim(),
+          streetAddress: data.streetAddress?.trim() ?? '',
           city: data.city.trim(),
           state: data.state,
           zipCode: data.zipCode?.trim() ?? '',

@@ -5,9 +5,22 @@ import { StyleSheet, View } from 'react-native';
 import { AppText } from '@/components/ui/AppText';
 import { useAppTheme } from '@/hooks/useAppTheme';
 import { borderRadius, palette, shadows, spacing } from '@/theme';
+import type { DashboardStatus } from '@/types/dashboard';
+import { formatRelativeTime } from '@/utils/formatTimestamp';
 
-export function BlueSkyStatusBanner() {
+interface BlueSkyStatusBannerProps {
+  status?: DashboardStatus;
+}
+
+export function BlueSkyStatusBanner({ status }: BlueSkyStatusBannerProps) {
   const { colors } = useAppTheme();
+  const headline = status?.headline ?? 'All clear in your area';
+  const summary =
+    status?.summary ??
+    'No active disruptions reported. Emergency news and administrator messages appear below.';
+  const updatedLabel = status?.updatedAt
+    ? `Updated ${formatRelativeTime(status.updatedAt)}`
+    : null;
 
   return (
     <View style={[styles.banner, shadows.md]}>
@@ -16,11 +29,16 @@ export function BlueSkyStatusBanner() {
       </View>
       <View style={styles.textBlock}>
         <AppText variant="h3" color={colors.primary} style={styles.title}>
-          All clear in your area
+          {headline}
         </AppText>
         <AppText variant="bodySmall" color={colors.textSecondary}>
-          No active disruptions reported. Emergency news and administrator messages appear below.
+          {summary}
         </AppText>
+        {updatedLabel ? (
+          <AppText variant="caption" color={colors.textMuted} style={styles.updated}>
+            {updatedLabel}
+          </AppText>
+        ) : null}
       </View>
     </View>
   );
@@ -48,4 +66,5 @@ const styles = StyleSheet.create({
   },
   textBlock: { flex: 1, gap: spacing.xs },
   title: { marginBottom: 2 },
+  updated: { marginTop: spacing.xs },
 });

@@ -1,13 +1,24 @@
-import { buildMockEmergencyDashboard } from '@/constants/emergency';
-import type { DashboardMode, EmergencyDashboardData } from '@/types/emergency';
+import { apiRequest } from '@/services/api/client';
+import type { IncidentLogEntry, MapMarkerPoint } from '@/types/emergency';
 
-/**
- * Static mock today — swap implementations when backend exposes:
- * GET /emergency/dashboard, GET /emergency/news, GET /emergency/incidents, GET /emergency/map
- */
-export async function fetchEmergencyDashboard(
-  mode: DashboardMode,
-): Promise<EmergencyDashboardData> {
-  await new Promise((resolve) => setTimeout(resolve, 120));
-  return buildMockEmergencyDashboard(mode);
+export type EmergencyMapResponse = {
+  mapRegion: {
+    latitude: number;
+    longitude: number;
+    latitudeDelta: number;
+    longitudeDelta: number;
+  };
+  mapMarkers: MapMarkerPoint[];
+};
+
+export async function fetchEmergencyMap(token: string): Promise<EmergencyMapResponse> {
+  return apiRequest<EmergencyMapResponse>('/emergency/map', { token });
+}
+
+export async function fetchEmergencyIncidents(token: string): Promise<IncidentLogEntry[]> {
+  const response = await apiRequest<{ incidents: IncidentLogEntry[] } | IncidentLogEntry[]>(
+    '/emergency/incidents',
+    { token },
+  );
+  return Array.isArray(response) ? response : response.incidents;
 }

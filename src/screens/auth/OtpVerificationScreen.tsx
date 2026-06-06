@@ -9,17 +9,16 @@ import { OtpInput } from '@/components/form/OtpInput';
 import { AuthLayout } from '@/components/layout/AuthLayout';
 import { AppButton } from '@/components/ui/AppButton';
 import { AppText } from '@/components/ui/AppText';
-import { ENV } from '@/constants/env';
 import { AUTH_ROUTES } from '@/constants/routes';
 import { useAppTheme } from '@/hooks/useAppTheme';
 import { useOtpCountdown } from '@/hooks/useOtpCountdown';
 import { useToast } from '@/hooks/useToast';
 import { useAppDispatch, useAppSelector } from '@/redux/hooks';
 import {
-    clearAuthError,
-    clearPendingAuth,
-    sendOtp,
-    verifyOtp,
+  clearAuthError,
+  clearPendingAuth,
+  sendOtp,
+  verifyOtp,
 } from '@/redux/slices/authSlice';
 import { fontFamily, spacing } from '@/theme';
 import type { OtpPurpose } from '@/types/api';
@@ -121,11 +120,11 @@ export function OtpVerificationScreen() {
         </AppText>
       ) : null}
 
-      {ENV.IS_DEV ? (
+      {/* {ENV.IS_DEV ? (
         <AppText variant="caption" color={colors.textMuted} center={true} style={styles.devHint}>
           Dev: check the Next.js server terminal for the OTP code if email is not configured.
         </AppText>
-      ) : null}
+      ) : null} */}
 
       <AppButton
         title={isLoading ? 'Verifying...' : 'VERIFY'}
