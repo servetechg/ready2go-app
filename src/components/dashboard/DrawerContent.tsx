@@ -21,7 +21,7 @@ import { useAppTheme } from '@/hooks/useAppTheme';
 import { useAppDispatch, useAppSelector } from '@/redux/hooks';
 import { logoutUser } from '@/redux/slices/authSlice';
 import { resetRegistration } from '@/redux/slices/registrationSlice';
-import { borderRadius, palette, spacing } from '@/theme';
+import { borderRadius, palette, screenPaddingHorizontal, spacing } from '@/theme';
 import { formatAddressLine } from '@/utils/formatAddress';
 
 type MenuItem = {
@@ -231,7 +231,7 @@ export function DrawerContent(props: DrawerContentComponentProps) {
 
 const styles = StyleSheet.create({
   root: { flex: 1 },
-  scroll: { paddingHorizontal: spacing.xl, paddingBottom: spacing.xxxl },
+  scroll: { paddingHorizontal: screenPaddingHorizontal, paddingBottom: spacing.xxxl },
   closeBtn: {
     position: 'absolute',
     right: spacing.lg,

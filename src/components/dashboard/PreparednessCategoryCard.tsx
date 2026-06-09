@@ -11,15 +11,24 @@ import { preparednessIconName } from '@/utils/preparednessIcons';
 interface PreparednessCategoryCardProps {
   category: PreparednessCategory;
   onPress: () => void;
+  fullWidth?: boolean;
 }
 
-export function PreparednessCategoryCard({ category, onPress }: PreparednessCategoryCardProps) {
+export function PreparednessCategoryCard({
+  category,
+  onPress,
+  fullWidth = false,
+}: PreparednessCategoryCardProps) {
   const { colors } = useAppTheme();
   const iconName = preparednessIconName(category.icon);
 
   return (
     <Pressable
-      style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.borderLight }]}
+      style={[
+        styles.card,
+        fullWidth && styles.cardFullWidth,
+        { backgroundColor: colors.surface, borderColor: colors.borderLight },
+      ]}
       onPress={onPress}>
       <View style={styles.header}>
         <View style={styles.titles}>
@@ -50,6 +59,12 @@ const styles = StyleSheet.create({
     maxWidth: '50%',
     borderRadius: borderRadius.lg,
     padding: spacing.lg,
+  },
+  cardFullWidth: {
+    flex: undefined,
+    minWidth: '100%',
+    maxWidth: '100%',
+    width: '100%',
   },
   header: {
     flexDirection: 'row',

@@ -174,7 +174,6 @@ export function OtpVerificationScreen() {
 
 const styles = StyleSheet.create({
   illustrationWrap: {
-    paddingHorizontal: spacing.lg,
     paddingTop: spacing.xxl,
     alignItems: 'center',
   },

@@ -7,6 +7,10 @@ import type {
 import type { PreparednessCategory } from '@/types/preparedness';
 import type { EmergencyNewsItem, NewsCategory, NewsIconType } from '@/types/emergency';
 import { formatExpiresLabel, formatIssuedAgo } from '@/utils/formatTimestamp';
+import {
+  formatPreparednessText,
+  formatPreparednessTitle,
+} from '@/utils/preparednessLabels';
 
 const PREPAREDNESS_ICON_ALIASES: Record<string, string> = {
   flame: 'flame',
@@ -73,8 +77,8 @@ export function mapPreparednessCategory(category: MobilePreparednessCategory): P
   const iconKey = category.icon.toLowerCase();
   return {
     id: category.id,
-    title: category.title,
-    subtitle: category.subtitle,
+    title: formatPreparednessTitle(category.title, category.id),
+    subtitle: formatPreparednessText(category.subtitle),
     icon: PREPAREDNESS_ICON_ALIASES[iconKey] ?? category.icon,
     taskCount: category.taskCount,
     sortOrder: 0,

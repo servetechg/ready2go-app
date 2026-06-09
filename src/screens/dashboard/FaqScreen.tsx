@@ -29,7 +29,7 @@ export function FaqScreen() {
 }
 
 const styles = StyleSheet.create({
-  headerPad: { paddingHorizontal: spacing.sm },
-  content: { padding: spacing.sm, paddingBottom: spacing.xxxl },
+  headerPad: {},
+  content: { paddingBottom: spacing.xxxl },
   intro: { marginBottom: spacing.xl },
 });

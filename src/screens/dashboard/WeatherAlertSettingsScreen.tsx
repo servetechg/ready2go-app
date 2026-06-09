@@ -55,8 +55,8 @@ export function WeatherAlertSettingsScreen() {
 }
 
 const styles = StyleSheet.create({
-  headerPad: { paddingHorizontal: spacing.sm },
-  content: { padding: spacing.sm, paddingBottom: spacing.xxxl },
+  headerPad: {},
+  content: { paddingBottom: spacing.xxxl },
   intro: { marginBottom: spacing.lg },
   card: { marginBottom: spacing.md },
   row: { flexDirection: 'row', alignItems: 'center', gap: spacing.lg },

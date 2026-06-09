@@ -11,6 +11,9 @@ export const spacing = {
   massive: 48,
 } as const;
 
+/** Standard horizontal inset for screen body/content. */
+export const screenPaddingHorizontal = spacing.lg;
+
 export const borderRadius = {
   sm: 6,
   md: 10,

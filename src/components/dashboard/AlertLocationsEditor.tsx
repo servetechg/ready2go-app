@@ -37,7 +37,7 @@ export function AlertLocationsEditor({
   locations,
   onChange,
   compact = false,
-  maxLocations = 5,
+  maxLocations,
 }: AlertLocationsEditorProps) {
   const { colors } = useAppTheme();
   const usePlacesSearch = isPlacesSearchAvailable() && Platform.OS !== 'web';
@@ -67,7 +67,7 @@ export function AlertLocationsEditor({
 
   const addLocation = () => {
     if (!city.trim() || !state) return;
-    if (locations.length >= maxLocations) return;
+    if (maxLocations !== undefined && locations.length >= maxLocations) return;
     onChange([
       ...locations,
       {
@@ -87,7 +87,7 @@ export function AlertLocationsEditor({
     onChange(locations.filter((loc) => loc.id !== id));
   };
 
-  const atMax = locations.length >= maxLocations;
+  const atMax = maxLocations !== undefined && locations.length >= maxLocations;
 
   return (
     <View style={styles.wrap}>

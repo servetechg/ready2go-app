@@ -181,7 +181,6 @@ const styles = StyleSheet.create({
     resizeMode: 'contain',
   },
   illustrationWrap: {
-    paddingHorizontal: spacing.lg,
     paddingTop: spacing.xxl,
     alignItems: 'center',
   },

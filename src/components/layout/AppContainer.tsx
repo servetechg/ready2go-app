@@ -3,7 +3,7 @@ import { StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useAppTheme } from '@/hooks/useAppTheme';
-import { spacing } from '@/theme';
+import { screenPaddingHorizontal } from '@/theme';
 import { toBoolean } from '@/utils/coerce';
 
 interface AppContainerProps {
@@ -40,5 +40,5 @@ export function AppContainer({
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  padded: { paddingHorizontal: spacing.lg },
+  padded: { paddingHorizontal: screenPaddingHorizontal },
 });

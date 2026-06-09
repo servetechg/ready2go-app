@@ -50,6 +50,21 @@ export const lodgingSchema = z.object({
 });
 
 export type AddressFormData = z.infer<typeof addressSchema>;
+
+export const addressStepSchema = addressSchema.extend({
+  isPrimaryAddress: z
+    .union([z.boolean(), z.null()])
+    .refine((val): val is boolean => val !== null, {
+      message: 'Please select Yes or No',
+    }),
+  allowResidenceInspection: z
+    .union([z.boolean(), z.null()])
+    .refine((val): val is boolean => val !== null, {
+      message: 'Please select Yes or No',
+    }),
+});
+
+export type AddressStepFormData = z.infer<typeof addressStepSchema>;
 export type HouseholdFormData = z.infer<typeof householdSchema>;
 export type YesNoFormData = z.infer<ReturnType<typeof yesNoSchema>>;
 export type LodgingFormData = z.infer<typeof lodgingSchema>;

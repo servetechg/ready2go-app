@@ -8,5 +8,5 @@ export {
   inputHeight,
 } from './typography';
 export { fontFamily as googleSans } from './fonts';
-export { spacing, borderRadius } from './spacing';
+export { spacing, borderRadius, screenPaddingHorizontal } from './spacing';
 export { shadows } from './shadows';

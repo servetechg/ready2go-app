@@ -3,6 +3,7 @@ import { createSlice, PayloadAction } from '@reduxjs/toolkit';
 import { fetchCurrentUser } from '@/redux/slices/authSlice';
 import type { ProfilePayload } from '@/types/api';
 import type { AddressData, AlertLocation, RegistrationState, YesNoStepData } from '@/types/registration';
+import type { ProfileDocumentValue } from '@/types/profileDocument';
 import { initialRegistrationState } from '@/types/registration';
 import { toBoolean } from '@/utils/coerce';
 import {
@@ -25,6 +26,18 @@ function applyProfilePayload(state: RegistrationState, profile: ProfilePayload) 
     selectedOptions: p.lodging.selectedOptions,
     otherDetails: p.lodging.otherDetails ?? '',
   };
+  if (p.isPrimaryAddress !== undefined) {
+    state.isPrimaryAddress = p.isPrimaryAddress;
+  }
+  if (p.allowResidenceInspection !== undefined) {
+    state.allowResidenceInspection = p.allowResidenceInspection;
+  }
+  if (p.proofOfOwnership) {
+    state.proofOfOwnership = p.proofOfOwnership;
+  }
+  if (p.proofOfResidency) {
+    state.proofOfResidency = p.proofOfResidency;
+  }
   if (p.alertLocations) {
     state.alertLocations = pickAlertLocations(p.alertLocations);
   }
@@ -56,6 +69,26 @@ const registrationSlice = createSlice({
     },
     setAddress: (state, action: PayloadAction<AddressData>) => {
       state.address = pickAddressData(action.payload);
+    },
+    setAddressVerification: (
+      state,
+      action: PayloadAction<{
+        isPrimaryAddress?: boolean | null;
+        allowResidenceInspection?: boolean | null;
+      }>,
+    ) => {
+      if (action.payload.isPrimaryAddress !== undefined) {
+        state.isPrimaryAddress = action.payload.isPrimaryAddress;
+      }
+      if (action.payload.allowResidenceInspection !== undefined) {
+        state.allowResidenceInspection = action.payload.allowResidenceInspection;
+      }
+    },
+    setProofOfOwnership: (state, action: PayloadAction<ProfileDocumentValue | null>) => {
+      state.proofOfOwnership = action.payload;
+    },
+    setProofOfResidency: (state, action: PayloadAction<ProfileDocumentValue | null>) => {
+      state.proofOfResidency = action.payload;
     },
     setHouseholdSize: (state, action: PayloadAction<number>) => {
       state.householdSize = coerceHouseholdSize(action.payload);
@@ -115,6 +148,9 @@ export const {
   setNeedsAccount,
   setCurrentStep,
   setAddress,
+  setAddressVerification,
+  setProofOfOwnership,
+  setProofOfResidency,
   setHouseholdSize,
   setAda,
   setMedical,

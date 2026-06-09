@@ -9,13 +9,10 @@ import { PreparednessEmptyMessage } from '@/components/dashboard/PreparednessEmp
 import { AppText } from '@/components/ui/AppText';
 import { PREPAREDNESS_STACK_ROUTES } from '@/constants/routes';
 import { useAppTheme } from '@/hooks/useAppTheme';
-import { usePreparednessCategories } from '@/hooks/usePreparednessCategories';
+import { useHomeDashboard } from '@/hooks/useHomeDashboard';
 import { usePullToRefresh } from '@/hooks/usePullToRefresh';
-import { useAppDispatch, useAppSelector } from '@/redux/hooks';
-import {
-  clearPreparednessCache,
-  fetchCategories,
-} from '@/redux/slices/preparednessSlice';
+import { useAppSelector } from '@/redux/hooks';
+import { selectPreparednessCategories } from '@/redux/slices/dashboardSlice';
 import { spacing } from '@/theme';
 import type { PreparednessStackParamList } from '@/types/navigation';
 import { toBoolean } from '@/utils/coerce';
@@ -27,20 +24,11 @@ type Nav = StackNavigationProp<
 
 export function PreparednessScreen() {
   const navigation = useNavigation<Nav>();
-  const dispatch = useAppDispatch();
   const { colors } = useAppTheme();
   const searchQuery = useAppSelector((s) => s.dashboard.searchQuery);
-  const categories = useAppSelector((s) => s.preparedness.categories);
-  const loading = useAppSelector((s) => s.preparedness.loading);
-  const error = useAppSelector((s) => s.preparedness.error);
+  const categories = useAppSelector(selectPreparednessCategories);
   const profileComplete = toBoolean(useAppSelector((s) => s.auth.user?.profileComplete));
-
-  usePreparednessCategories();
-
-  const reload = async () => {
-    dispatch(clearPreparednessCache());
-    await dispatch(fetchCategories(undefined)).unwrap();
-  };
+  const { home, loading, error, reload } = useHomeDashboard();
   const { refreshControlProps } = usePullToRefresh(reload);
 
   const hasSearch = Boolean(searchQuery.trim());
@@ -55,7 +43,7 @@ export function PreparednessScreen() {
     );
   }, [categories, searchQuery]);
 
-  const showEmpty = !loading && filtered.length === 0;
+  const showEmpty = home && !loading && filtered.length === 0;
 
   return (
     <DashboardLayout>

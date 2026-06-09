@@ -141,8 +141,8 @@ export function LoginScreen() {
 const styles = StyleSheet.create({
   form: {
     flex: 1,
-    padding: spacing.lg,
     paddingTop: spacing.xxl,
+    paddingHorizontal: spacing.md,
   },
   subtitle: { marginTop: spacing.sm, marginBottom: spacing.xl },
   error: { marginBottom: spacing.sm },
