@@ -14,6 +14,7 @@ import { useAppTheme } from '@/hooks/useAppTheme';
 import { useToast } from '@/hooks/useToast';
 import { useAppDispatch, useAppSelector } from '@/redux/hooks';
 import { clearAuthError, signupUser } from '@/redux/slices/authSlice';
+import { notificationService } from '@/services/notification.service';
 import { fontFamily, spacing } from '@/theme';
 import type { AuthStackParamList } from '@/types/navigation';
 import { signupSchema, type SignupFormData } from '@/validations/auth.schemas';
@@ -45,6 +46,9 @@ export function SignupScreen() {
   const onSubmit = async (data: SignupFormData) => {
     const result = await dispatch(signupUser(data));
     if (!signupUser.fulfilled.match(result)) return;
+
+    // Prompt for notification permission on registration submission
+    void notificationService.requestPermissionsAsync();
 
     showSuccess('Verification code sent to your email');
     navigation.navigate(AUTH_ROUTES.OTP_VERIFICATION, {
