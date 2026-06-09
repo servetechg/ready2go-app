@@ -1,4 +1,5 @@
 import type { ProfilePayload } from '@/types/api';
+import type { ProfileDocumentRef, ProfileDocumentValue } from '@/types/profileDocument';
 import type { AddressData, AlertLocation, RegistrationState, YesNoStepData } from '@/types/registration';
 import { initialYesNoStep } from '@/types/registration';
 
@@ -51,6 +52,32 @@ function pickYesNoStep(input: unknown): YesNoStepData {
   };
 }
 
+function pickOptionalBoolean(value: unknown): boolean | null {
+  if (value === null || value === undefined) return null;
+  return Boolean(value);
+}
+
+export function pickProfileDocument(input: unknown): ProfileDocumentValue | null {
+  if (!input || typeof input !== 'object') return null;
+  const raw = input as Record<string, unknown>;
+  if (typeof raw.uri === 'string') {
+    return {
+      uri: raw.uri,
+      name: String(raw.name ?? 'document'),
+      mimeType: String(raw.mimeType ?? 'application/octet-stream'),
+      ...(typeof raw.fileSize === 'number' ? { fileSize: raw.fileSize } : {}),
+    };
+  }
+  if (typeof raw.url === 'string') {
+    return {
+      url: raw.url,
+      fileName: String(raw.fileName ?? raw.name ?? 'document'),
+      ...(typeof raw.mimeType === 'string' ? { mimeType: raw.mimeType } : {}),
+    } satisfies ProfileDocumentRef;
+  }
+  return null;
+}
+
 export function pickAlertLocations(input: unknown): AlertLocation[] {
   if (!Array.isArray(input)) return [];
   return input
@@ -95,6 +122,9 @@ export function normalizeProfilePayload(input: unknown): ProfilePayload | null {
     return null;
   }
 
+  const proofOfOwnership = pickProfileDocument(source.proofOfOwnership);
+  const proofOfResidency = pickProfileDocument(source.proofOfResidency);
+
   return {
     address,
     householdSize: coerceHouseholdSize(source.householdSize),
@@ -103,6 +133,14 @@ export function normalizeProfilePayload(input: unknown): ProfilePayload | null {
     pets: pickYesNoStep(source.pets),
     transport: pickYesNoStep(source.transport),
     lodging: pickLodging(source.lodging),
+    ...(source.isPrimaryAddress !== undefined
+      ? { isPrimaryAddress: Boolean(source.isPrimaryAddress) }
+      : {}),
+    ...(source.allowResidenceInspection !== undefined
+      ? { allowResidenceInspection: Boolean(source.allowResidenceInspection) }
+      : {}),
+    ...(proofOfOwnership ? { proofOfOwnership } : {}),
+    ...(proofOfResidency ? { proofOfResidency } : {}),
   };
 }
 
@@ -117,6 +155,10 @@ export function normalizeRegistrationState(state: RegistrationState): Registrati
     isStarted: Boolean(state.isStarted),
     needsAccount: Boolean(state.needsAccount),
     address: pickAddressData(state.address),
+    isPrimaryAddress: pickOptionalBoolean(state.isPrimaryAddress),
+    allowResidenceInspection: pickOptionalBoolean(state.allowResidenceInspection),
+    proofOfOwnership: pickProfileDocument(state.proofOfOwnership),
+    proofOfResidency: pickProfileDocument(state.proofOfResidency),
     householdSize: coerceHouseholdSize(state.householdSize),
     ada: pickYesNoStep(state.ada),
     medical: pickYesNoStep(state.medical),

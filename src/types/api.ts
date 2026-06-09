@@ -1,4 +1,5 @@
 import type { AddressData, AlertLocation, YesNoStepData } from '@/types/registration';
+import type { ProfileDocumentRef } from '@/types/profileDocument';
 
 /** API error body from `/api/v1` */
 export interface ApiErrorBody {
@@ -83,8 +84,18 @@ export interface ProfilePayload {
   pets: YesNoStepData;
   transport: YesNoStepData;
   lodging: LodgingProfileData;
+  isPrimaryAddress?: boolean;
+  allowResidenceInspection?: boolean;
+  proofOfOwnership?: ProfileDocumentRef | null;
+  proofOfResidency?: ProfileDocumentRef | null;
   /** Optional — backend may add support later */
   alertLocations?: AlertLocation[];
+}
+
+export interface ProfileDocumentUploadResponse {
+  message: string;
+  document: ProfileDocumentRef;
+  profile?: ProfilePayload;
 }
 
 export interface ProfileCompleteRequest {

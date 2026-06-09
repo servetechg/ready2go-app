@@ -46,7 +46,12 @@ export const FAQ_ITEMS: FaqItem[] = [
     question: 'What about fraud?',
     answer:
       'After every major event, a complete audit review will occur and if fraud is identified, appropriate action will be taken based on local/state laws.',
-  },
+    },
+    {
+      id: '8',
+      question: 'Will I be eligible for assistance after every storm?',
+      answer: 'No, Ready2Go will send out a damage assessment survey when criteria is met where a disaster is declared by public sector officials.',
+    }
 ];
 
 export const EMERGENCY_PROFILE_MESSAGE =

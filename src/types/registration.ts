@@ -1,3 +1,5 @@
+import type { ProfileDocumentValue } from '@/types/profileDocument';
+
 export interface AddressData {
   streetAddress: string;
   aptUnit: string;
@@ -32,6 +34,10 @@ export interface RegistrationState {
   isStarted: boolean;
   needsAccount: boolean;
   address: AddressData;
+  isPrimaryAddress: boolean | null;
+  allowResidenceInspection: boolean | null;
+  proofOfOwnership: ProfileDocumentValue | null;
+  proofOfResidency: ProfileDocumentValue | null;
   householdSize: number;
   ada: YesNoStepData;
   medical: YesNoStepData;
@@ -63,6 +69,10 @@ export const initialRegistrationState = (): RegistrationState => ({
     zipCode: '',
     useCurrentLocation: false,
   },
+  isPrimaryAddress: null,
+  allowResidenceInspection: null,
+  proofOfOwnership: null,
+  proofOfResidency: null,
   householdSize: 1,
   ada: initialYesNoStep(),
   medical: initialYesNoStep(),

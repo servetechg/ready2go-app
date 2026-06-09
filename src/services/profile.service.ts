@@ -7,11 +7,28 @@ import type {
   PatchUserResponse,
   ProfileCompleteRequest,
   ProfileCompleteResponse,
+  ProfileDocumentUploadResponse,
   ProfilePayload,
   PutAlertLocationsResponse,
 } from '@/types/api';
 import type { AlertLocation } from '@/types/registration';
 import { toAlertLocationsRequestBody } from '@/utils/profileApi';
+
+export const PROFILE_AVATAR_MAX_BYTES = 2 * 1024 * 1024;
+export const PROFILE_DOCUMENT_MAX_BYTES = 10 * 1024 * 1024;
+
+export type ProfileDocumentKind = 'ownership' | 'residency';
+
+function appendDocumentForm(
+  form: FormData,
+  file: { uri: string; mimeType: string; name: string },
+) {
+  form.append('file', {
+    uri: file.uri,
+    name: file.name,
+    type: file.mimeType,
+  } as unknown as Blob);
+}
 
 export const profileService = {
   async getMe(token: string): Promise<MeResponse> {
@@ -79,6 +96,28 @@ export const profileService = {
       token,
     });
   },
-};
 
-export const PROFILE_AVATAR_MAX_BYTES = 2 * 1024 * 1024;
+  async uploadProfileDocument(
+    token: string,
+    kind: ProfileDocumentKind,
+    file: { uri: string; mimeType: string; name: string },
+  ): Promise<ProfileDocumentUploadResponse> {
+    const form = new FormData();
+    appendDocumentForm(form, file);
+    return apiFormRequest<ProfileDocumentUploadResponse>(
+      `/profile/documents/${kind}`,
+      form,
+      token,
+    );
+  },
+
+  async deleteProfileDocument(
+    token: string,
+    kind: ProfileDocumentKind,
+  ): Promise<ProfileDocumentUploadResponse> {
+    return apiRequest<ProfileDocumentUploadResponse>(`/profile/documents/${kind}`, {
+      method: 'DELETE',
+      token,
+    });
+  },
+};
