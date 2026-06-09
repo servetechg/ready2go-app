@@ -3,46 +3,54 @@ import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import React, { useMemo, useRef, useState } from 'react';
 import {
-  Platform,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  TextInput,
-  View,
+    Platform,
+    Pressable,
+    ScrollView,
+    StyleSheet,
+    TextInput,
+    View,
 } from 'react-native';
 
 import { AlertLocationsEditor } from '@/components/dashboard/AlertLocationsEditor';
-import { FormattedPhoneField } from '@/components/form/FormattedPhoneField';
-import { ProfileAvatarEditor } from '@/components/profile/ProfileAvatarEditor';
 import { AppSelect } from '@/components/form/AppSelect';
+import { FormattedPhoneField } from '@/components/form/FormattedPhoneField';
 import { ScreenWrapper } from '@/components/layout/ScreenWrapper';
+import { AddressVerificationFields } from '@/components/profile/AddressVerificationFields';
+import { ProfileAvatarEditor } from '@/components/profile/ProfileAvatarEditor';
 import { AppText } from '@/components/ui/AppText';
 import { US_STATES } from '@/constants/registration';
 import { PROFILE_STACK_ROUTES } from '@/constants/routes';
 import { useToast } from '@/hooks/useToast';
 import { useAppDispatch, useAppSelector } from '@/redux/hooks';
 import {
-  patchEmergencyProfile,
-  patchUserAccount,
-  saveAlertLocations,
+    patchEmergencyProfile,
+    patchUserAccount,
+    saveAlertLocations,
+    uploadProfileDocument,
 } from '@/redux/thunks/profileThunks';
+import {
+  setAddressVerification,
+  setProofOfOwnership,
+  setProofOfResidency,
+} from '@/redux/slices/registrationSlice';
 import { borderRadius, fontSize, googleSans, inputHeight, palette, spacing } from '@/theme';
 import type { ProfileStackParamList } from '@/types/navigation';
 import type { AlertLocation } from '@/types/registration';
+import type { LocalProfileDocument, ProfileDocumentValue } from '@/types/profileDocument';
 import { getErrorMessage } from '@/utils/error';
 import { sanitizeTextInputProps } from '@/utils/nativeProps';
 import {
-  alertLocationsChanged,
-  buildPatchProfileBody,
-  buildPatchUserBody,
-} from '@/utils/profileApi';
-import {
-  e164ToPhoneDisplay,
-  isCompleteUsPhoneDisplay,
-  isValidPhoneForApi,
-  normalizePhoneForApi,
-  US_PHONE_DISPLAY_PLACEHOLDER,
+    e164ToPhoneDisplay,
+    isCompleteUsPhoneDisplay,
+    isValidPhoneForApi,
+    normalizePhoneForApi,
+    US_PHONE_DISPLAY_PLACEHOLDER,
 } from '@/utils/phone';
+import {
+    alertLocationsChanged,
+    buildPatchProfileBody,
+    buildPatchUserBody,
+} from '@/utils/profileApi';
 
 type Nav = StackNavigationProp<
   ProfileStackParamList,
@@ -50,7 +58,6 @@ type Nav = StackNavigationProp<
 >;
 
 const COUNTRIES = ['United States'] as const;
-const MAX_ALERT_LOCATIONS = 5;
 
 interface EditFieldProps {
   value: string;
@@ -117,10 +124,34 @@ export function EditProfileScreen() {
   const [state, setState] = useState(registration.address.state);
   const [city, setCity] = useState(registration.address.city);
   const [streetAddress, setStreetAddress] = useState(registration.address.streetAddress);
+  const [isPrimaryAddress, setIsPrimaryAddress] = useState<boolean | null>(
+    registration.isPrimaryAddress,
+  );
+  const [allowResidenceInspection, setAllowResidenceInspection] = useState<boolean | null>(
+    registration.allowResidenceInspection,
+  );
+  const [proofOfOwnership, setProofOfOwnershipLocal] = useState<ProfileDocumentValue | null>(
+    registration.proofOfOwnership,
+  );
+  const [proofOfResidency, setProofOfResidencyLocal] = useState<ProfileDocumentValue | null>(
+    registration.proofOfResidency,
+  );
   const [alertLocations, setAlertLocationsLocal] = useState<AlertLocation[]>(
     registration.alertLocations,
   );
   const [saving, setSaving] = useState(false);
+
+  const uploadDocument = async (
+    kind: 'ownership' | 'residency',
+    file: LocalProfileDocument,
+  ): Promise<ProfileDocumentValue | null> => {
+    const result = await dispatch(uploadProfileDocument({ kind, file }));
+    if (uploadProfileDocument.fulfilled.match(result)) {
+      return result.payload.document;
+    }
+    showError(typeof result.payload === 'string' ? result.payload : 'Could not upload document');
+    return null;
+  };
 
   const handleSave = async () => {
     if (!user || !token) {
@@ -137,11 +168,6 @@ export function EditProfileScreen() {
         1,
         Number.parseInt(householdSize, 10) || registration.householdSize,
       );
-
-      if (alertLocations.length > MAX_ALERT_LOCATIONS) {
-        showError('Maximum 5 alert locations allowed');
-        return;
-      }
 
       const phoneTrimmed = phone.trim();
       if (phoneTrimmed && !isCompleteUsPhoneDisplay(phoneTrimmed)) {
@@ -165,13 +191,21 @@ export function EditProfileScreen() {
         city,
         state,
         householdSize: parsedHousehold,
+        isPrimaryAddress,
+        allowResidenceInspection,
       });
       const locationsChanged = alertLocationsChanged(
         alertLocations,
         initialAlertLocations.current,
       );
+      const verificationChanged =
+        isPrimaryAddress !== registration.isPrimaryAddress ||
+        allowResidenceInspection !== registration.allowResidenceInspection;
+      const documentsChanged =
+        proofOfOwnership !== registration.proofOfOwnership ||
+        proofOfResidency !== registration.proofOfResidency;
 
-      if (!accountBody && !profileBody && !locationsChanged) {
+      if (!accountBody && !profileBody && !locationsChanged && !verificationChanged && !documentsChanged) {
         showSuccess('No changes to save');
         navigation.goBack();
         return;
@@ -190,6 +224,15 @@ export function EditProfileScreen() {
           throw new Error(String(result.payload));
         }
       }
+
+      dispatch(
+        setAddressVerification({
+          isPrimaryAddress,
+          allowResidenceInspection,
+        }),
+      );
+      dispatch(setProofOfOwnership(proofOfOwnership));
+      dispatch(setProofOfResidency(proofOfResidency));
 
       if (locationsChanged) {
         const result = await dispatch(saveAlertLocations(alertLocations));
@@ -275,13 +318,25 @@ export function EditProfileScreen() {
               rightIcon={<Ionicons name="locate" size={22} color={palette.tabActive} />}
             />
 
+            <AddressVerificationFields
+              isPrimaryAddress={isPrimaryAddress}
+              allowResidenceInspection={allowResidenceInspection}
+              proofOfOwnership={proofOfOwnership}
+              proofOfResidency={proofOfResidency}
+              onIsPrimaryAddressChange={setIsPrimaryAddress}
+              onAllowInspectionChange={setAllowResidenceInspection}
+              onProofOfOwnershipChange={setProofOfOwnershipLocal}
+              onProofOfResidencyChange={setProofOfResidencyLocal}
+              onUploadOwnership={(file) => uploadDocument('ownership', file)}
+              onUploadResidency={(file) => uploadDocument('residency', file)}
+            />
+
             <View style={styles.alertSection}>
               <AppText variant="label" style={styles.alertSectionTitle}>
                 Other alert locations
               </AppText>
               <AlertLocationsEditor
                 locations={alertLocations}
-                maxLocations={MAX_ALERT_LOCATIONS}
                 onChange={setAlertLocationsLocal}
                 compact={true}
               />

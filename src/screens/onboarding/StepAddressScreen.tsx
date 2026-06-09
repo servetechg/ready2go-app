@@ -1,7 +1,7 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
-import React, { useCallback } from 'react';
+import React, { useCallback, useState } from 'react';
 import { useForm } from 'react-hook-form';
 
 import { AppInput } from '@/components/form/AppInput';
@@ -10,16 +10,26 @@ import {
   AddressPickerScreen,
   type AddressPickerValue,
 } from '@/components/onboarding/AddressPickerScreen';
+import { AddressVerificationFields } from '@/components/profile/AddressVerificationFields';
 import { AppModal } from '@/components/ui/AppModal';
 import { InfoLink } from '@/components/ui/InfoLink';
 import { ADDRESS_WHY_MODAL } from '@/constants/registration';
 import { ONBOARDING_ROUTES } from '@/constants/routes';
+import { useToast } from '@/hooks/useToast';
 import { useAppDispatch, useAppSelector } from '@/redux/hooks';
-import { cancelRegistration, setAddress, setCurrentStep } from '@/redux/slices/registrationSlice';
+import {
+  cancelRegistration,
+  setAddress,
+  setAddressVerification,
+  setCurrentStep,
+  setProofOfOwnership,
+  setProofOfResidency,
+} from '@/redux/slices/registrationSlice';
 import type { OnboardingStackParamList } from '@/types/navigation';
+import type { ProfileDocumentValue } from '@/types/profileDocument';
 import { toBoolean } from '@/utils/coerce';
 import { pickAddressData } from '@/utils/registration';
-import { addressSchema, type AddressFormData } from '@/validations/registration.schemas';
+import { addressStepSchema, type AddressStepFormData } from '@/validations/registration.schemas';
 
 type Nav = StackNavigationProp<
   OnboardingStackParamList,
@@ -29,20 +39,32 @@ type Nav = StackNavigationProp<
 export function StepAddressScreen() {
   const navigation = useNavigation<Nav>();
   const dispatch = useAppDispatch();
-  const address = useAppSelector((s) => s.registration.address);
+  const registration = useAppSelector((s) => s.registration);
+  const { address, isPrimaryAddress, allowResidenceInspection, proofOfOwnership, proofOfResidency } =
+    registration;
   const isStarted = useAppSelector((s) => s.registration.isStarted);
-  const [showAddressWhyModal, setShowAddressWhyModal] = React.useState(false);
+  const [showAddressWhyModal, setShowAddressWhyModal] = useState(false);
+  const [documentErrors, setDocumentErrors] = useState<{
+    proofOfOwnership?: string;
+    proofOfResidency?: string;
+  }>({});
+  const { showError } = useToast();
 
-  const addressDefaults = pickAddressData(address);
+  const addressDefaults = {
+    ...pickAddressData(address),
+    isPrimaryAddress,
+    allowResidenceInspection,
+  };
 
   const {
     handleSubmit,
     setValue,
     watch,
     formState: { errors },
-  } = useForm<AddressFormData>({
-    resolver: zodResolver(addressSchema),
-    defaultValues: addressDefaults,
+  } = useForm<AddressStepFormData>({
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    resolver: zodResolver(addressStepSchema as any),
+    defaultValues: addressDefaults as AddressStepFormData,
   });
 
   const pickerValue: AddressPickerValue = {
@@ -57,7 +79,7 @@ export function StepAddressScreen() {
 
   const handleAddressChange = useCallback(
     (patch: Partial<AddressPickerValue>) => {
-      (Object.entries(patch) as [keyof AddressFormData, AddressFormData[keyof AddressFormData]][]).forEach(
+      (Object.entries(patch) as [keyof AddressStepFormData, AddressStepFormData[keyof AddressStepFormData]][]).forEach(
         ([key, val]) => {
           setValue(key, val, { shouldValidate: true, shouldDirty: true });
         },
@@ -67,12 +89,32 @@ export function StepAddressScreen() {
   );
 
   const onSubmit = useCallback(
-    (data: AddressFormData) => {
+    (data: AddressStepFormData) => {
+      const nextDocErrors: typeof documentErrors = {};
+      if (!proofOfOwnership) {
+        nextDocErrors.proofOfOwnership = 'Upload proof of ownership';
+      }
+      if (!proofOfResidency) {
+        nextDocErrors.proofOfResidency = 'Upload proof of residency';
+      }
+      if (Object.keys(nextDocErrors).length > 0) {
+        setDocumentErrors(nextDocErrors);
+        showError('Please upload both required documents');
+        return;
+      }
+      setDocumentErrors({});
+
       dispatch(setAddress(pickAddressData(data)));
+      dispatch(
+        setAddressVerification({
+          isPrimaryAddress: data.isPrimaryAddress,
+          allowResidenceInspection: data.allowResidenceInspection,
+        }),
+      );
       dispatch(setCurrentStep(2));
       navigation.navigate(ONBOARDING_ROUTES.STEP_ALERT_LOCATIONS);
     },
-    [dispatch, navigation],
+    [dispatch, navigation, proofOfOwnership, proofOfResidency, showError],
   );
 
   const handleBack = () => {
@@ -106,6 +148,33 @@ export function StepAddressScreen() {
           placeholder="Enter Your Apt / Unit (Optional)"
           value={watch('aptUnit') ?? ''}
           onChangeText={(aptUnit) => setValue('aptUnit', aptUnit, { shouldDirty: true })}
+        />
+        <AddressVerificationFields
+              isPrimaryAddress={watch('isPrimaryAddress')}
+              allowResidenceInspection={watch('allowResidenceInspection')}
+              proofOfOwnership={proofOfOwnership}
+              proofOfResidency={proofOfResidency}
+              onIsPrimaryAddressChange={(next) => {
+                setValue('isPrimaryAddress', next, { shouldValidate: true });
+                dispatch(setAddressVerification({ isPrimaryAddress: next }));
+              }}
+              onAllowInspectionChange={(next) => {
+                setValue('allowResidenceInspection', next, { shouldValidate: true });
+                dispatch(setAddressVerification({ allowResidenceInspection: next }));
+              }}
+              onProofOfOwnershipChange={(next: ProfileDocumentValue | null) => {
+                dispatch(setProofOfOwnership(next));
+                if (next) setDocumentErrors((prev) => ({ ...prev, proofOfOwnership: undefined }));
+              }}
+              onProofOfResidencyChange={(next: ProfileDocumentValue | null) => {
+                dispatch(setProofOfResidency(next));
+                if (next) setDocumentErrors((prev) => ({ ...prev, proofOfResidency: undefined }));
+              }}
+              errors={{
+                isPrimaryAddress: errors.isPrimaryAddress?.message,
+                allowResidenceInspection: errors.allowResidenceInspection?.message,
+                ...documentErrors,
+            }}
         />
       </FormLayout>
       <AppModal

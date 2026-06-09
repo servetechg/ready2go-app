@@ -16,6 +16,8 @@ import { useToast } from '@/hooks/useToast';
 import { useAppDispatch, useAppSelector } from '@/redux/hooks';
 import { setUser } from '@/redux/slices/authSlice';
 import { completeRegistration, setLodging } from '@/redux/slices/registrationSlice';
+import { store } from '@/redux/store';
+import { uploadPendingProfileDocuments } from '@/redux/thunks/profileThunks';
 import { profileService } from '@/services/profile.service';
 import { toProfilePayload } from '@/types/profile';
 import type { OnboardingStackParamList } from '@/types/navigation';
@@ -62,8 +64,10 @@ export function StepLodgingScreen() {
     dispatch(setLodging(lodgingData));
 
     try {
+      await uploadPendingProfileDocuments(token, registration, dispatch);
+
       const profile = toProfilePayload({
-        ...registration,
+        ...store.getState().registration,
         lodging: lodgingData,
       });
 

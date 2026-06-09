@@ -49,6 +49,8 @@ export function buildPatchProfileBody(
     city: string;
     state: string;
     householdSize: number;
+    isPrimaryAddress?: boolean | null;
+    allowResidenceInspection?: boolean | null;
   },
 ): Partial<ProfilePayload> | null {
   const nextAddress = pickAddressData({
@@ -67,12 +69,30 @@ export function buildPatchProfileBody(
     nextAddress.aptUnit !== registration.address.aptUnit;
 
   const householdChanged = nextHousehold !== registration.householdSize;
+  const primaryChanged =
+    updates.isPrimaryAddress !== undefined &&
+    updates.isPrimaryAddress !== registration.isPrimaryAddress;
+  const inspectionChanged =
+    updates.allowResidenceInspection !== undefined &&
+    updates.allowResidenceInspection !== registration.allowResidenceInspection;
 
-  if (!addressChanged && !householdChanged) return null;
+  if (!addressChanged && !householdChanged && !primaryChanged && !inspectionChanged) {
+    return null;
+  }
 
   const body: Partial<ProfilePayload> = {};
   if (addressChanged) body.address = nextAddress;
   if (householdChanged) body.householdSize = nextHousehold;
+  if (primaryChanged && updates.isPrimaryAddress !== null && updates.isPrimaryAddress !== undefined) {
+    body.isPrimaryAddress = updates.isPrimaryAddress;
+  }
+  if (
+    inspectionChanged &&
+    updates.allowResidenceInspection !== null &&
+    updates.allowResidenceInspection !== undefined
+  ) {
+    body.allowResidenceInspection = updates.allowResidenceInspection;
+  }
   return body;
 }
 

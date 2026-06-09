@@ -5,9 +5,9 @@ import React, { useCallback, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { AlertLocationsEditor } from '@/components/dashboard/AlertLocationsEditor';
-import { ProfileAvatarDisplay } from '@/components/profile/ProfileAvatarDisplay';
 import { DashboardScreenHeader } from '@/components/dashboard/DashboardTopBar';
 import { ScreenWrapper } from '@/components/layout/ScreenWrapper';
+import { ProfileAvatarDisplay } from '@/components/profile/ProfileAvatarDisplay';
 import { AppCard } from '@/components/ui/AppCard';
 import { AppText } from '@/components/ui/AppText';
 import { EMERGENCY_PROFILE_MESSAGE } from '@/constants/faq';
@@ -21,11 +21,10 @@ import { saveAlertLocations } from '@/redux/thunks/profileThunks';
 import { fontSize, spacing } from '@/theme';
 import type { ProfileStackParamList } from '@/types/navigation';
 import type { AlertLocation } from '@/types/registration';
-import { formatAddressLine } from '@/utils/formatAddress';
+import { getProfileDocumentLabel } from '@/types/profileDocument';
 import { toBoolean } from '@/utils/coerce';
+import { formatAddressLine } from '@/utils/formatAddress';
 import { e164ToPhoneDisplay } from '@/utils/phone';
-
-const MAX_ALERT_LOCATIONS = 5;
 
 function ProfileRow({ label, value }: { label: string; value: string }) {
   return (
@@ -54,10 +53,6 @@ export function ProfileScreen() {
 
   const persistAlertLocations = useCallback(
     async (locations: AlertLocation[]) => {
-      if (locations.length > MAX_ALERT_LOCATIONS) {
-        showError('Maximum 5 alert locations allowed');
-        return;
-      }
       setSavingLocations(true);
       const result = await dispatch(saveAlertLocations(locations));
       setSavingLocations(false);
@@ -100,6 +95,42 @@ export function ProfileScreen() {
               value={user?.phone ? e164ToPhoneDisplay(user.phone) : '—'}
             />
             <ProfileRow label="Home" value={formatAddressLine(registration.address)} />
+            <ProfileRow
+              label="Primary address"
+              value={
+                registration.isPrimaryAddress === null
+                  ? '—'
+                  : registration.isPrimaryAddress
+                    ? 'Yes'
+                    : 'No'
+              }
+            />
+            <ProfileRow
+              label="Residence inspection"
+              value={
+                registration.allowResidenceInspection === null
+                  ? '—'
+                  : registration.allowResidenceInspection
+                    ? 'Allowed'
+                    : 'Not allowed'
+              }
+            />
+            <ProfileRow
+              label="Proof of ownership"
+              value={
+                registration.proofOfOwnership
+                  ? getProfileDocumentLabel(registration.proofOfOwnership)
+                  : '—'
+              }
+            />
+            <ProfileRow
+              label="Proof of residency"
+              value={
+                registration.proofOfResidency
+                  ? getProfileDocumentLabel(registration.proofOfResidency)
+                  : '—'
+              }
+            />
             <ProfileRow label="People" value={String(registration.householdSize)} />
             <ProfileRow label="Status" value={profileComplete ? 'Complete' : 'In progress'} />
           </View>
@@ -131,7 +162,6 @@ export function ProfileScreen() {
           ) : null}
           <AlertLocationsEditor
             locations={registration.alertLocations}
-            maxLocations={MAX_ALERT_LOCATIONS}
             onChange={(locations) => void persistAlertLocations(locations)}
             compact={true}
           />
