@@ -1,5 +1,6 @@
 import { apiRequest } from '@/services/api/client';
-import type { IncidentLogEntry, MapMarkerPoint } from '@/types/emergency';
+import type { IncidentLogEntry, MapMarkerPoint, MapPolygonOverlay } from '@/types/emergency';
+import { normalizeMapMarkers } from '@/utils/mapLayers';
 
 export type EmergencyMapResponse = {
   mapRegion: {
@@ -9,10 +10,16 @@ export type EmergencyMapResponse = {
     longitudeDelta: number;
   };
   mapMarkers: MapMarkerPoint[];
+  mapOverlays?: MapPolygonOverlay[];
 };
 
 export async function fetchEmergencyMap(token: string): Promise<EmergencyMapResponse> {
-  return apiRequest<EmergencyMapResponse>('/emergency/map', { token });
+  const response = await apiRequest<EmergencyMapResponse>('/emergency/map', { token });
+  return {
+    ...response,
+    mapMarkers: normalizeMapMarkers(response.mapMarkers ?? []),
+    mapOverlays: response.mapOverlays ?? [],
+  };
 }
 
 export async function fetchEmergencyIncidents(token: string): Promise<IncidentLogEntry[]> {

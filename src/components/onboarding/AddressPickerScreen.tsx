@@ -6,6 +6,7 @@ import {
   FlatList,
   Platform,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -388,24 +389,27 @@ export function AddressPickerScreen({
                   {searchError}
                 </AppText>
               </View>
-            ) : (
-              <FlatList
-                data={suggestions}
-                keyExtractor={(item) => item.place_id}
-                keyboardShouldPersistTaps="always"
-                nestedScrollEnabled
+            ) : suggestions.length > 0 ? (
+              <ScrollView
                 style={styles.dropdownList}
-                renderItem={({ item }) => (
-                  <SuggestionRow item={item} onSelect={handleSelectSuggestion} colors={colors} />
-                )}
-                ListEmptyComponent={
-                  <View style={styles.dropdownStatus}>
-                    <AppText variant="caption" color={colors.textSecondary}>
-                      No locations found
-                    </AppText>
-                  </View>
-                }
-              />
+                keyboardShouldPersistTaps="always"
+                nestedScrollEnabled={true}
+                showsVerticalScrollIndicator={true}>
+                {suggestions.map((item) => (
+                  <SuggestionRow
+                    key={item.place_id}
+                    item={item}
+                    onSelect={handleSelectSuggestion}
+                    colors={colors}
+                  />
+                ))}
+              </ScrollView>
+            ) : (
+              <View style={styles.dropdownStatus}>
+                <AppText variant="caption" color={colors.textSecondary}>
+                  No locations found
+                </AppText>
+              </View>
             )}
           </View>
         ) : null}

@@ -2,7 +2,7 @@ import { DefaultTheme, NavigationContainer } from '@react-navigation/native';
 import { StatusBar } from 'expo-status-bar';
 import * as SplashScreen from 'expo-splash-screen';
 import React, { useEffect, useState } from 'react';
-import { Platform } from 'react-native';
+import { LogBox, Platform } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { Provider } from 'react-redux';
@@ -12,14 +12,19 @@ import { AppSplashScreen } from '@/components/splash/AppSplashScreen';
 import { SplashReadyView } from '@/components/splash/SplashReadyView';
 import { useAppFonts } from '@/hooks/useAppFonts';
 import { useSessionBootstrap } from '@/hooks/useSessionBootstrap';
+import { useProfileReminder } from '@/hooks/useProfileReminder';
 import { RootNavigator } from '@/navigation';
 import { persistor, store } from '@/redux/store';
+import { initNotificationHandler } from '@/services/notification.service';
 import { palette } from '@/theme';
 import { fontFamily } from '@/theme/fonts';
 import Toast from 'react-native-toast-message';
 import { runStorageMigration } from '@/utils/storageMigration';
 
 SplashScreen.preventAutoHideAsync().catch(() => {});
+
+// Initialize local notification handler for foreground notifications
+initNotificationHandler();
 
 const navTheme = {
   ...DefaultTheme,
@@ -41,6 +46,7 @@ const navTheme = {
 
 function AppNavigation() {
   useSessionBootstrap();
+  useProfileReminder();
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
