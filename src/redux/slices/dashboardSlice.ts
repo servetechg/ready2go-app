@@ -3,16 +3,16 @@ import { createAsyncThunk, createSlice, PayloadAction } from '@reduxjs/toolkit';
 import { DEFAULT_WEATHER_ALERT_PREFERENCES, MOCK_ALERTS } from '@/constants/dashboard';
 import { logoutUser, refreshSession } from '@/redux/slices/authSlice';
 import type { RootState } from '@/redux/store';
+import { isApiClientError } from '@/services/api/errors';
 import { getHome, type HomeQuery } from '@/services/dashboard.service';
 import { fetchEmergencyIncidents, fetchEmergencyMap } from '@/services/emergency.service';
-import { isApiClientError } from '@/services/api/errors';
-import type { DashboardHomeResponse } from '@/types/dashboard';
+import type { DashboardHomeResponse, WeatherAlert, WeatherAlertPreference } from '@/types/dashboard';
 import type { DashboardMode, EmergencyDashboardData } from '@/types/emergency';
-import type { WeatherAlert, WeatherAlertPreference } from '@/types/dashboard';
 import {
-  mapHomeNewsToEmergencyNewsItem,
-  mapPreparednessCategory,
+    mapHomeNewsToEmergencyNewsItem,
+    mapPreparednessCategory,
 } from '@/utils/dashboardMappers';
+import { resolveMapRegion } from '@/utils/mapRegion';
 
 interface DashboardState {
   home: DashboardHomeResponse | null;
@@ -20,7 +20,7 @@ interface DashboardState {
   homeError: string | null;
   lastFetchedAt: number | null;
   unreadAlertsCount: number;
-  /** Map + incident log loaded when mode is cloudy */
+  /** GIS map data — always loaded on Home (markers/overlays heavier in cloudy mode) */
   emergency: EmergencyDashboardData | null;
   emergencyLoading: boolean;
   emergencyError: string | null;
@@ -51,6 +51,7 @@ export type FetchHomeResult = {
 
 async function loadHomeWithToken(
   token: string,
+  getState: () => RootState,
   query?: HomeQuery,
 ): Promise<FetchHomeResult> {
   const home = await getHome(token, {
@@ -59,37 +60,24 @@ async function loadHomeWithToken(
     ...query,
   });
 
-  let emergency: EmergencyDashboardData | null = null;
+  const registration = getState().registration;
+  const isCloudy = home.mode === 'cloudy';
 
-  if (home.mode === 'cloudy') {
-    const [mapData, incidents] = await Promise.all([
-      fetchEmergencyMap(token).catch(() => null),
-      fetchEmergencyIncidents(token).catch(() => [] as EmergencyDashboardData['incidentLog']),
-    ]);
+  const [mapData, incidents] = await Promise.all([
+    fetchEmergencyMap(token).catch(() => null),
+    isCloudy
+      ? fetchEmergencyIncidents(token).catch(() => [] as EmergencyDashboardData['incidentLog'])
+      : Promise.resolve([] as EmergencyDashboardData['incidentLog']),
+  ]);
 
-    if (mapData) {
-      emergency = {
-        mode: 'cloudy',
-        news: home.news.map(mapHomeNewsToEmergencyNewsItem),
-        incidentLog: incidents,
-        mapMarkers: mapData.mapMarkers,
-        mapRegion: mapData.mapRegion,
-      };
-    }
-  } else {
-    emergency = {
-      mode: 'blue_sky',
-      news: home.news.map(mapHomeNewsToEmergencyNewsItem),
-      incidentLog: [],
-      mapMarkers: [],
-      mapRegion: {
-        latitude: 0,
-        longitude: 0,
-        latitudeDelta: 0.08,
-        longitudeDelta: 0.08,
-      },
-    };
-  }
+  const emergency: EmergencyDashboardData = {
+    mode: home.mode,
+    news: home.news.map(mapHomeNewsToEmergencyNewsItem),
+    incidentLog: incidents,
+    mapMarkers: mapData?.mapMarkers ?? [],
+    mapOverlays: mapData?.mapOverlays ?? [],
+    mapRegion: resolveMapRegion(mapData?.mapRegion, registration.address),
+  };
 
   return { home, emergency };
 }
@@ -99,7 +87,7 @@ export const fetchHome = createAsyncThunk<
   HomeQuery | undefined,
   { state: RootState }
 >('dashboard/fetchHome', async (query, { getState, dispatch, rejectWithValue }) => {
-  const run = async (token: string) => loadHomeWithToken(token, query);
+  const run = async (token: string) => loadHomeWithToken(token, getState, query);
 
   let token = getState().auth.token;
   if (!token) return rejectWithValue('Not authenticated');

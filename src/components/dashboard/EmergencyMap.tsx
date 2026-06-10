@@ -1,5 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
-import React, { useCallback, useRef, useState } from 'react';
+import React, { useCallback, useMemo, useRef, useState } from 'react';
 import {
   Modal,
   Platform,
@@ -8,22 +8,25 @@ import {
   View,
   type ViewStyle,
 } from 'react-native';
-import MapView, { Marker, PROVIDER_GOOGLE, type Region } from 'react-native-maps';
+import MapView, { Marker, Polygon, PROVIDER_GOOGLE, type Region } from 'react-native-maps';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { MapLayersPanel } from '@/components/dashboard/MapLayersPanel';
 import { AppCard } from '@/components/ui/AppCard';
 import { AppText } from '@/components/ui/AppText';
 import { ENV } from '@/constants/env';
+import { DEFAULT_GIS_LAYER_STATE } from '@/constants/mapLayers';
 import { useAppTheme } from '@/hooks/useAppTheme';
 import { borderRadius, palette, shadows, spacing } from '@/theme';
-import type { MapMarkerPoint } from '@/types/emergency';
-
-const MARKER_COLORS: Record<MapMarkerPoint['type'], string> = {
-  closure: '#C62828',
-  shelter: '#2E7D32',
-  resource: '#1565C0',
-  hazard: '#ED6C02',
-};
+import type { GisMapLayerId, MapMarkerPoint, MapPolygonOverlay } from '@/types/emergency';
+import {
+  filterMarkersByLayers,
+  filterOverlaysByLayers,
+  getMarkerPinColor,
+  normalizeMapMarkers,
+  overlayColors,
+  resolveMarkerLayer,
+} from '@/utils/mapLayers';
 
 interface EmergencyMapProps {
   region: {
@@ -33,49 +36,61 @@ interface EmergencyMapProps {
     longitudeDelta: number;
   };
   markers: MapMarkerPoint[];
+  overlays?: MapPolygonOverlay[];
+  /** situation = cloudy emergency; area = normal day map centered on user */
+  variant?: 'situation' | 'area';
 }
 
-type MapControlAction = 'zoomIn' | 'zoomOut' | 'recenter' | 'maximize' | 'minimize';
+type MapControlAction = 'zoomIn' | 'zoomOut' | 'recenter' | 'maximize' | 'minimize' | 'layers';
 
 interface MapControlsProps {
   onAction: (action: MapControlAction) => void;
   fullscreen?: boolean;
+  layersOpen?: boolean;
   style?: ViewStyle;
 }
 
-function MapControls({ onAction, fullscreen = false, style }: MapControlsProps) {
+function MapControls({ onAction, fullscreen = false, layersOpen = false, style }: MapControlsProps) {
   const { colors } = useAppTheme();
 
-  const buttons: { action: MapControlAction; icon: keyof typeof Ionicons.glyphMap }[] =
-    fullscreen
-      ? [
-          { action: 'zoomIn', icon: 'add' },
-          { action: 'zoomOut', icon: 'remove' },
-          { action: 'recenter', icon: 'locate' },
-          { action: 'minimize', icon: 'contract' },
-        ]
-      : [
-          { action: 'zoomIn', icon: 'add' },
-          { action: 'zoomOut', icon: 'remove' },
-          { action: 'recenter', icon: 'locate' },
-          { action: 'maximize', icon: 'expand' },
-        ];
+  const buttons: {
+    action: MapControlAction;
+    icon: keyof typeof Ionicons.glyphMap;
+    active?: boolean;
+  }[] = fullscreen
+    ? [
+        { action: 'layers', icon: 'layers-outline', active: layersOpen },
+        { action: 'zoomIn', icon: 'add' },
+        { action: 'zoomOut', icon: 'remove' },
+        { action: 'recenter', icon: 'locate' },
+        { action: 'minimize', icon: 'contract' },
+      ]
+    : [
+        { action: 'layers', icon: 'layers-outline', active: layersOpen },
+        { action: 'zoomIn', icon: 'add' },
+        { action: 'zoomOut', icon: 'remove' },
+        { action: 'recenter', icon: 'locate' },
+        { action: 'maximize', icon: 'expand' },
+      ];
 
   return (
     <View style={[styles.controls, style]}>
-      {buttons.map(({ action, icon }) => (
+      {buttons.map(({ action, icon, active }) => (
         <Pressable
           key={action}
           onPress={() => onAction(action)}
           style={({ pressed }) => [
             styles.controlBtn,
             shadows.sm,
-            { backgroundColor: colors.surface },
+            {
+              backgroundColor: active ? colors.primary : colors.surface,
+              borderColor: active ? colors.primary : palette.borderLight,
+            },
             pressed && styles.controlBtnPressed,
           ]}
           accessibilityRole="button"
           accessibilityLabel={action}>
-          <Ionicons name={icon} size={18} color={colors.text} />
+          <Ionicons name={icon} size={18} color={active ? palette.white : colors.text} />
         </Pressable>
       ))}
     </View>
@@ -85,12 +100,20 @@ function MapControls({ onAction, fullscreen = false, style }: MapControlsProps) 
 interface MapCanvasProps {
   region: Region;
   markers: MapMarkerPoint[];
+  overlays: MapPolygonOverlay[];
   mapRef: React.RefObject<MapView | null>;
   mapStyle: ViewStyle;
   onRegionChangeComplete: (next: Region) => void;
 }
 
-function MapCanvas({ region, markers, mapRef, mapStyle, onRegionChangeComplete }: MapCanvasProps) {
+function MapCanvas({
+  region,
+  markers,
+  overlays,
+  mapRef,
+  mapStyle,
+  onRegionChangeComplete,
+}: MapCanvasProps) {
   return (
     <MapView
       ref={mapRef}
@@ -102,20 +125,40 @@ function MapCanvas({ region, markers, mapRef, mapStyle, onRegionChangeComplete }
       showsCompass={true}
       showsMyLocationButton={false}
       toolbarEnabled={false}>
-      {markers.map((marker) => (
-        <Marker
-          key={marker.id}
-          coordinate={{ latitude: marker.latitude, longitude: marker.longitude }}
-          title={marker.title}
-          description={marker.description}
-          pinColor={MARKER_COLORS[marker.type]}
-        />
-      ))}
+      {overlays.map((overlay) => {
+        const colors = overlayColors(overlay.layer);
+        return (
+          <Polygon
+            key={overlay.id}
+            coordinates={overlay.coordinates}
+            fillColor={overlay.fillColor ?? colors.fill}
+            strokeColor={overlay.strokeColor ?? colors.stroke}
+            strokeWidth={2}
+          />
+        );
+      })}
+      {markers.map((marker) => {
+        const layer = resolveMarkerLayer(marker);
+        return (
+          <Marker
+            key={marker.id}
+            coordinate={{ latitude: marker.latitude, longitude: marker.longitude }}
+            title={marker.title}
+            description={marker.description}
+            pinColor={getMarkerPinColor(layer)}
+          />
+        );
+      })}
     </MapView>
   );
 }
 
-export function EmergencyMap({ region: initialRegion, markers }: EmergencyMapProps) {
+export function EmergencyMap({
+  region: initialRegion,
+  markers,
+  overlays = [],
+  variant = 'situation',
+}: EmergencyMapProps) {
   const { colors } = useAppTheme();
   const insets = useSafeAreaInsets();
   const hasKey = Boolean(ENV.GOOGLE_MAPS_API_KEY);
@@ -123,6 +166,23 @@ export function EmergencyMap({ region: initialRegion, markers }: EmergencyMapPro
   const fullscreenMapRef = useRef<MapView>(null);
   const [mapRegion, setMapRegion] = useState<Region>(initialRegion);
   const [fullscreen, setFullscreen] = useState(false);
+  const [layersOpen, setLayersOpen] = useState(false);
+  const [enabledLayers, setEnabledLayers] =
+    useState<Record<GisMapLayerId, boolean>>(DEFAULT_GIS_LAYER_STATE);
+
+  const normalizedMarkers = useMemo(() => normalizeMapMarkers(markers), [markers]);
+  const visibleMarkers = useMemo(
+    () => filterMarkersByLayers(normalizedMarkers, enabledLayers),
+    [normalizedMarkers, enabledLayers],
+  );
+  const visibleOverlays = useMemo(
+    () => filterOverlaysByLayers(overlays, enabledLayers),
+    [overlays, enabledLayers],
+  );
+
+  const toggleLayer = useCallback((layerId: GisMapLayerId) => {
+    setEnabledLayers((prev) => ({ ...prev, [layerId]: !prev[layerId] }));
+  }, []);
 
   const applyZoom = useCallback(
     (factor: number, ref: React.RefObject<MapView | null>) => {
@@ -155,11 +215,54 @@ export function EmergencyMap({ region: initialRegion, markers }: EmergencyMapPro
           break;
         case 'minimize':
           setFullscreen(false);
+          setLayersOpen(false);
+          break;
+        case 'layers':
+          setLayersOpen((open) => !open);
           break;
       }
     },
     [applyZoom, initialRegion],
   );
+
+  const renderMapSection = (
+    ref: React.RefObject<MapView | null>,
+    mapStyle: ViewStyle,
+    isFullscreen = false,
+  ) => (
+    <View style={isFullscreen ? styles.fullscreenMapWrap : styles.mapWrap}>
+      <MapCanvas
+        region={mapRegion}
+        markers={visibleMarkers}
+        overlays={visibleOverlays}
+        mapRef={ref}
+        mapStyle={mapStyle}
+        onRegionChangeComplete={setMapRegion}
+      />
+      <MapControls
+        fullscreen={isFullscreen}
+        layersOpen={layersOpen}
+        onAction={(action) => handleControl(action, ref)}
+        style={styles.controlsOverlay}
+      />
+      {layersOpen ? (
+        <View style={styles.layersPanelOverlay}>
+          <MapLayersPanel
+            enabledLayers={enabledLayers}
+            onToggleLayer={toggleLayer}
+            onClose={() => setLayersOpen(false)}
+          />
+        </View>
+      ) : null}
+    </View>
+  );
+
+  const isAreaMap = variant === 'area';
+  const mapTitle = isAreaMap ? 'Area map' : 'GIS incident map';
+  const mapSubtitle = isAreaMap
+    ? 'Infrastructure and resources near your registered address. Toggle layers to explore.'
+    : 'Toggle roads, hospitals, shelters, outages, and other infrastructure layers.';
+  const fullscreenTitle = isAreaMap ? 'Area map' : 'Situation map';
 
   if (Platform.OS === 'web') {
     return (
@@ -187,34 +290,12 @@ export function EmergencyMap({ region: initialRegion, markers }: EmergencyMapPro
   return (
     <View>
       <AppText variant="h3" style={styles.title}>
-        GIS incident map
+        {mapTitle}
       </AppText>
       <AppText variant="bodySmall" color={colors.textSecondary} style={styles.subtitle}>
-        Closures, shelters, and hazards in your area (from emergency administrators).
+        {mapSubtitle}
       </AppText>
-      <View style={styles.mapWrap}>
-        <MapCanvas
-          region={mapRegion}
-          markers={markers}
-          mapRef={mapRef}
-          mapStyle={styles.map}
-          onRegionChangeComplete={setMapRegion}
-        />
-        <MapControls
-          onAction={(action) => handleControl(action, mapRef)}
-          style={styles.controlsOverlay}
-        />
-      </View>
-      <View style={styles.legend}>
-        {(['closure', 'shelter', 'hazard', 'resource'] as const).map((type) => (
-          <View key={type} style={styles.legendItem}>
-            <View style={[styles.dot, { backgroundColor: MARKER_COLORS[type] }]} />
-            <AppText variant="caption" color={colors.textSecondary}>
-              {type}
-            </AppText>
-          </View>
-        ))}
-      </View>
+      {renderMapSection(mapRef, styles.map)}
 
       <Modal
         visible={fullscreen}
@@ -223,39 +304,19 @@ export function EmergencyMap({ region: initialRegion, markers }: EmergencyMapPro
         onRequestClose={() => setFullscreen(false)}>
         <View style={[styles.fullscreenRoot, { paddingTop: insets.top }]}>
           <View style={styles.fullscreenHeader}>
-            <AppText variant="h3">Situation map</AppText>
+            <AppText variant="h3">{fullscreenTitle}</AppText>
             <Pressable
-              onPress={() => setFullscreen(false)}
+              onPress={() => {
+                setFullscreen(false);
+                setLayersOpen(false);
+              }}
               style={styles.closeBtn}
               accessibilityRole="button"
               accessibilityLabel="Close map">
               <Ionicons name="close" size={24} color={colors.text} />
             </Pressable>
           </View>
-          <View style={styles.fullscreenMapWrap}>
-            <MapCanvas
-              region={mapRegion}
-              markers={markers}
-              mapRef={fullscreenMapRef}
-              mapStyle={styles.fullscreenMap}
-              onRegionChangeComplete={setMapRegion}
-            />
-            <MapControls
-              fullscreen
-              onAction={(action) => handleControl(action, fullscreenMapRef)}
-              style={styles.controlsOverlay}
-            />
-          </View>
-          <View style={[styles.fullscreenLegend, { paddingBottom: insets.bottom + spacing.md }]}>
-            {(['closure', 'shelter', 'hazard', 'resource'] as const).map((type) => (
-              <View key={type} style={styles.legendItem}>
-                <View style={[styles.dot, { backgroundColor: MARKER_COLORS[type] }]} />
-                <AppText variant="caption" color={colors.textSecondary}>
-                  {type}
-                </AppText>
-              </View>
-            ))}
-          </View>
+          {renderMapSection(fullscreenMapRef, styles.fullscreenMap, true)}
         </View>
       </Modal>
     </View>
@@ -272,11 +333,17 @@ const styles = StyleSheet.create({
     borderColor: palette.borderLight,
     position: 'relative',
   },
-  map: { width: '100%', height: 240 },
+  map: { width: '100%', height: 280 },
   controlsOverlay: {
     position: 'absolute',
     top: spacing.sm,
     right: spacing.sm,
+  },
+  layersPanelOverlay: {
+    position: 'absolute',
+    top: spacing.sm,
+    left: spacing.sm,
+    zIndex: 20,
   },
   controls: {
     gap: spacing.xs,
@@ -288,17 +355,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
-    borderColor: palette.borderLight,
   },
   controlBtnPressed: { opacity: 0.85 },
-  legend: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: spacing.md,
-    marginTop: spacing.md,
-  },
-  legendItem: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
-  dot: { width: 10, height: 10, borderRadius: 5 },
   warnRow: { flexDirection: 'row', gap: spacing.md, alignItems: 'flex-start' },
   warnText: { flex: 1 },
   fullscreenRoot: {
@@ -325,13 +383,4 @@ const styles = StyleSheet.create({
     position: 'relative',
   },
   fullscreenMap: { width: '100%', height: '100%' },
-  fullscreenLegend: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: spacing.md,
-    paddingHorizontal: spacing.lg,
-    paddingTop: spacing.md,
-    borderTopWidth: 1,
-    borderTopColor: palette.borderLight,
-  },
 });

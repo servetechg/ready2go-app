@@ -38,7 +38,29 @@ export interface MapMarkerPoint {
   description?: string;
   latitude: number;
   longitude: number;
-  type: 'closure' | 'shelter' | 'resource' | 'hazard';
+  layer?: GisMapLayerId;
+  /** Legacy API field — mapped to `layer` client-side */
+  type?: 'closure' | 'shelter' | 'resource' | 'hazard';
+}
+
+export type GisMapLayerId =
+  | 'weatherRadar'
+  | 'riskAreas'
+  | 'floodZones'
+  | 'shelters'
+  | 'hospitals'
+  | 'roadClosures'
+  | 'powerOutages'
+  | 'waterIssues'
+  | 'resourceSites'
+  | 'incidentReports';
+
+export interface MapPolygonOverlay {
+  id: string;
+  layer: Extract<GisMapLayerId, 'weatherRadar' | 'riskAreas' | 'floodZones'>;
+  coordinates: Array<{ latitude: number; longitude: number }>;
+  fillColor?: string;
+  strokeColor?: string;
 }
 
 export interface EmergencyDashboardData {
@@ -46,6 +68,7 @@ export interface EmergencyDashboardData {
   news: EmergencyNewsItem[];
   incidentLog: IncidentLogEntry[];
   mapMarkers: MapMarkerPoint[];
+  mapOverlays: MapPolygonOverlay[];
   mapRegion: {
     latitude: number;
     longitude: number;

@@ -26,11 +26,6 @@ SplashScreen.preventAutoHideAsync().catch(() => {});
 // Initialize local notification handler for foreground notifications
 initNotificationHandler();
 
-// Suppress the warning/error overlay related to Expo Go SDK 53+ remote notification restrictions
-LogBox.ignoreLogs([
-  'Android Push notifications (remote notifications) functionality',
-]);
-
 const navTheme = {
   ...DefaultTheme,
   colors: {
