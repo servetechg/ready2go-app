@@ -5,7 +5,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AppText } from '@/components/ui/AppText';
 import { TAB_ROUTES } from '@/constants/routes';
 import { useAppSelector } from '@/redux/hooks';
-import { selectUnreadAlertCount } from '@/redux/slices/dashboardSlice';
+import { selectUnreadAlertCount } from '@/redux/slices/alertsSlice';
 import { borderRadius, fontFamily, palette, shadows, spacing } from '@/theme';
 import { Ionicons } from '@expo/vector-icons';
 import { BottomTabBarProps } from '@react-navigation/bottom-tabs';

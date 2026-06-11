@@ -8,9 +8,11 @@ import {
   View,
   type ViewStyle,
 } from 'react-native';
-import MapView, { Marker, Polygon, PROVIDER_GOOGLE, type Region } from 'react-native-maps';
+import MapView, { Heatmap, Polygon, PROVIDER_GOOGLE, type Region } from 'react-native-maps';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { MapIncidentDetailCard } from '@/components/dashboard/MapIncidentDetailCard';
+import { MapLayerMarker } from '@/components/dashboard/MapLayerMarker';
 import { MapLayersPanel } from '@/components/dashboard/MapLayersPanel';
 import { AppCard } from '@/components/ui/AppCard';
 import { AppText } from '@/components/ui/AppText';
@@ -19,13 +21,14 @@ import { DEFAULT_GIS_LAYER_STATE } from '@/constants/mapLayers';
 import { useAppTheme } from '@/hooks/useAppTheme';
 import { borderRadius, palette, shadows, spacing } from '@/theme';
 import type { GisMapLayerId, MapMarkerPoint, MapPolygonOverlay } from '@/types/emergency';
+import { findNearestMapMarker, heatmapTapThresholdDegrees } from '@/utils/mapGeo';
 import {
-  filterMarkersByLayers,
+  buildHeatmapPoints,
+  filterIncidentMarkersForHeatmap,
   filterOverlaysByLayers,
-  getMarkerPinColor,
+  filterPointMarkersForMap,
   normalizeMapMarkers,
   overlayColors,
-  resolveMarkerLayer,
 } from '@/utils/mapLayers';
 
 interface EmergencyMapProps {
@@ -37,7 +40,6 @@ interface EmergencyMapProps {
   };
   markers: MapMarkerPoint[];
   overlays?: MapPolygonOverlay[];
-  /** situation = cloudy emergency; area = normal day map centered on user */
   variant?: 'situation' | 'area';
 }
 
@@ -99,32 +101,59 @@ function MapControls({ onAction, fullscreen = false, layersOpen = false, style }
 
 interface MapCanvasProps {
   region: Region;
-  markers: MapMarkerPoint[];
+  pointMarkers: MapMarkerPoint[];
+  incidentMarkers: MapMarkerPoint[];
+  heatmapPoints: Array<{ latitude: number; longitude: number; weight: number }>;
   overlays: MapPolygonOverlay[];
   mapRef: React.RefObject<MapView | null>;
   mapStyle: ViewStyle;
   onRegionChangeComplete: (next: Region) => void;
+  onIncidentTap: (incident: MapMarkerPoint | null) => void;
+  showTraffic?: boolean;
 }
 
 function MapCanvas({
   region,
-  markers,
+  pointMarkers,
+  incidentMarkers,
+  heatmapPoints,
   overlays,
   mapRef,
   mapStyle,
   onRegionChangeComplete,
+  onIncidentTap,
+  showTraffic = false,
 }: MapCanvasProps) {
+  const useGoogleProvider = Platform.OS !== 'web' && Boolean(ENV.GOOGLE_MAPS_API_KEY);
+
+  const handleMapPress = useCallback(
+    (event: { nativeEvent: { coordinate: { latitude: number; longitude: number } } }) => {
+      if (incidentMarkers.length === 0) {
+        onIncidentTap(null);
+        return;
+      }
+      const { latitude, longitude } = event.nativeEvent.coordinate;
+      const threshold = heatmapTapThresholdDegrees(region.latitudeDelta, region.longitudeDelta);
+      const nearest = findNearestMapMarker(incidentMarkers, latitude, longitude, threshold);
+      onIncidentTap(nearest);
+    },
+    [incidentMarkers, onIncidentTap, region.latitudeDelta, region.longitudeDelta],
+  );
+
   return (
     <MapView
       ref={mapRef}
       style={mapStyle}
-      provider={Platform.OS === 'android' ? PROVIDER_GOOGLE : undefined}
+      provider={useGoogleProvider ? PROVIDER_GOOGLE : undefined}
       initialRegion={region}
       onRegionChangeComplete={onRegionChangeComplete}
+      onPress={handleMapPress}
       showsUserLocation={true}
       showsCompass={true}
       showsMyLocationButton={false}
-      toolbarEnabled={false}>
+      showsTraffic={showTraffic}
+      toolbarEnabled={false}
+      mapType="standard">
       {overlays.map((overlay) => {
         const colors = overlayColors(overlay.layer);
         return (
@@ -137,18 +166,21 @@ function MapCanvas({
           />
         );
       })}
-      {markers.map((marker) => {
-        const layer = resolveMarkerLayer(marker);
-        return (
-          <Marker
-            key={marker.id}
-            coordinate={{ latitude: marker.latitude, longitude: marker.longitude }}
-            title={marker.title}
-            description={marker.description}
-            pinColor={getMarkerPinColor(layer)}
-          />
-        );
-      })}
+      {heatmapPoints.length > 0 && useGoogleProvider ? (
+        <Heatmap
+          points={heatmapPoints}
+          radius={40}
+          opacity={0.75}
+          gradient={{
+            colors: ['#4CAF50', '#FFEB3B', '#FF5722', '#B71C1C'],
+            startPoints: [0.1, 0.35, 0.65, 1.0],
+            colorMapSize: 256,
+          }}
+        />
+      ) : null}
+      {pointMarkers.map((marker) => (
+        <MapLayerMarker key={marker.id} marker={marker} />
+      ))}
     </MapView>
   );
 }
@@ -167,21 +199,36 @@ export function EmergencyMap({
   const [mapRegion, setMapRegion] = useState<Region>(initialRegion);
   const [fullscreen, setFullscreen] = useState(false);
   const [layersOpen, setLayersOpen] = useState(false);
+  const [selectedIncident, setSelectedIncident] = useState<MapMarkerPoint | null>(null);
   const [enabledLayers, setEnabledLayers] =
     useState<Record<GisMapLayerId, boolean>>(DEFAULT_GIS_LAYER_STATE);
 
   const normalizedMarkers = useMemo(() => normalizeMapMarkers(markers), [markers]);
-  const visibleMarkers = useMemo(
-    () => filterMarkersByLayers(normalizedMarkers, enabledLayers),
+  const pointMarkers = useMemo(
+    () => filterPointMarkersForMap(normalizedMarkers, enabledLayers),
+    [normalizedMarkers, enabledLayers],
+  );
+  const incidentMarkers = useMemo(
+    () => filterIncidentMarkersForHeatmap(normalizedMarkers, enabledLayers),
+    [normalizedMarkers, enabledLayers],
+  );
+  const heatmapPoints = useMemo(
+    () => buildHeatmapPoints(normalizedMarkers, enabledLayers),
     [normalizedMarkers, enabledLayers],
   );
   const visibleOverlays = useMemo(
     () => filterOverlaysByLayers(overlays, enabledLayers),
     [overlays, enabledLayers],
   );
+  const showTraffic = enabledLayers.roadClosures;
+
+  const handleIncidentTap = useCallback((incident: MapMarkerPoint | null) => {
+    setSelectedIncident(incident);
+  }, []);
 
   const toggleLayer = useCallback((layerId: GisMapLayerId) => {
     setEnabledLayers((prev) => ({ ...prev, [layerId]: !prev[layerId] }));
+    setSelectedIncident(null);
   }, []);
 
   const applyZoom = useCallback(
@@ -209,6 +256,7 @@ export function EmergencyMap({
         case 'recenter':
           setMapRegion(initialRegion);
           ref.current?.animateToRegion(initialRegion, 300);
+          setSelectedIncident(null);
           break;
         case 'maximize':
           setFullscreen(true);
@@ -216,6 +264,7 @@ export function EmergencyMap({
         case 'minimize':
           setFullscreen(false);
           setLayersOpen(false);
+          setSelectedIncident(null);
           break;
         case 'layers':
           setLayersOpen((open) => !open);
@@ -233,11 +282,15 @@ export function EmergencyMap({
     <View style={isFullscreen ? styles.fullscreenMapWrap : styles.mapWrap}>
       <MapCanvas
         region={mapRegion}
-        markers={visibleMarkers}
+        pointMarkers={pointMarkers}
+        incidentMarkers={incidentMarkers}
+        heatmapPoints={heatmapPoints}
         overlays={visibleOverlays}
         mapRef={ref}
         mapStyle={mapStyle}
         onRegionChangeComplete={setMapRegion}
+        onIncidentTap={handleIncidentTap}
+        showTraffic={showTraffic}
       />
       <MapControls
         fullscreen={isFullscreen}
@@ -254,14 +307,20 @@ export function EmergencyMap({
           />
         </View>
       ) : null}
+      {selectedIncident ? (
+        <MapIncidentDetailCard
+          incident={selectedIncident}
+          onClose={() => setSelectedIncident(null)}
+        />
+      ) : null}
     </View>
   );
 
   const isAreaMap = variant === 'area';
   const mapTitle = isAreaMap ? 'Area map' : 'GIS incident map';
   const mapSubtitle = isAreaMap
-    ? 'Infrastructure and resources near your registered address. Toggle layers to explore.'
-    : 'Toggle roads, hospitals, shelters, outages, and other infrastructure layers.';
+    ? 'Tap the heatmap for incident details. Layer pins show hospitals, shelters, and resources.'
+    : 'Tap heat areas for incident info. Toggle layers for traffic, flood zones, hospitals, and more.';
   const fullscreenTitle = isAreaMap ? 'Area map' : 'Situation map';
 
   if (Platform.OS === 'web') {
@@ -309,6 +368,7 @@ export function EmergencyMap({
               onPress={() => {
                 setFullscreen(false);
                 setLayersOpen(false);
+                setSelectedIncident(null);
               }}
               style={styles.closeBtn}
               accessibilityRole="button"

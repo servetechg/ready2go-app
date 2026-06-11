@@ -1,12 +1,12 @@
-import { createAsyncThunk, createSlice, PayloadAction } from '@reduxjs/toolkit';
+import { createAsyncThunk, createSelector, createSlice, PayloadAction } from '@reduxjs/toolkit';
 
-import { DEFAULT_WEATHER_ALERT_PREFERENCES, MOCK_ALERTS } from '@/constants/dashboard';
+import { DEFAULT_WEATHER_ALERT_PREFERENCES } from '@/constants/dashboard';
 import { logoutUser, refreshSession } from '@/redux/slices/authSlice';
 import type { RootState } from '@/redux/store';
 import { isApiClientError } from '@/services/api/errors';
 import { getHome, type HomeQuery } from '@/services/dashboard.service';
 import { fetchEmergencyIncidents, fetchEmergencyMap } from '@/services/emergency.service';
-import type { DashboardHomeResponse, WeatherAlert, WeatherAlertPreference } from '@/types/dashboard';
+import type { DashboardHomeResponse, WeatherAlertPreference } from '@/types/dashboard';
 import type { DashboardMode, EmergencyDashboardData } from '@/types/emergency';
 import {
     mapHomeNewsToEmergencyNewsItem,
@@ -24,8 +24,6 @@ interface DashboardState {
   emergency: EmergencyDashboardData | null;
   emergencyLoading: boolean;
   emergencyError: string | null;
-  /** Alerts tab still uses this slice until Alerts tab API integration */
-  alerts: WeatherAlert[];
   weatherAlertPreferences: WeatherAlertPreference[];
   searchQuery: string;
 }
@@ -39,7 +37,6 @@ const initialState: DashboardState = {
   emergency: null,
   emergencyLoading: false,
   emergencyError: null,
-  alerts: MOCK_ALERTS,
   weatherAlertPreferences: DEFAULT_WEATHER_ALERT_PREFERENCES,
   searchQuery: '',
 };
@@ -72,8 +69,8 @@ async function loadHomeWithToken(
 
   const emergency: EmergencyDashboardData = {
     mode: home.mode,
-    news: home.news.map(mapHomeNewsToEmergencyNewsItem),
-    incidentLog: incidents,
+    news: (home.news ?? []).map(mapHomeNewsToEmergencyNewsItem),
+    incidentLog: incidents ?? [],
     mapMarkers: mapData?.mapMarkers ?? [],
     mapOverlays: mapData?.mapOverlays ?? [],
     mapRegion: resolveMapRegion(mapData?.mapRegion, registration.address),
@@ -110,15 +107,6 @@ export const fetchHome = createAsyncThunk<
   }
 });
 
-/** @deprecated Use fetchHome — kept for AlertsScreen pull-to-refresh until Alerts tab integration */
-export const loadEmergencyDashboard = createAsyncThunk<
-  FetchHomeResult,
-  DashboardMode | undefined,
-  { state: RootState }
->('dashboard/loadEmergencyDashboard', async (_, { dispatch }) => {
-  return dispatch(fetchHome()).unwrap();
-});
-
 function getErrorMessage(error: unknown): string {
   if (isApiClientError(error)) return error.message;
   if (error instanceof Error) return error.message;
@@ -131,19 +119,6 @@ const dashboardSlice = createSlice({
   reducers: {
     setSearchQuery: (state, action: PayloadAction<string>) => {
       state.searchQuery = action.payload;
-    },
-    markAlertRead: (state, action: PayloadAction<string>) => {
-      const alert = state.alerts.find((a) => a.id === action.payload);
-      if (alert) alert.read = true;
-      if (state.unreadAlertsCount > 0) {
-        state.unreadAlertsCount = Math.max(0, state.unreadAlertsCount - 1);
-      }
-    },
-    markAllAlertsRead: (state) => {
-      state.alerts.forEach((a) => {
-        a.read = true;
-      });
-      state.unreadAlertsCount = 0;
     },
     toggleWeatherAlertPreference: (state, action: PayloadAction<string>) => {
       const pref = state.weatherAlertPreferences.find((p) => p.id === action.payload);
@@ -190,15 +165,10 @@ const dashboardSlice = createSlice({
 
 export const {
   setSearchQuery,
-  markAlertRead,
-  markAllAlertsRead,
   toggleWeatherAlertPreference,
   setWeatherAlertPreference,
   clearDashboard,
 } = dashboardSlice.actions;
-
-export const selectUnreadAlertCount = (state: { dashboard: DashboardState }) =>
-  state.dashboard.unreadAlertsCount;
 
 export const selectDashboardMode = (state: { dashboard: DashboardState }): DashboardMode =>
   state.dashboard.home?.mode ?? 'blue_sky';
@@ -206,7 +176,9 @@ export const selectDashboardMode = (state: { dashboard: DashboardState }): Dashb
 export const selectIsCloudyDay = (state: { dashboard: DashboardState }) =>
   selectDashboardMode(state) === 'cloudy';
 
-export const selectPreparednessCategories = (state: { dashboard: DashboardState }) =>
-  (state.dashboard.home?.preparednessCategories ?? []).map(mapPreparednessCategory);
+export const selectPreparednessCategories = createSelector(
+  [(state: RootState) => state.dashboard.home?.preparednessCategories],
+  (categories) => (categories ?? []).map(mapPreparednessCategory),
+);
 
 export default dashboardSlice.reducer;

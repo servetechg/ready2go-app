@@ -1,10 +1,40 @@
-import { Platform } from 'react-native';
-import * as Device from 'expo-device';
-import * as Notifications from 'expo-notifications';
 import Constants from 'expo-constants';
+import * as Device from 'expo-device';
+import { Platform } from 'react-native';
 
-// Set up the foreground notification handler
-export function initNotificationHandler() {
+import {
+  canUseNotifications,
+  getNotificationLimitationReason,
+} from '@/utils/notification-capability';
+
+type NotificationsModule = typeof import('expo-notifications');
+
+let notificationsModule: NotificationsModule | null = null;
+let handlerInitialized = false;
+
+async function getNotifications(): Promise<NotificationsModule | null> {
+  if (!canUseNotifications()) return null;
+  if (!notificationsModule) {
+    notificationsModule = await import('expo-notifications');
+  }
+  return notificationsModule;
+}
+
+export function isNotificationsAvailable(): boolean {
+  return canUseNotifications();
+}
+
+export function getNotificationsUnavailableReason(): string | null {
+  return getNotificationLimitationReason();
+}
+
+/** Set up foreground notification display (dev build / standalone only). */
+export async function initNotificationHandler(): Promise<void> {
+  if (!canUseNotifications() || handlerInitialized) return;
+
+  const Notifications = await getNotifications();
+  if (!Notifications) return;
+
   Notifications.setNotificationHandler({
     handleNotification: async () => ({
       shouldShowAlert: true,
@@ -14,6 +44,7 @@ export function initNotificationHandler() {
       shouldShowList: true,
     }),
   });
+  handlerInitialized = true;
 }
 
 export const PROFILE_REMINDER_ID = 'profile-incomplete-reminder';
@@ -24,11 +55,11 @@ export const notificationService = {
    * Returns true if permission is granted, false otherwise.
    */
   async requestPermissionsAsync(): Promise<boolean> {
-    if (Platform.OS === 'web') {
-      return false;
-    }
+    if (!canUseNotifications()) return false;
 
-    // Android requires a notification channel to display notifications
+    const Notifications = await getNotifications();
+    if (!Notifications) return false;
+
     if (Platform.OS === 'android') {
       await Notifications.setNotificationChannelAsync('default', {
         name: 'default',
@@ -39,8 +70,11 @@ export const notificationService = {
     }
 
     if (!Device.isDevice) {
-      console.warn('Push notification permissions check skipped: Must run on physical device or custom build.');
-      // Return true in development to allow testing local notifications
+      if (__DEV__) {
+        console.warn(
+          'Push notification permissions check skipped: use a physical device or custom build.',
+        );
+      }
       return true;
     }
 
@@ -60,9 +94,12 @@ export const notificationService = {
    * Safe to call on simulator (returns null).
    */
   async getExpoPushTokenAsync(): Promise<string | null> {
-    if (Platform.OS === 'web' || !Device.isDevice) {
+    if (!canUseNotifications() || !Device.isDevice) {
       return null;
     }
+
+    const Notifications = await getNotifications();
+    if (!Notifications) return null;
 
     try {
       const hasPermission = await this.requestPermissionsAsync();
@@ -71,8 +108,7 @@ export const notificationService = {
       }
 
       const projectId =
-        Constants.expoConfig?.extra?.eas?.projectId ??
-        Constants.easConfig?.projectId;
+        Constants.expoConfig?.extra?.eas?.projectId ?? Constants.easConfig?.projectId;
 
       const token = await Notifications.getExpoPushTokenAsync({
         projectId,
@@ -80,26 +116,29 @@ export const notificationService = {
 
       return token.data;
     } catch (error) {
-      console.error('Failed to get Expo push token:', error);
+      if (__DEV__) {
+        console.error('Failed to get Expo push token:', error);
+      }
       return null;
     }
   },
 
   /**
    * Schedule the local profile completion reminder.
-   * If a notification with the same identifier is already scheduled, it is updated (effectively resetting the timer).
-   * @param delaySeconds The delay in seconds before triggering (default 1 hour = 3600 seconds)
+   * Uses a fixed identifier so rescheduling resets the timer.
    */
   async scheduleProfileReminder(delaySeconds: number = 3600): Promise<string | null> {
+    if (!canUseNotifications()) return null;
+
+    const Notifications = await getNotifications();
+    if (!Notifications) return null;
+
     try {
-      // First ensure we have permissions
       const hasPermission = await this.requestPermissionsAsync();
       if (!hasPermission) {
-        console.warn('Permissions not granted for notifications. Skipping scheduling.');
         return null;
       }
 
-      // Schedule the notification with the fixed identifier
       const id = await Notifications.scheduleNotificationAsync({
         identifier: PROFILE_REMINDER_ID,
         content: {
@@ -115,34 +154,41 @@ export const notificationService = {
         } as Notifications.TimeIntervalTriggerInput,
       });
 
-      console.log(`Scheduled profile completion reminder for ${delaySeconds} seconds. ID: ${id}`);
       return id;
     } catch (error) {
-      console.error('Failed to schedule profile reminder:', error);
+      if (__DEV__) {
+        console.error('Failed to schedule profile reminder:', error);
+      }
       return null;
     }
   },
 
-  /**
-   * Cancel the profile reminder notification if it has been scheduled.
-   */
+  /** Cancel the profile reminder notification if one exists. */
   async cancelProfileReminder(): Promise<void> {
+    if (!canUseNotifications()) return;
+
+    const Notifications = await getNotifications();
+    if (!Notifications) return;
+
     try {
       await Notifications.cancelScheduledNotificationAsync(PROFILE_REMINDER_ID);
-      console.log('Cancelled profile incomplete reminder notification.');
     } catch (error) {
-      console.error('Failed to cancel profile reminder:', error);
+      if (__DEV__) {
+        console.error('Failed to cancel profile reminder:', error);
+      }
     }
   },
 
-  /**
-   * Send an immediate test notification for developer verification.
-   */
+  /** Send an immediate test notification for developer verification. */
   async sendImmediateTestNotification(): Promise<string | null> {
+    if (!canUseNotifications()) return null;
+
+    const Notifications = await getNotifications();
+    if (!Notifications) return null;
+
     try {
       const hasPermission = await this.requestPermissionsAsync();
       if (!hasPermission) {
-        console.warn('Permissions not granted for notifications. Skipping test notification.');
         return null;
       }
 
@@ -152,13 +198,14 @@ export const notificationService = {
           body: 'This is a test notification. Complete your profile to ensure we can help you when needed.',
           sound: true,
         },
-        trigger: null, // null triggers immediately
+        trigger: null,
       });
 
-      console.log(`Sent immediate test notification. ID: ${id}`);
       return id;
     } catch (error) {
-      console.error('Failed to send immediate notification:', error);
+      if (__DEV__) {
+        console.error('Failed to send immediate notification:', error);
+      }
       return null;
     }
   },

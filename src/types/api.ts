@@ -19,6 +19,8 @@ export interface ApiUser {
   profilePic?: string;
   emailVerified: boolean;
   profileComplete: boolean;
+  /** ISO timestamp from signup — drives incomplete-profile reminder delay */
+  createdAt?: string;
 }
 
 export interface AvatarResponse {
@@ -75,6 +77,15 @@ export interface LodgingProfileData {
   otherDetails?: string;
 }
 
+/** Alert location row sent to / received from the API (no street address). */
+export interface AlertLocationPayload {
+  id?: string;
+  label: string;
+  city: string;
+  state: string;
+  zipCode?: string;
+}
+
 /** Body for `POST /profile/complete` */
 export interface ProfilePayload {
   address: AddressData;
@@ -88,8 +99,7 @@ export interface ProfilePayload {
   allowResidenceInspection?: boolean;
   proofOfOwnership?: ProfileDocumentRef | null;
   proofOfResidency?: ProfileDocumentRef | null;
-  /** Optional — backend may add support later */
-  alertLocations?: AlertLocation[];
+  alertLocations?: AlertLocationPayload[];
 }
 
 export interface ProfileDocumentUploadResponse {

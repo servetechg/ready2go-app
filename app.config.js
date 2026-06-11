@@ -43,6 +43,13 @@ module.exports = {
         },
       ],
       [
+        'expo-notifications',
+        {
+          icon: './assets/images/icon.png',
+          color: '#1B4F8A',
+        },
+      ],
+      [
         'expo-build-properties',
         {
           android: {
@@ -60,6 +67,9 @@ module.exports = {
     ],
     extra: {
       ...appJson.expo.extra,
+      eas: {
+        projectId: 'fa398a3b-4d43-4415-8e4b-a4144bff2906',
+      },
       googleMapsApiKey,
     },
   },

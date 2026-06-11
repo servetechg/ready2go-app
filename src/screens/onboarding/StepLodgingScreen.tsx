@@ -14,12 +14,8 @@ import { ONBOARDING_ROUTES } from '@/constants/routes';
 import { useAppTheme } from '@/hooks/useAppTheme';
 import { useToast } from '@/hooks/useToast';
 import { useAppDispatch, useAppSelector } from '@/redux/hooks';
-import { setUser } from '@/redux/slices/authSlice';
-import { completeRegistration, setLodging } from '@/redux/slices/registrationSlice';
-import { store } from '@/redux/store';
-import { uploadPendingProfileDocuments } from '@/redux/thunks/profileThunks';
-import { profileService } from '@/services/profile.service';
-import { toProfilePayload } from '@/types/profile';
+import { setLodging } from '@/redux/slices/registrationSlice';
+import { completeOnboarding } from '@/redux/thunks/profileThunks';
 import type { OnboardingStackParamList } from '@/types/navigation';
 import { getErrorMessage } from '@/utils/error';
 import { lodgingSchema, type LodgingFormData } from '@/validations/registration.schemas';
@@ -33,7 +29,6 @@ export function StepLodgingScreen() {
   const navigation = useNavigation<Nav>();
   const dispatch = useAppDispatch();
   const lodging = useAppSelector((s) => s.registration.lodging);
-  const registration = useAppSelector((s) => s.registration);
   const token = useAppSelector((s) => s.auth.token);
   const { colors } = useAppTheme();
   const { showSuccess, showError } = useToast();
@@ -64,16 +59,11 @@ export function StepLodgingScreen() {
     dispatch(setLodging(lodgingData));
 
     try {
-      await uploadPendingProfileDocuments(token, registration, dispatch);
-
-      const profile = toProfilePayload({
-        ...store.getState().registration,
-        lodging: lodgingData,
-      });
-
-      const response = await profileService.completeProfile({ profile }, token);
-      dispatch(setUser(response.user));
-      dispatch(completeRegistration());
+      const result = await dispatch(completeOnboarding(lodgingData));
+      if (!completeOnboarding.fulfilled.match(result)) {
+        showError(String(result.payload ?? 'Could not save profile'));
+        return;
+      }
       showSuccess('Registration complete!');
     } catch (error) {
       showError(getErrorMessage(error, 'Could not save profile'));

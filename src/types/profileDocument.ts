@@ -2,6 +2,9 @@ export interface ProfileDocumentRef {
   url: string;
   fileName: string;
   mimeType?: string;
+  /** Returned by upload API; used server-side for cleanup */
+  publicId?: string;
+  resourceType?: 'image' | 'raw';
 }
 
 export interface LocalProfileDocument {

@@ -125,6 +125,8 @@ export function normalizeProfilePayload(input: unknown): ProfilePayload | null {
   const proofOfOwnership = pickProfileDocument(source.proofOfOwnership);
   const proofOfResidency = pickProfileDocument(source.proofOfResidency);
 
+  const alertLocations = pickAlertLocations(source.alertLocations);
+
   return {
     address,
     householdSize: coerceHouseholdSize(source.householdSize),
@@ -133,14 +135,15 @@ export function normalizeProfilePayload(input: unknown): ProfilePayload | null {
     pets: pickYesNoStep(source.pets),
     transport: pickYesNoStep(source.transport),
     lodging: pickLodging(source.lodging),
+    alertLocations,
     ...(source.isPrimaryAddress !== undefined
       ? { isPrimaryAddress: Boolean(source.isPrimaryAddress) }
       : {}),
     ...(source.allowResidenceInspection !== undefined
       ? { allowResidenceInspection: Boolean(source.allowResidenceInspection) }
       : {}),
-    ...(proofOfOwnership ? { proofOfOwnership } : {}),
-    ...(proofOfResidency ? { proofOfResidency } : {}),
+    ...(proofOfOwnership && !('uri' in proofOfOwnership) ? { proofOfOwnership } : {}),
+    ...(proofOfResidency && !('uri' in proofOfResidency) ? { proofOfResidency } : {}),
   };
 }
 

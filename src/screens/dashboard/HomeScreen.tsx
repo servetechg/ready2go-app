@@ -89,7 +89,7 @@ export function HomeScreen() {
   const showPreparednessEmpty = home && !loading && filteredCategories.length === 0;
 
   const showMap = Boolean(home && emergency);
-  const showIncidentLog = isCloudy && (emergency?.incidentLog.length ?? 0) > 0;
+  const showIncidentLog = isCloudy && (emergency?.incidentLog?.length ?? 0) > 0;
 
   const openCategory = (categoryId: string, title: string) => {
     const tabNav = navigation.getParent();
@@ -159,7 +159,7 @@ export function HomeScreen() {
                   overlays={emergency.mapOverlays}
                   variant={isCloudy ? 'situation' : 'area'}
                 />
-                {showIncidentLog ? <IncidentLog entries={emergency.incidentLog} /> : null}
+                {showIncidentLog ? <IncidentLog entries={emergency?.incidentLog ?? []} /> : null}
               </View>
             ) : null}
           </>

@@ -43,7 +43,7 @@ function toNewsSource(source: string): EmergencyNewsItem['source'] {
   return 'emergency';
 }
 
-export function mapHomeAlertToWeatherAlert(alert: MobileWeatherAlert): WeatherAlert {
+export function mapMobileAlertToWeatherAlert(alert: MobileWeatherAlert): WeatherAlert {
   return {
     id: alert.id,
     severity: alert.severity,
@@ -51,10 +51,13 @@ export function mapHomeAlertToWeatherAlert(alert: MobileWeatherAlert): WeatherAl
     location: alert.location,
     source: alert.source,
     issuedAgo: formatIssuedAgo(alert.issuedAt),
-    expires: formatExpiresLabel(alert.expiresAt),
+    expires: alert.expiresLabel?.trim() || formatExpiresLabel(alert.expiresAt),
     read: alert.read,
   };
 }
+
+/** @deprecated Use mapMobileAlertToWeatherAlert */
+export const mapHomeAlertToWeatherAlert = mapMobileAlertToWeatherAlert;
 
 export function mapHomeNewsToEmergencyNewsItem(item: DashboardHomeNewsItem): EmergencyNewsItem {
   return {

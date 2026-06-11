@@ -23,7 +23,13 @@ export function AlertCard({ alert, onTakeAction }: AlertCardProps) {
         : styles.lowBadge;
 
   return (
-    <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+    <View
+      style={[
+        styles.card,
+        { backgroundColor: colors.surface, borderColor: colors.border },
+        !alert.read && styles.unreadCard,
+        !alert.read && { borderLeftColor: colors.primary },
+      ]}>
       <View style={styles.topRow}>
         <View style={styles.badges}>
           <View style={[styles.severityBadge, severityStyle]}>
@@ -43,9 +49,15 @@ export function AlertCard({ alert, onTakeAction }: AlertCardProps) {
         </AppText>
       </View>
 
-      <AppText variant="h3" color={colors.primary} style={styles.title}>
-        {alert.title}
-      </AppText>
+      <View style={styles.titleRow}>
+        {!alert.read ? <View style={[styles.unreadDot, { backgroundColor: colors.primary }]} /> : null}
+        <AppText
+          variant="h3"
+          color={colors.primary}
+          style={[styles.title, !alert.read && styles.unreadTitle]}>
+          {alert.title}
+        </AppText>
+      </View>
       <AppText variant="caption" color={colors.textSecondary} style={styles.location}>
         {alert.location}
       </AppText>
@@ -74,9 +86,27 @@ export function AlertCard({ alert, onTakeAction }: AlertCardProps) {
 const styles = StyleSheet.create({
   card: {
     borderRadius: borderRadius.lg,
-    // borderWidth: 1,
+    borderWidth: 1,
     padding: spacing.lg,
     marginBottom: spacing.md,
+  },
+  unreadCard: {
+    borderLeftWidth: 4,
+  },
+  titleRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: spacing.sm,
+    marginBottom: spacing.xs,
+  },
+  unreadDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    marginTop: 6,
+  },
+  unreadTitle: {
+    fontFamily: fontFamily.bold,
   },
   topRow: {
     flexDirection: 'row',
@@ -106,7 +136,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   issued: { maxWidth: 120, textAlign: 'right' },
-  title: { marginBottom: spacing.xs },
+  title: { flex: 1 },
   location: { textTransform: 'uppercase', marginBottom: spacing.lg },
   footer: {
     flexDirection: 'row',
