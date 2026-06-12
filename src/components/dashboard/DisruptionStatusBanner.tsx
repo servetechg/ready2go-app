@@ -6,7 +6,7 @@ import { AppButton } from '@/components/ui/AppButton';
 import { AppText } from '@/components/ui/AppText';
 import { borderRadius, palette, shadows, spacing } from '@/theme';
 import type { DashboardStatus } from '@/types/dashboard';
-import { formatRelativeTime } from '@/utils/formatTimestamp';
+import { formatIssuedLabel } from '@/utils/formatTimestamp';
 
 interface DisruptionStatusBannerProps {
   status?: DashboardStatus;
@@ -16,9 +16,7 @@ interface DisruptionStatusBannerProps {
 export function DisruptionStatusBanner({ status, onViewSituation }: DisruptionStatusBannerProps) {
   const headline = status?.headline ?? 'Active disruption in your area';
   const summary = status?.summary ?? 'Severe weather and flooding reported.';
-  const updatedLabel = status?.updatedAt
-    ? `Updated ${formatRelativeTime(status.updatedAt)}`
-    : null;
+  const updatedLabel = status?.updatedAt ? formatIssuedLabel(status.updatedAt) : null;
 
   return (
     <View style={[styles.banner, shadows.md]}>

@@ -6,7 +6,7 @@ import { AppText } from '@/components/ui/AppText';
 import { useAppTheme } from '@/hooks/useAppTheme';
 import { borderRadius, fontFamily, palette, shadows, spacing } from '@/theme';
 import type { EmergencyNewsItem, NewsCategory, NewsIconType } from '@/types/emergency';
-import { formatRelativeTime } from '@/utils/formatTimestamp';
+import { formatIssuedDate } from '@/utils/formatTimestamp';
 
 interface BlueSkyNewsFeedProps {
   items: EmergencyNewsItem[];
@@ -57,7 +57,7 @@ function NewsFeedCard({ item }: { item: EmergencyNewsItem }) {
           </View>
         </View>
         <AppText variant="caption" color={colors.textMuted} style={styles.issued}>
-          {formatRelativeTime(item.timestamp)}
+          {formatIssuedDate(item.timestamp)}
         </AppText>
       </View>
 

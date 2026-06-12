@@ -21,7 +21,6 @@ import { usePullToRefresh } from '@/hooks/usePullToRefresh';
 import { useAppDispatch, useAppSelector } from '@/redux/hooks';
 import {
   fetchAlerts,
-  markAlertReadRemote,
   markAllAlertsReadRemote,
   setAlertsSort,
 } from '@/redux/slices/alertsSlice';
@@ -205,12 +204,7 @@ export function AlertsScreen() {
             zoneSummary={zoneSummary}
           />
         }
-        renderItem={({ item }) => (
-          <AlertCard
-            alert={item}
-            onTakeAction={() => void dispatch(markAlertReadRemote(item.id))}
-          />
-        )}
+        renderItem={({ item }) => <AlertCard alert={item} />}
         ListEmptyComponent={listEmpty}
         ListFooterComponent={
           loadingMore ? (

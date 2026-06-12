@@ -8,7 +8,7 @@ import {
   View,
   type ViewStyle,
 } from 'react-native';
-import MapView, { Heatmap, Polygon, PROVIDER_GOOGLE, UrlTile, type Region } from 'react-native-maps';
+import MapView, { Heatmap, Polygon, PROVIDER_GOOGLE, type Region } from 'react-native-maps';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { MapIncidentDetailCard } from '@/components/dashboard/MapIncidentDetailCard';
@@ -154,14 +154,6 @@ function MapCanvas({
       showsTraffic={showTraffic}
       toolbarEnabled={false}
       mapType="standard">
-      {/* OSM tiles render even when Google Maps SDK auth fails (blank beige fix). */}
-      <UrlTile
-        urlTemplate="https://tile.openstreetmap.org/{z}/{x}/{y}.png"
-        maximumZ={19}
-        flipY={false}
-        zIndex={-1}
-        shouldReplaceMapContent={Platform.OS === 'android'}
-      />
       {overlays.map((overlay) => {
         const colors = overlayColors(overlay.layer);
         return (

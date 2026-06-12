@@ -6,7 +6,7 @@ import type {
 } from '@/types/dashboard';
 import type { PreparednessCategory } from '@/types/preparedness';
 import type { EmergencyNewsItem, NewsCategory, NewsIconType } from '@/types/emergency';
-import { formatExpiresLabel, formatIssuedAgo } from '@/utils/formatTimestamp';
+import { formatExpiresLabel, formatIssuedLabel } from '@/utils/formatTimestamp';
 import {
   formatPreparednessText,
   formatPreparednessTitle,
@@ -50,7 +50,7 @@ export function mapMobileAlertToWeatherAlert(alert: MobileWeatherAlert): Weather
     title: alert.title,
     location: alert.location,
     source: alert.source,
-    issuedAgo: formatIssuedAgo(alert.issuedAt),
+    issuedAgo: formatIssuedLabel(alert.issuedAt),
     expires: alert.expiresLabel?.trim() || formatExpiresLabel(alert.expiresAt),
     read: alert.read,
   };

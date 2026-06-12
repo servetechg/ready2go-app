@@ -18,9 +18,7 @@ Rebuild after changing any variable.
 
 ## Blank map fix
 
-The app now uses **OpenStreetMap tiles** as a fallback when Google Maps SDK auth fails, so the map should show roads/terrain even before SHA-1 is configured.
-
-For **Google traffic, heatmap, and Places** to work fully, still configure SHA-1:
+Maps use **Google Maps** only. Configure SHA-1 so tiles load on release APKs:
 
 1. Get EAS signing SHA-1:
 

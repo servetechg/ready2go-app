@@ -13,7 +13,7 @@ import {
   View,
   type ViewStyle,
 } from 'react-native';
-import MapView, { Marker, PROVIDER_GOOGLE, UrlTile, type Region } from 'react-native-maps';
+import MapView, { Marker, PROVIDER_GOOGLE, type Region } from 'react-native-maps';
 
 import { AppInput } from '@/components/form/AppInput';
 import { AppSelect } from '@/components/form/AppSelect';
@@ -424,13 +424,6 @@ export function AddressPickerScreen({
             zoomEnabled
             rotateEnabled={false}
             pitchEnabled={false}>
-            <UrlTile
-              urlTemplate="https://tile.openstreetmap.org/{z}/{x}/{y}.png"
-              maximumZ={19}
-              flipY={false}
-              zIndex={-1}
-              shouldReplaceMapContent={Platform.OS === 'android'}
-            />
             {pin ? (
               <Marker
                 coordinate={pin}

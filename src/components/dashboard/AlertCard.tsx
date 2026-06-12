@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import React from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 
 import { AppText } from '@/components/ui/AppText';
 import { useAppTheme } from '@/hooks/useAppTheme';
@@ -9,10 +9,9 @@ import type { WeatherAlert } from '@/types/dashboard';
 
 interface AlertCardProps {
   alert: WeatherAlert;
-  onTakeAction?: () => void;
 }
 
-export function AlertCard({ alert, onTakeAction }: AlertCardProps) {
+export function AlertCard({ alert }: AlertCardProps) {
   const { colors } = useAppTheme();
 
   const severityStyle =
@@ -63,21 +62,10 @@ export function AlertCard({ alert, onTakeAction }: AlertCardProps) {
       </AppText>
 
       <View style={styles.footer}>
-        <View style={styles.expires}>
-          <Ionicons name="time-outline" size={14} color={colors.textMuted} />
-          <AppText variant="caption" color={colors.textMuted}>
-            {alert.expires}
-          </AppText>
-        </View>
-        <Pressable
-          style={styles.cta}
-          onPress={onTakeAction}
-          accessibilityRole="button"
-          accessibilityLabel="Take action">
-          <AppText variant="label" color={palette.white}>
-            Take Action
-          </AppText>
-        </Pressable>
+        <Ionicons name="time-outline" size={14} color={colors.textMuted} />
+        <AppText variant="caption" color={colors.textMuted}>
+          {alert.expires}
+        </AppText>
       </View>
     </View>
   );
@@ -141,14 +129,6 @@ const styles = StyleSheet.create({
   footer: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: spacing.md,
-  },
-  expires: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs, flex: 1 },
-  cta: {
-    backgroundColor: palette.alertCta,
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.sm + 2,
-    borderRadius: borderRadius.md,
+    gap: spacing.xs,
   },
 });
