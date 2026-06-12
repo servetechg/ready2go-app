@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 
 import { useAppSelector } from '@/redux/hooks';
+import { toBoolean } from '@/utils/coerce';
 import {
   isNotificationsAvailable,
   notificationService,
@@ -8,7 +9,7 @@ import {
 import { profileService } from '@/services/profile.service';
 
 /**
- * Registers the device Expo push token with the backend for any signed-in user.
+ * Registers the device Expo push token after email OTP verification.
  * Enables server-side push (profile reminder cron, test push, future alerts).
  */
 export function usePushTokenRegistration() {
@@ -16,8 +17,10 @@ export function usePushTokenRegistration() {
   const user = useAppSelector((s) => s.auth.user);
   const lastRegistered = useRef<string | null>(null);
 
+  const emailVerified = toBoolean(user?.emailVerified);
+
   useEffect(() => {
-    if (!token || !user) {
+    if (!token || !user || !emailVerified) {
       lastRegistered.current = null;
       return;
     }
@@ -44,5 +47,5 @@ export function usePushTokenRegistration() {
     return () => {
       cancelled = true;
     };
-  }, [token, user?.id]);
+  }, [token, user?.id, emailVerified]);
 }

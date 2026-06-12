@@ -1,29 +1,39 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
+
 import { useAppSelector } from '@/redux/hooks';
 import { toBoolean } from '@/utils/coerce';
 import { notificationService } from '@/services/notification.service';
-import { getProfileReminderDelaySeconds } from '@/utils/profileReminderDelay';
 
 /**
- * Schedules a local push when the user signed up but has not finished onboarding.
- * Delay is anchored to signup time (EXPO_PUBLIC_PROFILE_REMINDER_SECONDS, default 30 min).
+ * Schedules the incomplete-profile reminder only after email OTP verification.
+ * Does not run during signup / pending-auth (pre-OTP) flow.
  */
 export function useProfileReminder() {
   const user = useAppSelector((s) => s.auth.user);
-  const pendingAuth = useAppSelector((s) => s.auth.pendingAuth);
+  const isAuthenticated = useAppSelector((s) => s.auth.isAuthenticated);
+  const ensuredForUser = useRef<string | null>(null);
 
-  const activeUser = user || pendingAuth?.user;
-  const isProfileComplete = toBoolean(activeUser?.profileComplete);
+  const emailVerified = toBoolean(user?.emailVerified);
+  const isProfileComplete = toBoolean(user?.profileComplete);
 
-  const needsReminder = !!activeUser && !isProfileComplete;
+  const needsReminder =
+    isAuthenticated && !!user?.id && emailVerified && !isProfileComplete;
 
   useEffect(() => {
-    if (!needsReminder) {
-      void notificationService.cancelProfileReminder();
+    if (!needsReminder || !user?.id) {
+      ensuredForUser.current = null;
+      if (!emailVerified || isProfileComplete) {
+        void notificationService.cancelProfileReminder();
+      }
       return;
     }
 
-    const delaySeconds = getProfileReminderDelaySeconds(activeUser?.createdAt);
-    void notificationService.scheduleProfileReminder(delaySeconds);
-  }, [needsReminder, activeUser?.id, activeUser?.createdAt]);
+    if (ensuredForUser.current === user.id) {
+      return;
+    }
+
+    ensuredForUser.current = user.id;
+
+    void notificationService.ensureProfileReminder(user.id, user.createdAt);
+  }, [needsReminder, user?.id, user?.createdAt, emailVerified, isProfileComplete]);
 }

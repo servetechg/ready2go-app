@@ -1,11 +1,18 @@
 /** @type {import('expo/config').ExpoConfig} */
 const appJson = require('./app.json');
-const withGoogleMapsApiKey = require('./plugins/withGoogleMapsApiKey');
 
 const googleMapsApiKey =
   process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY ??
   process.env.GOOGLE_MAPS_API_KEY ??
   '';
+
+const profileReminderSeconds = process.env.EXPO_PUBLIC_PROFILE_REMINDER_SECONDS ?? '';
+
+if (process.env.EAS_BUILD === 'true' && !googleMapsApiKey) {
+  throw new Error(
+    'EAS build requires EXPO_PUBLIC_GOOGLE_MAPS_API_KEY or GOOGLE_MAPS_API_KEY. Add it in expo.dev → Project → Environment variables.',
+  );
+}
 
 module.exports = {
   expo: {
@@ -14,7 +21,10 @@ module.exports = {
       ...appJson.expo.android,
       permissions: [
         ...(appJson.expo.android?.permissions ?? []),
+        'android.permission.INTERNET',
+        'android.permission.POST_NOTIFICATIONS',
         'android.permission.SCHEDULE_EXACT_ALARM',
+        'android.permission.USE_EXACT_ALARM',
         'android.permission.RECEIVE_BOOT_COMPLETED',
       ],
       config: {
@@ -33,7 +43,6 @@ module.exports = {
     },
     plugins: [
       ...(appJson.expo.plugins ?? []),
-      [withGoogleMapsApiKey, { apiKey: googleMapsApiKey }],
       [
         'expo-image-picker',
         {
@@ -62,8 +71,7 @@ module.exports = {
           android: {
             // Smaller APK: 64-bit phones only + strip unused code/resources
             buildArchs: ['arm64-v8a'],
-            enableMinifyInReleaseBuilds: true,
-            // Shrinking can strip Google Maps tile assets in release/preview APKs.
+            enableMinifyInReleaseBuilds: false,
             enableShrinkResourcesInReleaseBuilds: false,
             extraProguardRules: `
               -keep class com.google.android.gms.** { *; }
@@ -80,6 +88,9 @@ module.exports = {
         projectId: 'fa398a3b-4d43-4415-8e4b-a4144bff2906',
       },
       googleMapsApiKey,
+      profileReminderSeconds: profileReminderSeconds
+        ? Number(profileReminderSeconds)
+        : undefined,
     },
   },
 };

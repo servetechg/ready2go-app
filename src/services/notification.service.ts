@@ -4,6 +4,11 @@ import { Platform } from 'react-native';
 
 import { getProfileReminderDelaySeconds } from '@/utils/profileReminderDelay';
 import {
+  clearStoredProfileReminder,
+  loadStoredProfileReminder,
+  saveStoredProfileReminder,
+} from '@/utils/profileReminderStorage';
+import {
   canUseNotifications,
   getNotificationLimitationReason,
 } from '@/utils/notification-capability';
@@ -12,6 +17,16 @@ type NotificationsModule = typeof import('expo-notifications');
 
 let notificationsModule: NotificationsModule | null = null;
 let handlerInitialized = false;
+let scheduleLock: Promise<void> = Promise.resolve();
+
+function withScheduleLock<T>(task: () => Promise<T>): Promise<T> {
+  const run = scheduleLock.then(task);
+  scheduleLock = run.then(
+    () => undefined,
+    () => undefined,
+  );
+  return run;
+}
 
 async function getNotifications(): Promise<NotificationsModule | null> {
   if (!canUseNotifications()) return null;
@@ -52,10 +67,6 @@ export const PROFILE_REMINDER_ID = 'profile-incomplete-reminder';
 export const PROFILE_REMINDER_CHANNEL_ID = 'profile-reminders';
 
 export const notificationService = {
-  /**
-   * Request user permission for push notifications and register Android channels.
-   * Returns true if permission is granted, false otherwise.
-   */
   async requestPermissionsAsync(): Promise<boolean> {
     if (!canUseNotifications()) return false;
 
@@ -72,19 +83,15 @@ export const notificationService = {
       await Notifications.setNotificationChannelAsync(PROFILE_REMINDER_CHANNEL_ID, {
         name: 'Profile reminders',
         description: 'Reminders to complete your Ready2Go emergency profile',
-        importance: Notifications.AndroidImportance.HIGH,
+        importance: Notifications.AndroidImportance.MAX,
         vibrationPattern: [0, 250, 250, 250],
         lightColor: '#1B4F8A',
         sound: 'default',
+        bypassDnd: false,
       });
     }
 
     if (!Device.isDevice) {
-      if (__DEV__) {
-        console.warn(
-          'Push notification permissions check skipped: use a physical device or custom build.',
-        );
-      }
       return true;
     }
 
@@ -92,17 +99,19 @@ export const notificationService = {
     let finalStatus = existingStatus;
 
     if (existingStatus !== 'granted') {
-      const { status } = await Notifications.requestPermissionsAsync();
+      const { status } = await Notifications.requestPermissionsAsync({
+        ios: {
+          allowAlert: true,
+          allowBadge: true,
+          allowSound: true,
+        },
+      });
       finalStatus = status;
     }
 
     return finalStatus === 'granted';
   },
 
-  /**
-   * Retrieves the Expo Push Token (for remote notifications).
-   * Safe to call on simulator (returns null).
-   */
   async getExpoPushTokenAsync(): Promise<string | null> {
     if (!canUseNotifications() || !Device.isDevice) {
       return null;
@@ -126,84 +135,115 @@ export const notificationService = {
 
       return token.data;
     } catch (error) {
-      if (__DEV__) {
-        console.error('Failed to get Expo push token:', error);
-      }
+      console.warn('Failed to get Expo push token:', error);
       return null;
     }
   },
 
-  /**
-   * Schedule the local profile completion reminder.
-   * Uses a fixed identifier so rescheduling resets the timer.
-   */
-  async scheduleProfileReminder(delaySeconds: number = 3600): Promise<string | null> {
-    if (!canUseNotifications()) return null;
+  async scheduleProfileReminder(
+    delaySeconds: number = 3600,
+    userId?: string,
+  ): Promise<string | null> {
+    return withScheduleLock(async () => {
+      if (!canUseNotifications()) return null;
 
-    const Notifications = await getNotifications();
-    if (!Notifications) return null;
+      const Notifications = await getNotifications();
+      if (!Notifications) return null;
 
-    try {
-      const hasPermission = await this.requestPermissionsAsync();
-      if (!hasPermission) {
+      try {
+        const hasPermission = await this.requestPermissionsAsync();
+        if (!hasPermission) {
+          return null;
+        }
+
+        const seconds = Math.max(10, Math.floor(delaySeconds));
+        const fireAt = new Date(Date.now() + seconds * 1000);
+
+        await Notifications.cancelScheduledNotificationAsync(PROFILE_REMINDER_ID);
+
+        const id = await Notifications.scheduleNotificationAsync({
+          identifier: PROFILE_REMINDER_ID,
+          content: {
+            title: 'Complete your profile 🚨',
+            body: 'Complete your profile to ensure we can help you when needed.',
+            sound: true,
+            priority: Notifications.AndroidNotificationPriority.MAX,
+            ...(Platform.OS === 'android'
+              ? { channelId: PROFILE_REMINDER_CHANNEL_ID }
+              : {}),
+            data: { screen: 'Onboarding' },
+          },
+          trigger: {
+            type: Notifications.SchedulableTriggerInputTypes.DATE,
+            date: fireAt,
+            channelId: PROFILE_REMINDER_CHANNEL_ID,
+          },
+        });
+
+        if (userId) {
+          await saveStoredProfileReminder({ userId, fireAtMs: fireAt.getTime() });
+        }
+
+        return id;
+      } catch (error) {
+        console.warn('Failed to schedule profile reminder:', error);
         return null;
       }
-
-      // DATE triggers are more reliable on Android when the app is closed/killed.
-      const fireAt = new Date(Date.now() + Math.max(10, delaySeconds) * 1000);
-
-      await Notifications.cancelScheduledNotificationAsync(PROFILE_REMINDER_ID);
-
-      const id = await Notifications.scheduleNotificationAsync({
-        identifier: PROFILE_REMINDER_ID,
-        content: {
-          title: 'Complete your profile 🚨',
-          body: 'Complete your profile to ensure we can help you when needed.',
-          sound: true,
-          priority: Notifications.AndroidNotificationPriority.HIGH,
-          ...(Platform.OS === 'android'
-            ? { channelId: PROFILE_REMINDER_CHANNEL_ID }
-            : {}),
-          data: { screen: 'Onboarding' },
-        },
-        trigger: {
-          type: Notifications.SchedulableTriggerInputTypes.DATE,
-          date: fireAt,
-        },
-      });
-
-      return id;
-    } catch (error) {
-      if (__DEV__) {
-        console.error('Failed to schedule profile reminder:', error);
-      }
-      return null;
-    }
+    });
   },
 
   /**
-   * Run right after email verification so reminders are scheduled before the user leaves the app.
+   * Idempotent scheduler — skips if a valid reminder is already queued for this user.
    */
-  async setupProfileReminderAfterSignup(
+  async ensureProfileReminder(
+    userId: string,
     signupAt?: string,
-    delaySeconds?: number,
-  ): Promise<{ scheduled: boolean; permissionGranted: boolean }> {
+  ): Promise<{ scheduled: boolean; permissionGranted: boolean; alreadyScheduled: boolean }> {
     if (!canUseNotifications()) {
-      return { scheduled: false, permissionGranted: false };
+      return { scheduled: false, permissionGranted: false, alreadyScheduled: false };
     }
 
     const hasPermission = await this.requestPermissionsAsync();
     if (!hasPermission) {
-      return { scheduled: false, permissionGranted: false };
+      return { scheduled: false, permissionGranted: false, alreadyScheduled: false };
     }
 
-    const seconds = delaySeconds ?? getProfileReminderDelaySeconds(signupAt);
+    const delaySeconds = getProfileReminderDelaySeconds(signupAt);
+    const expectedFireAt = Date.now() + delaySeconds * 1000;
 
-    const id = await this.scheduleProfileReminder(seconds);
-    return { scheduled: Boolean(id), permissionGranted: true };
+    const stored = await loadStoredProfileReminder();
+    if (stored?.userId === userId && stored.fireAtMs > Date.now() + 5000) {
+      const Notifications = await getNotifications();
+      if (Notifications) {
+        const pending = await Notifications.getAllScheduledNotificationsAsync();
+        const exists = pending.some((n) => n.identifier === PROFILE_REMINDER_ID);
+        if (exists) {
+          return { scheduled: true, permissionGranted: true, alreadyScheduled: true };
+        }
+      }
+    }
+
+    const id = await this.scheduleProfileReminder(delaySeconds, userId);
+    const scheduled = Boolean(id);
+
+    if (scheduled && Math.abs(expectedFireAt - (stored?.fireAtMs ?? 0)) > 5000) {
+      await saveStoredProfileReminder({ userId, fireAtMs: expectedFireAt });
+    }
+
+    return { scheduled, permissionGranted: true, alreadyScheduled: false };
   },
 
-  /** Cancel the profile reminder notification if one exists. */
+  async setupProfileReminderAfterSignup(
+    userId: string,
+    signupAt?: string,
+  ): Promise<{ scheduled: boolean; permissionGranted: boolean }> {
+    const result = await this.ensureProfileReminder(userId, signupAt);
+    return {
+      scheduled: result.scheduled,
+      permissionGranted: result.permissionGranted,
+    };
+  },
+
   async cancelProfileReminder(): Promise<void> {
     if (!canUseNotifications()) return;
 
@@ -212,14 +252,12 @@ export const notificationService = {
 
     try {
       await Notifications.cancelScheduledNotificationAsync(PROFILE_REMINDER_ID);
+      await clearStoredProfileReminder();
     } catch (error) {
-      if (__DEV__) {
-        console.error('Failed to cancel profile reminder:', error);
-      }
+      console.warn('Failed to cancel profile reminder:', error);
     }
   },
 
-  /** Send an immediate test notification for developer verification. */
   async sendImmediateTestNotification(): Promise<string | null> {
     if (!canUseNotifications()) return null;
 
@@ -237,16 +275,25 @@ export const notificationService = {
           title: 'Ready2Go Test Notification 📬',
           body: 'This is a test notification. Complete your profile to ensure we can help you when needed.',
           sound: true,
+          ...(Platform.OS === 'android' ? { channelId: 'default' } : {}),
         },
         trigger: null,
       });
 
       return id;
     } catch (error) {
-      if (__DEV__) {
-        console.error('Failed to send immediate notification:', error);
-      }
+      console.warn('Failed to send immediate notification:', error);
       return null;
     }
+  },
+
+  /** Debug helper — lists pending local notifications. */
+  async getScheduledReminderDebug(): Promise<string | null> {
+    const Notifications = await getNotifications();
+    if (!Notifications) return null;
+    const pending = await Notifications.getAllScheduledNotificationsAsync();
+    const reminder = pending.find((n) => n.identifier === PROFILE_REMINDER_ID);
+    if (!reminder) return 'No profile reminder scheduled';
+    return JSON.stringify(reminder.trigger);
   },
 };
