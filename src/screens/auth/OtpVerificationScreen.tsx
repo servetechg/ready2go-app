@@ -23,6 +23,8 @@ import {
 import { fontFamily, spacing } from '@/theme';
 import type { OtpPurpose } from '@/types/api';
 import type { AuthStackParamList } from '@/types/navigation';
+import { notificationService } from '@/services/notification.service';
+import { profileService } from '@/services/profile.service';
 import { toBoolean } from '@/utils/coerce';
 import { otpSchema, type OtpFormData } from '@/validations/auth.schemas';
 
@@ -69,7 +71,27 @@ export function OtpVerificationScreen() {
       return;
     }
 
-    showSuccess('Email verified! Complete your emergency profile.');
+    const auth = result.payload.data;
+    const signupUser = auth.user;
+
+    const reminder = await notificationService.setupProfileReminderAfterSignup(
+      signupUser.createdAt,
+    );
+    if (!reminder.permissionGranted) {
+      showError('Allow notifications so we can remind you to finish your profile.');
+    } else if (reminder.scheduled) {
+      try {
+        const pushToken = await notificationService.getExpoPushTokenAsync();
+        if (pushToken) {
+          await profileService.registerPushToken(auth.token, pushToken);
+        }
+      } catch {
+        // Local reminder still scheduled; server push is best-effort.
+      }
+      showSuccess('Email verified! Complete your emergency profile.');
+    } else {
+      showSuccess('Email verified! Complete your emergency profile.');
+    }
   };
 
   const handleResend = async () => {

@@ -2,6 +2,7 @@ import Constants from 'expo-constants';
 import * as Device from 'expo-device';
 import { Platform } from 'react-native';
 
+import { getProfileReminderDelaySeconds } from '@/utils/profileReminderDelay';
 import {
   canUseNotifications,
   getNotificationLimitationReason,
@@ -48,6 +49,7 @@ export async function initNotificationHandler(): Promise<void> {
 }
 
 export const PROFILE_REMINDER_ID = 'profile-incomplete-reminder';
+export const PROFILE_REMINDER_CHANNEL_ID = 'profile-reminders';
 
 export const notificationService = {
   /**
@@ -66,6 +68,14 @@ export const notificationService = {
         importance: Notifications.AndroidImportance.MAX,
         vibrationPattern: [0, 250, 250, 250],
         lightColor: '#FF231F7C',
+      });
+      await Notifications.setNotificationChannelAsync(PROFILE_REMINDER_CHANNEL_ID, {
+        name: 'Profile reminders',
+        description: 'Reminders to complete your Ready2Go emergency profile',
+        importance: Notifications.AndroidImportance.HIGH,
+        vibrationPattern: [0, 250, 250, 250],
+        lightColor: '#1B4F8A',
+        sound: 'default',
       });
     }
 
@@ -139,19 +149,27 @@ export const notificationService = {
         return null;
       }
 
+      // DATE triggers are more reliable on Android when the app is closed/killed.
+      const fireAt = new Date(Date.now() + Math.max(10, delaySeconds) * 1000);
+
+      await Notifications.cancelScheduledNotificationAsync(PROFILE_REMINDER_ID);
+
       const id = await Notifications.scheduleNotificationAsync({
         identifier: PROFILE_REMINDER_ID,
         content: {
           title: 'Complete your profile 🚨',
           body: 'Complete your profile to ensure we can help you when needed.',
           sound: true,
+          priority: Notifications.AndroidNotificationPriority.HIGH,
+          ...(Platform.OS === 'android'
+            ? { channelId: PROFILE_REMINDER_CHANNEL_ID }
+            : {}),
           data: { screen: 'Onboarding' },
         },
         trigger: {
-          type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
-          seconds: delaySeconds,
-          repeats: false,
-        } as Notifications.TimeIntervalTriggerInput,
+          type: Notifications.SchedulableTriggerInputTypes.DATE,
+          date: fireAt,
+        },
       });
 
       return id;
@@ -161,6 +179,28 @@ export const notificationService = {
       }
       return null;
     }
+  },
+
+  /**
+   * Run right after email verification so reminders are scheduled before the user leaves the app.
+   */
+  async setupProfileReminderAfterSignup(
+    signupAt?: string,
+    delaySeconds?: number,
+  ): Promise<{ scheduled: boolean; permissionGranted: boolean }> {
+    if (!canUseNotifications()) {
+      return { scheduled: false, permissionGranted: false };
+    }
+
+    const hasPermission = await this.requestPermissionsAsync();
+    if (!hasPermission) {
+      return { scheduled: false, permissionGranted: false };
+    }
+
+    const seconds = delaySeconds ?? getProfileReminderDelaySeconds(signupAt);
+
+    const id = await this.scheduleProfileReminder(seconds);
+    return { scheduled: Boolean(id), permissionGranted: true };
   },
 
   /** Cancel the profile reminder notification if one exists. */
