@@ -75,7 +75,7 @@ export function HomeScreen() {
 
   const filteredCategories = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
-    const source = preparednessCategories;
+    const source = preparednessCategories ?? [];
     const matched = !q
       ? source
       : source.filter(
@@ -155,8 +155,8 @@ export function HomeScreen() {
                 }}>
                 <EmergencyMap
                   region={emergency.mapRegion}
-                  markers={emergency.mapMarkers}
-                  overlays={emergency.mapOverlays}
+                  markers={emergency.mapMarkers ?? []}
+                  overlays={emergency.mapOverlays ?? []}
                   variant={isCloudy ? 'situation' : 'area'}
                 />
                 {showIncidentLog ? <IncidentLog entries={emergency?.incidentLog ?? []} /> : null}
@@ -216,7 +216,7 @@ export function HomeScreen() {
             />
           ))}
         </View>
-        {preparednessCategories.length > 2 ? (
+        {(preparednessCategories ?? []).length > 2 ? (
           <Pressable
             style={styles.seeAll}
             onPress={() => navigation.getParent()?.navigate(TAB_ROUTES.PREPAREDNESS)}>

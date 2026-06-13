@@ -187,7 +187,7 @@ function MapCanvas({
 
 export function EmergencyMap({
   region: initialRegion,
-  markers,
+  markers = [],
   overlays = [],
   variant = 'situation',
 }: EmergencyMapProps) {

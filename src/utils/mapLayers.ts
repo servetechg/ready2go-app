@@ -25,7 +25,8 @@ export function normalizeMapMarker(marker: MapMarkerPoint): MapMarkerPoint {
   };
 }
 
-export function normalizeMapMarkers(markers: MapMarkerPoint[]): MapMarkerPoint[] {
+export function normalizeMapMarkers(markers: MapMarkerPoint[] | null | undefined): MapMarkerPoint[] {
+  if (!Array.isArray(markers)) return [];
   return markers.map(normalizeMapMarker);
 }
 

@@ -77,13 +77,13 @@ export function mapHomeNewsToEmergencyNewsItem(item: DashboardHomeNewsItem): Eme
 }
 
 export function mapPreparednessCategory(category: MobilePreparednessCategory): PreparednessCategory {
-  const iconKey = category.icon.toLowerCase();
+  const iconKey = (category.icon ?? 'globe').toLowerCase();
   return {
     id: category.id,
-    title: formatPreparednessTitle(category.title, category.id),
-    subtitle: formatPreparednessText(category.subtitle),
-    icon: PREPAREDNESS_ICON_ALIASES[iconKey] ?? category.icon,
-    taskCount: category.taskCount,
+    title: formatPreparednessTitle(category.title ?? '', category.id),
+    subtitle: formatPreparednessText(category.subtitle ?? ''),
+    icon: PREPAREDNESS_ICON_ALIASES[iconKey] ?? category.icon ?? 'globe',
+    taskCount: category.taskCount ?? 0,
     sortOrder: 0,
   };
 }

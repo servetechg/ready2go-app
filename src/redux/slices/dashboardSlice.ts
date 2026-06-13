@@ -176,9 +176,16 @@ export const selectDashboardMode = (state: { dashboard: DashboardState }): Dashb
 export const selectIsCloudyDay = (state: { dashboard: DashboardState }) =>
   selectDashboardMode(state) === 'cloudy';
 
+const EMPTY_PREPAREDNESS_CATEGORIES: ReturnType<typeof mapPreparednessCategory>[] = [];
+
 export const selectPreparednessCategories = createSelector(
   [(state: RootState) => state.dashboard.home?.preparednessCategories],
-  (categories) => (categories ?? []).map(mapPreparednessCategory),
+  (categories) => {
+    if (!Array.isArray(categories) || categories.length === 0) {
+      return EMPTY_PREPAREDNESS_CATEGORIES;
+    }
+    return categories.map(mapPreparednessCategory);
+  },
 );
 
 export default dashboardSlice.reducer;
