@@ -16,9 +16,9 @@ import { WeatherSummaryCard } from '@/components/dashboard/WeatherSummaryCard';
 import { AppButton } from '@/components/ui/AppButton';
 import { AppText } from '@/components/ui/AppText';
 import {
-  HOME_STACK_ROUTES,
-  PREPAREDNESS_STACK_ROUTES,
-  TAB_ROUTES,
+    HOME_STACK_ROUTES,
+    PREPAREDNESS_STACK_ROUTES,
+    TAB_ROUTES,
 } from '@/constants/routes';
 import { useAppTheme } from '@/hooks/useAppTheme';
 import { useHomeDashboard } from '@/hooks/useHomeDashboard';
@@ -88,8 +88,8 @@ export function HomeScreen() {
 
   const showPreparednessEmpty = home && !loading && filteredCategories.length === 0;
 
-  const showEmergencyMap =
-    isCloudy && emergency != null && emergency.mapRegion.latitude !== 0;
+  const showMap = Boolean(home && emergency);
+  const showIncidentLog = isCloudy && (emergency?.incidentLog?.length ?? 0) > 0;
 
   const openCategory = (categoryId: string, title: string) => {
     const tabNav = navigation.getParent();
@@ -147,14 +147,19 @@ export function HomeScreen() {
               maxVisible={4}
               onViewAll={() => navigation.navigate(HOME_STACK_ROUTES.EMERGENCY_NEWS)}
             />
-            {showEmergencyMap && emergency ? (
+            {showMap && emergency ? (
               <View
                 style={styles.emergencyBlock}
                 onLayout={(e) => {
                   mapSectionY.current = e.nativeEvent.layout.y;
                 }}>
-                <EmergencyMap region={emergency.mapRegion} markers={emergency.mapMarkers} />
-                <IncidentLog entries={emergency.incidentLog} />
+                <EmergencyMap
+                  region={emergency.mapRegion}
+                  markers={emergency.mapMarkers}
+                  overlays={emergency.mapOverlays}
+                  variant={isCloudy ? 'situation' : 'area'}
+                />
+                {showIncidentLog ? <IncidentLog entries={emergency?.incidentLog ?? []} /> : null}
               </View>
             ) : null}
           </>

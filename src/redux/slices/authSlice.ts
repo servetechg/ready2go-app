@@ -163,6 +163,11 @@ export const logoutUser = createAsyncThunk('auth/logout', async (_, { getState }
   const { token, refreshToken } = (getState() as { auth: AuthState }).auth;
   if (token) {
     try {
+      await profileService.clearPushToken(token);
+    } catch {
+      // Best-effort cleanup
+    }
+    try {
       await authService.logout(token, refreshToken);
     } catch {
       // Clear local session even if API fails

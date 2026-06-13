@@ -8,7 +8,8 @@ import { AppText } from '@/components/ui/AppText';
 import { useAppTheme } from '@/hooks/useAppTheme';
 import { navigateToAlertsTab } from '@/navigation/navigationHelpers';
 import { useAppDispatch, useAppSelector } from '@/redux/hooks';
-import { selectUnreadAlertCount, setSearchQuery } from '@/redux/slices/dashboardSlice';
+import { selectUnreadAlertCount } from '@/redux/slices/alertsSlice';
+import { setSearchQuery } from '@/redux/slices/dashboardSlice';
 import { borderRadius, fontSize, googleSans, inputHeight, palette, spacing } from '@/theme';
 
 interface DashboardTopBarProps {

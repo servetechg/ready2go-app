@@ -1,4 +1,4 @@
-import type { EmergencyDashboardData, EmergencyNewsItem } from '@/types/emergency';
+import type { EmergencyDashboardData, EmergencyNewsItem, MapPolygonOverlay } from '@/types/emergency';
 
 /** Default map center (Lake County IL area — matches sample incident log). */
 export const DEFAULT_MAP_REGION = {
@@ -106,6 +106,39 @@ export const MOCK_CLOUDY_INCIDENT_LOG = [
   },
 ];
 
+export const MOCK_CLOUDY_MAP_OVERLAYS: MapPolygonOverlay[] = [
+  {
+    id: 'overlay-radar-1',
+    layer: 'weatherRadar',
+    coordinates: [
+      { latitude: 42.345, longitude: -87.865 },
+      { latitude: 42.345, longitude: -87.815 },
+      { latitude: 42.305, longitude: -87.815 },
+      { latitude: 42.305, longitude: -87.865 },
+    ],
+  },
+  {
+    id: 'overlay-risk-1',
+    layer: 'riskAreas',
+    coordinates: [
+      { latitude: 42.355, longitude: -87.855 },
+      { latitude: 42.355, longitude: -87.825 },
+      { latitude: 42.315, longitude: -87.825 },
+      { latitude: 42.315, longitude: -87.855 },
+    ],
+  },
+  {
+    id: 'overlay-flood-1',
+    layer: 'floodZones',
+    coordinates: [
+      { latitude: 42.332, longitude: -87.848 },
+      { latitude: 42.332, longitude: -87.832 },
+      { latitude: 42.318, longitude: -87.832 },
+      { latitude: 42.318, longitude: -87.848 },
+    ],
+  },
+];
+
 export const MOCK_CLOUDY_MAP_MARKERS = [
   {
     id: 'm-1',
@@ -113,6 +146,7 @@ export const MOCK_CLOUDY_MAP_MARKERS = [
     description: '2945 Waukegan Rd',
     latitude: 42.3189,
     longitude: -87.8441,
+    layer: 'roadClosures' as const,
     type: 'closure' as const,
   },
   {
@@ -121,6 +155,7 @@ export const MOCK_CLOUDY_MAP_MARKERS = [
     description: 'Zion Township community shelter',
     latitude: 42.4462,
     longitude: -87.8321,
+    layer: 'shelters' as const,
     type: 'closure' as const,
   },
   {
@@ -129,6 +164,7 @@ export const MOCK_CLOUDY_MAP_MARKERS = [
     description: 'Waukegan Rd',
     latitude: 42.3251,
     longitude: -87.8398,
+    layer: 'incidentReports' as const,
     type: 'hazard' as const,
   },
   {
@@ -137,7 +173,41 @@ export const MOCK_CLOUDY_MAP_MARKERS = [
     description: 'North Chicago High School gym',
     latitude: 42.3164,
     longitude: -87.8415,
+    layer: 'shelters' as const,
     type: 'shelter' as const,
+  },
+  {
+    id: 'm-5',
+    title: 'Vista Medical Center',
+    description: 'Emergency department open',
+    latitude: 42.3382,
+    longitude: -87.8612,
+    layer: 'hospitals' as const,
+  },
+  {
+    id: 'm-6',
+    title: 'Power outage cluster',
+    description: 'Approx. 1,200 customers affected',
+    latitude: 42.3298,
+    longitude: -87.8365,
+    layer: 'powerOutages' as const,
+  },
+  {
+    id: 'm-7',
+    title: 'Boil water advisory',
+    description: 'North Chicago water main break',
+    latitude: 42.3215,
+    longitude: -87.8388,
+    layer: 'waterIssues' as const,
+  },
+  {
+    id: 'm-8',
+    title: 'Supply distribution',
+    description: 'Water and MREs — Washington St',
+    latitude: 42.3274,
+    longitude: -87.8455,
+    layer: 'resourceSites' as const,
+    type: 'resource' as const,
   },
 ];
 
@@ -171,6 +241,7 @@ export function buildMockEmergencyDashboard(mode: 'blue_sky' | 'cloudy'): Emerge
       news: MOCK_CLOUDY_NEWS,
       incidentLog: MOCK_CLOUDY_INCIDENT_LOG,
       mapMarkers: MOCK_CLOUDY_MAP_MARKERS,
+      mapOverlays: MOCK_CLOUDY_MAP_OVERLAYS,
       mapRegion: { ...DEFAULT_MAP_REGION },
     };
   }
@@ -180,6 +251,7 @@ export function buildMockEmergencyDashboard(mode: 'blue_sky' | 'cloudy'): Emerge
     news: MOCK_BLUE_SKY_NEWS,
     incidentLog: [],
     mapMarkers: [],
+    mapOverlays: [],
     mapRegion: { ...DEFAULT_MAP_REGION },
   };
 }

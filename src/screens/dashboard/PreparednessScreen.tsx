@@ -1,6 +1,6 @@
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
-import React, { useMemo } from 'react';
+import React, { useCallback, useMemo } from 'react';
 import { ActivityIndicator, RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
 
 import { DashboardLayout } from '@/components/dashboard/DashboardLayout';
@@ -9,10 +9,10 @@ import { PreparednessEmptyMessage } from '@/components/dashboard/PreparednessEmp
 import { AppText } from '@/components/ui/AppText';
 import { PREPAREDNESS_STACK_ROUTES } from '@/constants/routes';
 import { useAppTheme } from '@/hooks/useAppTheme';
-import { useHomeDashboard } from '@/hooks/useHomeDashboard';
+import { usePreparednessCategories } from '@/hooks/usePreparednessCategories';
 import { usePullToRefresh } from '@/hooks/usePullToRefresh';
-import { useAppSelector } from '@/redux/hooks';
-import { selectPreparednessCategories } from '@/redux/slices/dashboardSlice';
+import { useAppDispatch, useAppSelector } from '@/redux/hooks';
+import { fetchCategories } from '@/redux/slices/preparednessSlice';
 import { spacing } from '@/theme';
 import type { PreparednessStackParamList } from '@/types/navigation';
 import { toBoolean } from '@/utils/coerce';
@@ -24,11 +24,20 @@ type Nav = StackNavigationProp<
 
 export function PreparednessScreen() {
   const navigation = useNavigation<Nav>();
+  const dispatch = useAppDispatch();
   const { colors } = useAppTheme();
   const searchQuery = useAppSelector((s) => s.dashboard.searchQuery);
-  const categories = useAppSelector(selectPreparednessCategories);
+  const categories = useAppSelector((s) => s.preparedness.categories);
+  const loading = useAppSelector((s) => s.preparedness.loading);
+  const error = useAppSelector((s) => s.preparedness.error);
   const profileComplete = toBoolean(useAppSelector((s) => s.auth.user?.profileComplete));
-  const { home, loading, error, reload } = useHomeDashboard();
+
+  usePreparednessCategories();
+
+  const reload = useCallback(
+    () => dispatch(fetchCategories(undefined)).unwrap(),
+    [dispatch],
+  );
   const { refreshControlProps } = usePullToRefresh(reload);
 
   const hasSearch = Boolean(searchQuery.trim());
@@ -43,7 +52,7 @@ export function PreparednessScreen() {
     );
   }, [categories, searchQuery]);
 
-  const showEmpty = home && !loading && filtered.length === 0;
+  const showEmpty = profileComplete && !loading && filtered.length === 0;
 
   return (
     <DashboardLayout>

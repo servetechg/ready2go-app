@@ -12,8 +12,11 @@ import { AppSplashScreen } from '@/components/splash/AppSplashScreen';
 import { SplashReadyView } from '@/components/splash/SplashReadyView';
 import { useAppFonts } from '@/hooks/useAppFonts';
 import { useSessionBootstrap } from '@/hooks/useSessionBootstrap';
+import { useProfileReminder } from '@/hooks/useProfileReminder';
+import { usePushTokenRegistration } from '@/hooks/usePushTokenRegistration';
 import { RootNavigator } from '@/navigation';
 import { persistor, store } from '@/redux/store';
+import { initNotificationHandler } from '@/services/notification.service';
 import { palette } from '@/theme';
 import { fontFamily } from '@/theme/fonts';
 import Toast from 'react-native-toast-message';
@@ -40,7 +43,13 @@ const navTheme = {
 };
 
 function AppNavigation() {
+  useEffect(() => {
+    void initNotificationHandler();
+  }, []);
+
   useSessionBootstrap();
+  usePushTokenRegistration();
+  useProfileReminder();
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>

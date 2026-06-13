@@ -6,7 +6,7 @@ import type {
 } from '@/types/dashboard';
 import type { PreparednessCategory } from '@/types/preparedness';
 import type { EmergencyNewsItem, NewsCategory, NewsIconType } from '@/types/emergency';
-import { formatExpiresLabel, formatIssuedAgo } from '@/utils/formatTimestamp';
+import { formatExpiresLabel, formatIssuedLabel } from '@/utils/formatTimestamp';
 import {
   formatPreparednessText,
   formatPreparednessTitle,
@@ -43,18 +43,21 @@ function toNewsSource(source: string): EmergencyNewsItem['source'] {
   return 'emergency';
 }
 
-export function mapHomeAlertToWeatherAlert(alert: MobileWeatherAlert): WeatherAlert {
+export function mapMobileAlertToWeatherAlert(alert: MobileWeatherAlert): WeatherAlert {
   return {
     id: alert.id,
     severity: alert.severity,
     title: alert.title,
     location: alert.location,
     source: alert.source,
-    issuedAgo: formatIssuedAgo(alert.issuedAt),
-    expires: formatExpiresLabel(alert.expiresAt),
+    issuedAgo: formatIssuedLabel(alert.issuedAt),
+    expires: alert.expiresLabel?.trim() || formatExpiresLabel(alert.expiresAt),
     read: alert.read,
   };
 }
+
+/** @deprecated Use mapMobileAlertToWeatherAlert */
+export const mapHomeAlertToWeatherAlert = mapMobileAlertToWeatherAlert;
 
 export function mapHomeNewsToEmergencyNewsItem(item: DashboardHomeNewsItem): EmergencyNewsItem {
   return {

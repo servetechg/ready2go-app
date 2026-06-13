@@ -1,18 +1,41 @@
 import type { PatchUserRequest, ProfilePayload } from '@/types/api';
 import type { ApiUser } from '@/types/api';
-import type { AlertLocation, RegistrationState } from '@/types/registration';
+import type { AlertLocation, RegistrationState, YesNoStepData } from '@/types/registration';
 import { normalizePhoneForApi } from '@/utils/phone';
 import { pickAddressData } from '@/utils/registration';
 
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
+/** Alert rows for onboarding complete — no street address; server assigns UUIDs. */
+export function toAlertLocationsForComplete(
+  locations: AlertLocation[],
+): Array<{ id?: string; label: string; city: string; state: string; zipCode?: string }> {
+  return locations.map(({ id, label, city, state, zipCode }) => {
+    const row = {
+      label: label.trim(),
+      city: city.trim(),
+      state: state.trim(),
+      ...(zipCode.trim() ? { zipCode: zipCode.trim() } : {}),
+    };
+    return UUID_RE.test(id) ? { id, ...row } : row;
+  });
+}
+
 /** Omit client-generated ids so the server assigns UUIDs for new rows. */
 export function toAlertLocationsRequestBody(
   locations: AlertLocation[],
 ): Array<Omit<AlertLocation, 'id'> & { id?: string }> {
   return locations.map(({ id, label, streetAddress, city, state, zipCode }) => {
-    const row = { label, streetAddress, city, state, zipCode };
+    const trimmedCity = city.trim();
+    const trimmedState = state.trim();
+    const row = {
+      label: label.trim() || `${trimmedCity}, ${trimmedState}`,
+      streetAddress: streetAddress?.trim() || undefined,
+      city: trimmedCity,
+      state: trimmedState,
+      ...(zipCode?.trim() ? { zipCode: zipCode.trim() } : {}),
+    };
     return UUID_RE.test(id) ? { id, ...row } : row;
   });
 }
@@ -42,6 +65,14 @@ export function buildPatchUserBody(
   return Object.keys(body).length > 0 ? body : null;
 }
 
+function requirementSectionChanged(a: YesNoStepData, b: YesNoStepData): boolean {
+  return (
+    a.hasRequirement !== b.hasRequirement ||
+    JSON.stringify(a.selectedOptions ?? []) !== JSON.stringify(b.selectedOptions ?? []) ||
+    (a.otherDetails ?? '') !== (b.otherDetails ?? '')
+  );
+}
+
 export function buildPatchProfileBody(
   registration: RegistrationState,
   updates: {
@@ -51,6 +82,8 @@ export function buildPatchProfileBody(
     householdSize: number;
     isPrimaryAddress?: boolean | null;
     allowResidenceInspection?: boolean | null;
+    ada?: YesNoStepData;
+    pets?: YesNoStepData;
   },
 ): Partial<ProfilePayload> | null {
   const nextAddress = pickAddressData({
@@ -75,8 +108,19 @@ export function buildPatchProfileBody(
   const inspectionChanged =
     updates.allowResidenceInspection !== undefined &&
     updates.allowResidenceInspection !== registration.allowResidenceInspection;
+  const adaChanged =
+    updates.ada !== undefined && requirementSectionChanged(updates.ada, registration.ada);
+  const petsChanged =
+    updates.pets !== undefined && requirementSectionChanged(updates.pets, registration.pets);
 
-  if (!addressChanged && !householdChanged && !primaryChanged && !inspectionChanged) {
+  if (
+    !addressChanged &&
+    !householdChanged &&
+    !primaryChanged &&
+    !inspectionChanged &&
+    !adaChanged &&
+    !petsChanged
+  ) {
     return null;
   }
 
@@ -93,6 +137,8 @@ export function buildPatchProfileBody(
   ) {
     body.allowResidenceInspection = updates.allowResidenceInspection;
   }
+  if (adaChanged && updates.ada) body.ada = updates.ada;
+  if (petsChanged && updates.pets) body.pets = updates.pets;
   return body;
 }
 

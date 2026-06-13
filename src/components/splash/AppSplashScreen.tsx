@@ -5,8 +5,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AppText } from '@/components/ui/AppText';
 import { palette, spacing } from '@/theme';
 
-/** logo.png is 1044×786 — keep aspect ratio so corners are not clipped in a square box. */
-const LOGO_WIDTH = 260;
+/** logo.png is 1044×786 — scale down so full wordmark fits without horizontal clipping. */
+const LOGO_WIDTH = 190;
 const LOGO_ASPECT = 1044 / 786;
 
 /** Branded splash UI — used on web and as a fallback while the native splash is visible. */

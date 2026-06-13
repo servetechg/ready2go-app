@@ -30,6 +30,17 @@ function formatOtherLocationLine(loc: AlertLocation): string {
   return [loc.streetAddress, loc.city, loc.state, loc.zipCode].filter(Boolean).join(', ');
 }
 
+function formDataToLocation(data: AddLocationFormData): AlertLocation {
+  return {
+    id: data.id ?? newLocationId(),
+    label: data.label.trim(),
+    streetAddress: data.streetAddress?.trim() ?? '',
+    city: data.city.trim(),
+    state: data.state,
+    zipCode: data.zipCode?.trim() ?? '',
+  };
+}
+
 export function StepAlertLocationsScreen() {
   const navigation = useNavigation<Nav>();
   const dispatch = useAppDispatch();
@@ -37,6 +48,7 @@ export function StepAlertLocationsScreen() {
   const address = useAppSelector((s) => s.registration.address);
   const alertLocations = useAppSelector((s) => s.registration.alertLocations);
   const [modalVisible, setModalVisible] = useState(false);
+  const [editingLocation, setEditingLocation] = useState<AlertLocation | null>(null);
 
   const primaryLine = formatAddressLine(address);
 
@@ -55,20 +67,28 @@ export function StepAlertLocationsScreen() {
     goNext();
   };
 
+  const openAdd = () => {
+    setEditingLocation(null);
+    setModalVisible(true);
+  };
+
+  const openEdit = (loc: AlertLocation) => {
+    setEditingLocation(loc);
+    setModalVisible(true);
+  };
+
+  const closeModal = () => {
+    setModalVisible(false);
+    setEditingLocation(null);
+  };
+
   const handleSaveLocation = (data: AddLocationFormData) => {
-    dispatch(
-      setAlertLocations([
-        ...alertLocations,
-        {
-          id: newLocationId(),
-          label: data.label.trim(),
-          streetAddress: data.streetAddress?.trim() ?? '',
-          city: data.city.trim(),
-          state: data.state,
-          zipCode: data.zipCode?.trim() ?? '',
-        },
-      ]),
-    );
+    const next = formDataToLocation(data);
+    if (data.id) {
+      dispatch(setAlertLocations(alertLocations.map((loc) => (loc.id === data.id ? next : loc))));
+      return;
+    }
+    dispatch(setAlertLocations([...alertLocations, next]));
   };
 
   const removeLocation = (id: string) => {
@@ -135,15 +155,18 @@ export function StepAlertLocationsScreen() {
           <View
             key={loc.id}
             style={[styles.locationCard, shadows.sm, { backgroundColor: colors.surface }]}>
-            <View style={[styles.iconCircle, { backgroundColor: colors.accent }]}>
-              <Ionicons name="home-outline" size={20} color={colors.primary} />
-            </View>
-            <View style={styles.cardText}>
-              <AppText variant="label">{loc.label}</AppText>
-              <AppText variant="bodySmall" color={colors.textSecondary}>
-                {formatOtherLocationLine(loc)}
-              </AppText>
-            </View>
+            <Pressable style={styles.cardMain} onPress={() => openEdit(loc)} accessibilityRole="button">
+              <View style={[styles.iconCircle, { backgroundColor: colors.accent }]}>
+                <Ionicons name="home-outline" size={20} color={colors.primary} />
+              </View>
+              <View style={styles.cardText}>
+                <AppText variant="label">{loc.label}</AppText>
+                <AppText variant="bodySmall" color={colors.textSecondary}>
+                  {formatOtherLocationLine(loc)}
+                </AppText>
+              </View>
+              <Ionicons name="create-outline" size={20} color={colors.textMuted} />
+            </Pressable>
             <Pressable
               onPress={() => removeLocation(loc.id)}
               hitSlop={8}
@@ -155,7 +178,7 @@ export function StepAlertLocationsScreen() {
 
         <Pressable
           style={[styles.addBtn, { borderColor: colors.primary, backgroundColor: colors.accent }]}
-          onPress={() => setModalVisible(true)}
+          onPress={openAdd}
           accessibilityRole="button">
           <Ionicons name="add" size={22} color={colors.primary} />
           <AppText variant="label" color={colors.primary}>
@@ -168,7 +191,8 @@ export function StepAlertLocationsScreen() {
 
       <AddLocationModal
         visible={modalVisible}
-        onClose={() => setModalVisible(false)}
+        editingLocation={editingLocation}
+        onClose={closeModal}
         onSave={handleSaveLocation}
       />
     </View>
@@ -205,11 +229,11 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   heroLine: {
-    width: 48,
+    width: 40,
     height: 2,
     backgroundColor: palette.border,
   },
-  heroTitle: { marginTop: spacing.sm },
+  heroTitle: { marginBottom: spacing.xs },
   sectionLabel: {
     marginBottom: spacing.sm,
     textTransform: 'uppercase',
@@ -222,6 +246,12 @@ const styles = StyleSheet.create({
     padding: spacing.lg,
     borderRadius: borderRadius.lg,
     marginBottom: spacing.md,
+  },
+  cardMain: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
   },
   iconCircle: {
     width: 44,
