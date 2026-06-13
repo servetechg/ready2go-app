@@ -28,11 +28,27 @@ export function formatRelativeTime(iso: string): string {
   return formatNewsTimestamp(iso);
 }
 
-/** Relative issued time for alerts, e.g. "Issued 12 min ago" */
+/** Absolute issue date/time for alerts from UnifiedEvent ISO timestamps. */
+export function formatIssuedDate(iso: string): string {
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return iso;
+  return date.toLocaleString(undefined, {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+  });
+}
+
+/** Label for alert cards and banners, e.g. "Issued Jun 4, 2026, 2:00 PM" */
+export function formatIssuedLabel(iso: string): string {
+  return `Issued ${formatIssuedDate(iso)}`;
+}
+
+/** @deprecated Use formatIssuedLabel — relative times were incorrect for UnifiedEvent alerts */
 export function formatIssuedAgo(iso: string): string {
-  const relative = formatRelativeTime(iso);
-  if (relative === 'Just now') return 'Issued less than a minute ago';
-  return `Issued ${relative}`;
+  return formatIssuedLabel(iso);
 }
 
 export function formatExpiresLabel(expiresAt?: string | null): string {

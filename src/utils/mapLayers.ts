@@ -29,6 +29,12 @@ export function normalizeMapMarkers(markers: MapMarkerPoint[]): MapMarkerPoint[]
   return markers.map(normalizeMapMarker);
 }
 
+/** Layers rendered as a heatmap instead of pin markers. */
+export const HEATMAP_LAYER_IDS: GisMapLayerId[] = ['incidentReports'];
+
+/** Point layers hidden when only traffic overlay is used for roads. */
+export const TRAFFIC_ONLY_LAYER_IDS: GisMapLayerId[] = ['roadClosures'];
+
 export function filterMarkersByLayers(
   markers: MapMarkerPoint[],
   enabledLayers: Record<GisMapLayerId, boolean>,
@@ -36,6 +42,46 @@ export function filterMarkersByLayers(
   return normalizeMapMarkers(markers).filter(
     (marker) => enabledLayers[resolveMarkerLayer(marker)],
   );
+}
+
+export function filterPointMarkersForMap(
+  markers: MapMarkerPoint[],
+  enabledLayers: Record<GisMapLayerId, boolean>,
+): MapMarkerPoint[] {
+  return filterMarkersByLayers(markers, enabledLayers).filter((marker) => {
+    const layer = resolveMarkerLayer(marker);
+    if (HEATMAP_LAYER_IDS.includes(layer)) return false;
+    if (TRAFFIC_ONLY_LAYER_IDS.includes(layer)) return false;
+    return true;
+  });
+}
+
+export type HeatmapPoint = {
+  latitude: number;
+  longitude: number;
+  weight: number;
+};
+
+export function filterIncidentMarkersForHeatmap(
+  markers: MapMarkerPoint[],
+  enabledLayers: Record<GisMapLayerId, boolean>,
+): MapMarkerPoint[] {
+  if (!enabledLayers.incidentReports) return [];
+
+  return filterMarkersByLayers(markers, enabledLayers).filter((marker) =>
+    HEATMAP_LAYER_IDS.includes(resolveMarkerLayer(marker)),
+  );
+}
+
+export function buildHeatmapPoints(
+  markers: MapMarkerPoint[],
+  enabledLayers: Record<GisMapLayerId, boolean>,
+): HeatmapPoint[] {
+  return filterIncidentMarkersForHeatmap(markers, enabledLayers).map((marker) => ({
+    latitude: marker.latitude,
+    longitude: marker.longitude,
+    weight: marker.severity === 'HIGH' || marker.severity === 'EXTREME' ? 2 : 1,
+  }));
 }
 
 export function filterOverlaysByLayers(

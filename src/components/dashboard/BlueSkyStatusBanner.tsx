@@ -6,7 +6,7 @@ import { AppText } from '@/components/ui/AppText';
 import { useAppTheme } from '@/hooks/useAppTheme';
 import { borderRadius, palette, shadows, spacing } from '@/theme';
 import type { DashboardStatus } from '@/types/dashboard';
-import { formatRelativeTime } from '@/utils/formatTimestamp';
+import { formatIssuedLabel } from '@/utils/formatTimestamp';
 
 interface BlueSkyStatusBannerProps {
   status?: DashboardStatus;
@@ -18,9 +18,7 @@ export function BlueSkyStatusBanner({ status }: BlueSkyStatusBannerProps) {
   const summary =
     status?.summary ??
     'No active disruptions reported. Emergency news and administrator messages appear below.';
-  const updatedLabel = status?.updatedAt
-    ? `Updated ${formatRelativeTime(status.updatedAt)}`
-    : null;
+  const updatedLabel = status?.updatedAt ? formatIssuedLabel(status.updatedAt) : null;
 
   return (
     <View style={[styles.banner, shadows.md]}>

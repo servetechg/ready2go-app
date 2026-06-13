@@ -6,11 +6,27 @@ const googleMapsApiKey =
   process.env.GOOGLE_MAPS_API_KEY ??
   '';
 
+const profileReminderSeconds = process.env.EXPO_PUBLIC_PROFILE_REMINDER_SECONDS ?? '';
+
+if (process.env.EAS_BUILD === 'true' && !googleMapsApiKey) {
+  throw new Error(
+    'EAS build requires EXPO_PUBLIC_GOOGLE_MAPS_API_KEY or GOOGLE_MAPS_API_KEY. Add it in expo.dev → Project → Environment variables.',
+  );
+}
+
 module.exports = {
   expo: {
     ...appJson.expo,
     android: {
       ...appJson.expo.android,
+      permissions: [
+        ...(appJson.expo.android?.permissions ?? []),
+        'android.permission.INTERNET',
+        'android.permission.POST_NOTIFICATIONS',
+        'android.permission.SCHEDULE_EXACT_ALARM',
+        'android.permission.USE_EXACT_ALARM',
+        'android.permission.RECEIVE_BOOT_COMPLETED',
+      ],
       config: {
         ...appJson.expo.android?.config,
         googleMaps: {
@@ -43,16 +59,24 @@ module.exports = {
         },
       ],
       [
+        'expo-notifications',
+        {
+          icon: './assets/images/icon.png',
+          color: '#1B4F8A',
+        },
+      ],
+      [
         'expo-build-properties',
         {
           android: {
             // Smaller APK: 64-bit phones only + strip unused code/resources
             buildArchs: ['arm64-v8a'],
-            enableMinifyInReleaseBuilds: true,
-            enableShrinkResourcesInReleaseBuilds: true,
+            enableMinifyInReleaseBuilds: false,
+            enableShrinkResourcesInReleaseBuilds: false,
             extraProguardRules: `
-              -keep class com.google.android.gms.maps.** { *; }
-              -keep interface com.google.android.gms.maps.** { *; }
+              -keep class com.google.android.gms.** { *; }
+              -keep interface com.google.android.gms.** { *; }
+              -dontwarn com.google.android.gms.**
             `,
           },
         },
@@ -60,7 +84,13 @@ module.exports = {
     ],
     extra: {
       ...appJson.expo.extra,
+      eas: {
+        projectId: 'fa398a3b-4d43-4415-8e4b-a4144bff2906',
+      },
       googleMapsApiKey,
+      profileReminderSeconds: profileReminderSeconds
+        ? Number(profileReminderSeconds)
+        : undefined,
     },
   },
 };

@@ -55,11 +55,11 @@ export function MapLayersPanel({ enabledLayers, onToggleLayer, onClose }: MapLay
               onPress={() => onToggleLayer(layer.id)}
               accessibilityRole="checkbox"
               accessibilityState={{ checked: enabled }}>
-              <View style={[styles.layerIcon, { backgroundColor: layer.color }]}>
+              <View style={[styles.layerIcon, { borderColor: colors.border }]}>
                 <Ionicons
                   name={layer.icon as keyof typeof Ionicons.glyphMap}
-                  size={16}
-                  color={palette.white}
+                  size={18}
+                  color={colors.text}
                 />
               </View>
               <AppText variant="body" style={styles.layerLabel}>
@@ -69,8 +69,8 @@ export function MapLayersPanel({ enabledLayers, onToggleLayer, onClose }: MapLay
                 style={[
                   styles.toggleDot,
                   {
-                    backgroundColor: enabled ? layer.color : colors.border,
-                    borderColor: enabled ? layer.color : colors.border,
+                    backgroundColor: enabled ? colors.primary : colors.border,
+                    borderColor: enabled ? colors.primary : colors.border,
                   },
                 ]}
               />
@@ -113,6 +113,8 @@ const styles = StyleSheet.create({
     borderRadius: borderRadius.sm,
     alignItems: 'center',
     justifyContent: 'center',
+    borderWidth: 1,
+    backgroundColor: palette.white,
   },
   layerLabel: {
     flex: 1,

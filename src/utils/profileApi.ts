@@ -7,6 +7,21 @@ import { pickAddressData } from '@/utils/registration';
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
+/** Alert rows for onboarding complete — no street address; server assigns UUIDs. */
+export function toAlertLocationsForComplete(
+  locations: AlertLocation[],
+): Array<{ id?: string; label: string; city: string; state: string; zipCode?: string }> {
+  return locations.map(({ id, label, city, state, zipCode }) => {
+    const row = {
+      label: label.trim(),
+      city: city.trim(),
+      state: state.trim(),
+      ...(zipCode.trim() ? { zipCode: zipCode.trim() } : {}),
+    };
+    return UUID_RE.test(id) ? { id, ...row } : row;
+  });
+}
+
 /** Omit client-generated ids so the server assigns UUIDs for new rows. */
 export function toAlertLocationsRequestBody(
   locations: AlertLocation[],

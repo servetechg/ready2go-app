@@ -27,16 +27,19 @@
         "expo-splash-screen",
         {
           "image": "./assets/images/logo.png",
-          "imageWidth": 240,
+          "imageWidth": 200,
           "resizeMode": "contain",
           "backgroundColor": "#1B4F8A",
           "ios": {
             "image": "./assets/images/logo.png",
-            "imageWidth": 240
+            "imageWidth": 200,
+            "resizeMode": "contain",
+            "backgroundColor": "#1B4F8A"
           },
           "android": {
             "image": "./assets/images/logo.png",
-            "imageWidth": 288,
+            "imageWidth": 200,
+            "resizeMode": "contain",
             "backgroundColor": "#1B4F8A"
           }
         }
@@ -45,9 +48,7 @@
       "expo-web-browser"
     ],
     "extra": {
-      "eas": {
-        "projectId": "84aff598-2a54-47e3-a3f4-e36ba11bda0b"
-      }
+      "eas": {}
     }
   }
 }

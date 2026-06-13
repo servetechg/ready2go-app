@@ -2,7 +2,7 @@ import type { DashboardMode } from '@/types/emergency';
 
 export type AlertSeverity = 'LOW' | 'MODERATE' | 'HIGH' | 'EXTREME';
 
-/** Alert shape returned by GET /dashboard/home (recentAlerts). */
+/** Alert shape returned by GET /dashboard/home and GET /alerts. */
 export interface MobileWeatherAlert {
   id: string;
   severity: AlertSeverity;
@@ -11,7 +11,9 @@ export interface MobileWeatherAlert {
   source: string;
   issuedAt: string;
   expiresAt?: string | null;
+  expiresLabel?: string;
   read: boolean;
+  description?: string;
 }
 
 export type DashboardStatus = {

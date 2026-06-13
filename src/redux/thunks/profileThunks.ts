@@ -2,17 +2,22 @@ import { createAsyncThunk } from '@reduxjs/toolkit';
 
 import { profileService } from '@/services/profile.service';
 import { setUser } from '@/redux/slices/authSlice';
+import { fetchAlerts } from '@/redux/slices/alertsSlice';
+import { fetchHome } from '@/redux/slices/dashboardSlice';
 import {
   clearPreparednessCache,
   fetchCategories,
 } from '@/redux/slices/preparednessSlice';
 import {
+  completeRegistration,
   hydrateProfileFromApi,
   setAlertLocations,
+  setLodging,
   setProofOfOwnership,
   setProofOfResidency,
 } from '@/redux/slices/registrationSlice';
 import type { PatchUserRequest, ProfilePayload } from '@/types/api';
+import { toProfilePayload } from '@/types/profile';
 import type { AuthState } from '@/types/auth';
 import type { AlertLocation, RegistrationState } from '@/types/registration';
 import type { LocalProfileDocument, ProfileDocumentValue } from '@/types/profileDocument';
@@ -50,6 +55,8 @@ export const patchEmergencyProfile = createAsyncThunk(
       if (body.address) {
         dispatch(clearPreparednessCache());
         void dispatch(fetchCategories(undefined));
+        void dispatch(fetchHome());
+        void dispatch(fetchAlerts());
       }
       return response;
     } catch (error) {
@@ -99,6 +106,7 @@ export const saveAlertLocations = createAsyncThunk(
     try {
       const response = await profileService.putAlertLocations(token, locations);
       dispatch(setAlertLocations(response.alertLocations));
+      void dispatch(fetchAlerts());
       return response;
     } catch (error) {
       return rejectWithValue(getErrorMessage(error, 'Could not save alert locations'));
@@ -139,6 +147,41 @@ export const uploadProfileDocument = createAsyncThunk(
       return { kind: payload.kind, document };
     } catch (error) {
       return rejectWithValue(getErrorMessage(error, 'Could not upload document'));
+    }
+  },
+);
+
+export const completeOnboarding = createAsyncThunk(
+  'profile/completeOnboarding',
+  async (
+    lodging: RegistrationState['lodging'],
+    { getState, dispatch, rejectWithValue },
+  ) => {
+    const token = getToken(getState);
+    if (!token) return rejectWithValue('Not authenticated');
+
+    dispatch(setLodging(lodging));
+
+    try {
+      const registration = (getState() as { registration: RegistrationState }).registration;
+      await uploadPendingProfileDocuments(token, registration, dispatch);
+
+      const profile = toProfilePayload({
+        ...((getState() as { registration: RegistrationState }).registration),
+        lodging,
+      });
+
+      const response = await profileService.completeProfile({ profile }, token);
+      dispatch(setUser(response.user));
+      dispatch(hydrateProfileFromApi(response.profile));
+      dispatch(completeRegistration());
+      dispatch(clearPreparednessCache());
+      void dispatch(fetchCategories(undefined));
+      void dispatch(fetchHome());
+      void dispatch(fetchAlerts());
+      return response;
+    } catch (error) {
+      return rejectWithValue(getErrorMessage(error, 'Could not save profile'));
     }
   },
 );

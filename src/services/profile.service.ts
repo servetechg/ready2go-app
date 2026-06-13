@@ -120,4 +120,28 @@ export const profileService = {
       token,
     });
   },
+
+  async registerPushToken(token: string, expoPushToken: string): Promise<{ message: string }> {
+    return apiRequest<{ message: string }>('/users/me/push-token', {
+      method: 'PUT',
+      body: { expoPushToken },
+      token,
+    });
+  },
+
+  async clearPushToken(token: string): Promise<{ message: string }> {
+    return apiRequest<{ message: string }>('/users/me/push-token', {
+      method: 'DELETE',
+      token,
+    });
+  },
+
+  async sendTestServerPush(
+    token: string,
+  ): Promise<{ message: string; tokenPreview?: string }> {
+    return apiRequest<{ message: string; tokenPreview?: string }>('/notifications/test-push', {
+      method: 'POST',
+      token,
+    });
+  },
 };

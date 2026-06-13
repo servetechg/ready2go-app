@@ -13,6 +13,7 @@ import {
 import { STORAGE_KEYS } from '@/constants/storage';
 import { safePersistStorage } from '@/utils/persistStorage';
 
+import alertsReducer from './slices/alertsSlice';
 import authReducer from './slices/authSlice';
 import dashboardReducer from './slices/dashboardSlice';
 import preparednessReducer from './slices/preparednessSlice';
@@ -36,17 +37,39 @@ const registrationPersistConfig = {
 const rootReducer = combineReducers({
   auth: persistReducer(authPersistConfig, authReducer),
   registration: persistReducer(registrationPersistConfig, registrationReducer),
+  alerts: alertsReducer,
   dashboard: dashboardReducer,
   preparedness: preparednessReducer,
   ui: uiReducer,
 });
+
+/** Large GIS/alert payloads can exceed RTK's default 32ms dev check threshold. */
+const DEV_SERIALIZABLE_WARN_MS = 128;
 
 export const store = configureStore({
   reducer: rootReducer,
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({
       serializableCheck: {
+        warnAfter: DEV_SERIALIZABLE_WARN_MS,
         ignoredActions: [FLUSH, REHYDRATE, PAUSE, PERSIST, PURGE, REGISTER],
+        ignoredPaths: [
+          'dashboard.emergency',
+          'dashboard.home',
+          'alerts.items',
+          'preparedness.tasksByCategoryId',
+          'preparedness.categoryDetails',
+        ],
+      },
+      immutableCheck: {
+        warnAfter: DEV_SERIALIZABLE_WARN_MS,
+        ignoredPaths: [
+          'dashboard.emergency',
+          'dashboard.home',
+          'alerts.items',
+          'preparedness.tasksByCategoryId',
+          'preparedness.categoryDetails',
+        ],
       },
     }),
 });

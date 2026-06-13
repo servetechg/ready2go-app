@@ -39,6 +39,7 @@ export interface MapMarkerPoint {
   latitude: number;
   longitude: number;
   layer?: GisMapLayerId;
+  severity?: string;
   /** Legacy API field — mapped to `layer` client-side */
   type?: 'closure' | 'shelter' | 'resource' | 'hazard';
 }
