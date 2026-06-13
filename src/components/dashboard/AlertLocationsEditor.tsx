@@ -1,23 +1,20 @@
 import { Ionicons } from '@expo/vector-icons';
 import React, { useState } from 'react';
-import { Platform, Pressable, StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 
-import { AppInput } from '@/components/form/AppInput';
-import { AppSelect } from '@/components/form/AppSelect';
-import { PlacesAddressAutocomplete } from '@/components/form/PlacesAddressAutocomplete';
+import {
+  AddLocationModal,
+  type AddLocationFormData,
+} from '@/components/onboarding/AddLocationModal';
 import { AppText } from '@/components/ui/AppText';
-import { US_STATES } from '@/constants/registration';
 import { useAppTheme } from '@/hooks/useAppTheme';
-import { isPlacesSearchAvailable } from '@/services/places.service';
 import { borderRadius, palette, spacing } from '@/theme';
 import type { AlertLocation } from '@/types/registration';
-import type { ParsedPlaceAddress } from '@/utils/googlePlaces';
 
 interface AlertLocationsEditorProps {
   locations: AlertLocation[];
   onChange: (locations: AlertLocation[]) => void;
   compact?: boolean;
-  maxLocations?: number;
 }
 
 function newLocationId() {
@@ -28,66 +25,53 @@ function formatLocationLine(loc: AlertLocation): string {
   return [loc.streetAddress, loc.city, loc.state, loc.zipCode].filter(Boolean).join(', ');
 }
 
-function formatPlacePreview(place: ParsedPlaceAddress): string {
-  const parts = [place.streetAddress, place.city, place.state, place.zipCode].filter(Boolean);
-  return place.formattedAddress || parts.join(', ');
+function formDataToLocation(data: AddLocationFormData): AlertLocation {
+  return {
+    id: data.id ?? newLocationId(),
+    label: data.label.trim(),
+    streetAddress: data.streetAddress?.trim() ?? '',
+    city: data.city.trim(),
+    state: data.state,
+    zipCode: data.zipCode?.trim() ?? '',
+  };
 }
 
 export function AlertLocationsEditor({
   locations,
   onChange,
   compact = false,
-  maxLocations,
 }: AlertLocationsEditorProps) {
   const { colors } = useAppTheme();
-  const usePlacesSearch = isPlacesSearchAvailable() && Platform.OS !== 'web';
+  const [modalVisible, setModalVisible] = useState(false);
+  const [editingLocation, setEditingLocation] = useState<AlertLocation | null>(null);
 
-  const [label, setLabel] = useState('');
-  const [streetAddress, setStreetAddress] = useState('');
-  const [city, setCity] = useState('');
-  const [state, setState] = useState('');
-  const [zipCode, setZipCode] = useState('');
-  const [selectedPlace, setSelectedPlace] = useState<ParsedPlaceAddress | null>(null);
-
-  const applyPlace = (place: ParsedPlaceAddress) => {
-    setSelectedPlace(place);
-    setStreetAddress(place.streetAddress);
-    setCity(place.city);
-    setState(place.state);
-    setZipCode(place.zipCode);
+  const openAdd = () => {
+    setEditingLocation(null);
+    setModalVisible(true);
   };
 
-  const clearPlace = () => {
-    setSelectedPlace(null);
-    setStreetAddress('');
-    setCity('');
-    setState('');
-    setZipCode('');
+  const openEdit = (loc: AlertLocation) => {
+    setEditingLocation(loc);
+    setModalVisible(true);
   };
 
-  const addLocation = () => {
-    if (!city.trim() || !state) return;
-    if (maxLocations !== undefined && locations.length >= maxLocations) return;
-    onChange([
-      ...locations,
-      {
-        id: newLocationId(),
-        label: label.trim() || `${city.trim()}, ${state}`,
-        streetAddress: streetAddress.trim(),
-        city: city.trim(),
-        state,
-        zipCode: zipCode.trim(),
-      },
-    ]);
-    setLabel('');
-    clearPlace();
+  const closeModal = () => {
+    setModalVisible(false);
+    setEditingLocation(null);
+  };
+
+  const handleSave = (data: AddLocationFormData) => {
+    const next = formDataToLocation(data);
+    if (data.id) {
+      onChange(locations.map((loc) => (loc.id === data.id ? next : loc)));
+      return;
+    }
+    onChange([...locations, next]);
   };
 
   const removeLocation = (id: string) => {
     onChange(locations.filter((loc) => loc.id !== id));
   };
-
-  const atMax = maxLocations !== undefined && locations.length >= maxLocations;
 
   return (
     <View style={styles.wrap}>
@@ -104,98 +88,40 @@ export function AlertLocationsEditor({
 
       {locations.map((loc) => (
         <View key={loc.id} style={styles.chipRow}>
-          <View style={styles.chip}>
+          <Pressable style={styles.chip} onPress={() => openEdit(loc)} accessibilityRole="button">
             <Ionicons name="location-outline" size={16} color={palette.tabActive} />
-            <AppText variant="bodySmall" style={styles.chipText}>
-              {loc.label || formatLocationLine(loc)}
-            </AppText>
-          </View>
+            <View style={styles.chipTextWrap}>
+              <AppText variant="bodySmall">
+                {loc.label || formatLocationLine(loc)}
+              </AppText>
+              <AppText variant="caption" color={colors.textMuted} numberOfLines={1}>
+                {formatLocationLine(loc)}
+              </AppText>
+            </View>
+            <Ionicons name="create-outline" size={18} color={colors.textMuted} />
+          </Pressable>
           <Pressable onPress={() => removeLocation(loc.id)} hitSlop={8} accessibilityLabel="Remove location">
             <Ionicons name="close-circle" size={22} color={colors.textMuted} />
           </Pressable>
         </View>
       ))}
 
-      {atMax ? (
-        <AppText variant="caption" color={colors.textMuted}>
-          Maximum {maxLocations} locations reached.
+      <Pressable
+        style={[styles.addBtn, { borderColor: colors.primary }]}
+        onPress={openAdd}
+        accessibilityRole="button">
+        <Ionicons name="add-circle-outline" size={20} color={colors.primary} />
+        <AppText variant="label" color={colors.primary}>
+          Add location
         </AppText>
-      ) : (
-        <>
-          <AppInput
-            label="Label (optional)"
-            placeholder="e.g. Family in California"
-            value={label}
-            onChangeText={setLabel}
-          />
-          <AppInput
-            label="City"
-            placeholder="City"
-            value={city}
-            onChangeText={setCity}
-          />
-          <AppInput
-            label="Street (optional)"
-            placeholder="Street address"
-            value={streetAddress}
-            onChangeText={setStreetAddress}
-          />
+      </Pressable>
 
-          {usePlacesSearch ? (
-            <>
-              <PlacesAddressAutocomplete
-                label="Search address"
-                onPlaceSelected={applyPlace}
-                onClear={clearPlace}
-              />
-              {selectedPlace ? (
-                <View style={[styles.selectedPlace, { backgroundColor: colors.accent }]}>
-                  <Ionicons name="checkmark-circle" size={18} color={colors.primary} />
-                  <AppText variant="bodySmall" style={styles.selectedPlaceText}>
-                    {formatPlacePreview(selectedPlace)}
-                  </AppText>
-                </View>
-              ) : null}
-            </>
-          ) : null}
-
-          <View style={styles.row}>
-            <View style={styles.stateCol}>
-              <AppSelect
-                label="State"
-                value={state}
-                options={US_STATES}
-                onChange={setState}
-                placeholder="State"
-                containerStyle={styles.select}
-              />
-            </View>
-            <AppInput
-              label="ZIP (optional)"
-              placeholder="ZIP"
-              value={zipCode}
-              onChangeText={setZipCode}
-              keyboardType="number-pad"
-              containerStyle={styles.zip}
-            />
-          </View>
-
-          <Pressable
-            style={[
-              styles.addBtn,
-              { borderColor: colors.primary },
-              (!city.trim() || !state) && styles.addBtnDisabled,
-            ]}
-            onPress={addLocation}
-            disabled={!city.trim() || !state}
-            accessibilityRole="button">
-            <Ionicons name="add-circle-outline" size={20} color={colors.primary} />
-            <AppText variant="label" color={colors.primary}>
-              Add location
-            </AppText>
-          </Pressable>
-        </>
-      )}
+      <AddLocationModal
+        visible={modalVisible}
+        editingLocation={editingLocation}
+        onClose={closeModal}
+        onSave={handleSave}
+      />
     </View>
   );
 }
@@ -209,6 +135,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     marginBottom: spacing.xs,
+    gap: spacing.sm,
   },
   chip: {
     flex: 1,
@@ -220,21 +147,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
     borderRadius: borderRadius.md,
   },
-  chipText: { flex: 1, flexShrink: 1 },
-  selectedPlace: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-    paddingVertical: spacing.sm,
-    paddingHorizontal: spacing.md,
-    borderRadius: borderRadius.md,
-    marginTop: -spacing.sm,
-  },
-  selectedPlaceText: { flex: 1 },
-  row: { flexDirection: 'row', gap: spacing.md, alignItems: 'flex-start' },
-  stateCol: { width: 108, flexShrink: 0 },
-  select: { marginBottom: 0 },
-  zip: { flex: 1, minWidth: 0 },
+  chipTextWrap: { flex: 1, gap: 2 },
   addBtn: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -245,5 +158,4 @@ const styles = StyleSheet.create({
     borderRadius: borderRadius.full,
     marginTop: spacing.sm,
   },
-  addBtnDisabled: { opacity: 0.5 },
 });

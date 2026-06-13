@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { zodResolver } from '@hookform/resolvers/zod';
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { Modal, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { z } from 'zod';
@@ -15,9 +15,10 @@ import { US_STATES } from '@/constants/registration';
 import { useAppTheme } from '@/hooks/useAppTheme';
 import { isPlacesSearchAvailable } from '@/services/places.service';
 import { borderRadius, spacing } from '@/theme';
+import type { AlertLocation } from '@/types/registration';
 import { fieldErrorMessage } from '@/utils/form';
 
-const addLocationSchema = z.object({
+const locationFormSchema = z.object({
   label: z.string().min(1, 'Name is required'),
   streetAddress: z.string().optional(),
   city: z.string().min(1, 'City is required'),
@@ -25,20 +26,43 @@ const addLocationSchema = z.object({
   zipCode: z.string().optional(),
 });
 
-export type AddLocationFormData = z.infer<typeof addLocationSchema>;
+export type AddLocationFormData = z.infer<typeof locationFormSchema> & { id?: string };
 
 interface AddLocationModalProps {
   visible: boolean;
   onClose: () => void;
   onSave: (data: AddLocationFormData) => void;
+  /** When set, the modal opens in edit mode with fields prefilled. */
+  editingLocation?: AlertLocation | null;
 }
 
-export function AddLocationModal({ visible, onClose, onSave }: AddLocationModalProps) {
+function emptyFormValues(): AddLocationFormData {
+  return { label: '', streetAddress: '', city: '', state: '', zipCode: '' };
+}
+
+function valuesFromLocation(loc: AlertLocation): AddLocationFormData {
+  return {
+    id: loc.id,
+    label: loc.label,
+    streetAddress: loc.streetAddress ?? '',
+    city: loc.city,
+    state: loc.state,
+    zipCode: loc.zipCode ?? '',
+  };
+}
+
+export function AddLocationModal({
+  visible,
+  onClose,
+  onSave,
+  editingLocation = null,
+}: AddLocationModalProps) {
   const { colors } = useAppTheme();
   const usePlacesSearch = isPlacesSearchAvailable() && Platform.OS !== 'web';
+  const isEditing = Boolean(editingLocation);
   const { control, handleSubmit, reset, setValue, watch, formState: { errors } } = useForm<AddLocationFormData>({
-    resolver: zodResolver(addLocationSchema),
-    defaultValues: { label: '', streetAddress: '', city: '', state: '', zipCode: '' },
+    resolver: zodResolver(locationFormSchema),
+    defaultValues: emptyFormValues(),
   });
 
   const streetAddress = watch('streetAddress');
@@ -46,14 +70,26 @@ export function AddLocationModal({ visible, onClose, onSave }: AddLocationModalP
   const state = watch('state');
   const zipCode = watch('zipCode');
 
+  useEffect(() => {
+    if (!visible) return;
+    reset(editingLocation ? valuesFromLocation(editingLocation) : emptyFormValues());
+  }, [visible, editingLocation, reset]);
+
   const handleClose = () => {
-    reset();
+    reset(emptyFormValues());
     onClose();
   };
 
   const submit = (data: AddLocationFormData) => {
-    onSave(data);
-    reset();
+    onSave({
+      ...data,
+      id: editingLocation?.id ?? data.id,
+      label: data.label.trim(),
+      streetAddress: data.streetAddress?.trim() ?? '',
+      city: data.city.trim(),
+      zipCode: data.zipCode?.trim() ?? '',
+    });
+    reset(emptyFormValues());
     onClose();
   };
 
@@ -64,7 +100,7 @@ export function AddLocationModal({ visible, onClose, onSave }: AddLocationModalP
           style={[styles.sheet, { backgroundColor: colors.surface }]}
           onPress={(e) => e.stopPropagation()}>
           <View style={styles.sheetHeader}>
-            <AppText variant="h3">Add another location</AppText>
+            <AppText variant="h3">{isEditing ? 'Edit location' : 'Add another location'}</AppText>
             <Pressable onPress={handleClose} hitSlop={12}>
               <Ionicons name="close" size={24} color={colors.textSecondary} />
             </Pressable>
@@ -176,7 +212,11 @@ export function AddLocationModal({ visible, onClose, onSave }: AddLocationModalP
               </>
             )}
           </ScrollView>
-          <AppButton title="SAVE LOCATION" onPress={handleSubmit(submit)} style={styles.saveBtn} />
+          <AppButton
+            title={isEditing ? 'SAVE CHANGES' : 'SAVE LOCATION'}
+            onPress={handleSubmit(submit)}
+            style={styles.saveBtn}
+          />
         </Pressable>
       </Pressable>
     </Modal>

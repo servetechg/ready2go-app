@@ -18,7 +18,8 @@ import { ScreenWrapper } from '@/components/layout/ScreenWrapper';
 import { AddressVerificationFields } from '@/components/profile/AddressVerificationFields';
 import { ProfileAvatarEditor } from '@/components/profile/ProfileAvatarEditor';
 import { AppText } from '@/components/ui/AppText';
-import { US_STATES } from '@/constants/registration';
+import { RequirementEditor } from '@/components/profile/RequirementEditor';
+import { ADA_OPTIONS, PET_OPTIONS, US_STATES } from '@/constants/registration';
 import { PROFILE_STACK_ROUTES } from '@/constants/routes';
 import { useToast } from '@/hooks/useToast';
 import { useAppDispatch, useAppSelector } from '@/redux/hooks';
@@ -29,13 +30,16 @@ import {
     uploadProfileDocument,
 } from '@/redux/thunks/profileThunks';
 import {
-  setAddressVerification,
-  setProofOfOwnership,
-  setProofOfResidency,
+    setAddressVerification,
+    setAda,
+    setPets,
+    setProofOfOwnership,
+    setProofOfResidency,
 } from '@/redux/slices/registrationSlice';
 import { borderRadius, fontSize, googleSans, inputHeight, palette, spacing } from '@/theme';
 import type { ProfileStackParamList } from '@/types/navigation';
-import type { AlertLocation } from '@/types/registration';
+import type { AlertLocation, YesNoStepData } from '@/types/registration';
+import { adaSchema, petsSchema } from '@/validations/registration.schemas';
 import type { LocalProfileDocument, ProfileDocumentValue } from '@/types/profileDocument';
 import { getErrorMessage } from '@/utils/error';
 import { sanitizeTextInputProps } from '@/utils/nativeProps';
@@ -139,6 +143,8 @@ export function EditProfileScreen() {
   const [alertLocations, setAlertLocationsLocal] = useState<AlertLocation[]>(
     registration.alertLocations,
   );
+  const [ada, setAdaLocal] = useState<YesNoStepData>(registration.ada);
+  const [pets, setPetsLocal] = useState<YesNoStepData>(registration.pets);
   const [saving, setSaving] = useState(false);
 
   const uploadDocument = async (
@@ -161,6 +167,17 @@ export function EditProfileScreen() {
 
     setSaving(true);
     try {
+      const adaResult = adaSchema.safeParse(ada);
+      if (!adaResult.success) {
+        showError(adaResult.error.errors[0]?.message ?? 'Please complete ADA requirements');
+        return;
+      }
+      const petsResult = petsSchema.safeParse(pets);
+      if (!petsResult.success) {
+        showError(petsResult.error.errors[0]?.message ?? 'Please complete pet / livestock information');
+        return;
+      }
+
       const nameParts = fullName.trim().split(/\s+/).filter(Boolean);
       const firstName = nameParts[0] ?? user.firstName;
       const lastName = nameParts.slice(1).join(' ') || user.lastName;
@@ -193,11 +210,16 @@ export function EditProfileScreen() {
         householdSize: parsedHousehold,
         isPrimaryAddress,
         allowResidenceInspection,
+        ada,
+        pets,
       });
       const locationsChanged = alertLocationsChanged(
         alertLocations,
         initialAlertLocations.current,
       );
+      const requirementsChanged =
+        JSON.stringify(ada) !== JSON.stringify(registration.ada) ||
+        JSON.stringify(pets) !== JSON.stringify(registration.pets);
       const verificationChanged =
         isPrimaryAddress !== registration.isPrimaryAddress ||
         allowResidenceInspection !== registration.allowResidenceInspection;
@@ -205,7 +227,7 @@ export function EditProfileScreen() {
         proofOfOwnership !== registration.proofOfOwnership ||
         proofOfResidency !== registration.proofOfResidency;
 
-      if (!accountBody && !profileBody && !locationsChanged && !verificationChanged && !documentsChanged) {
+      if (!accountBody && !profileBody && !locationsChanged && !verificationChanged && !documentsChanged && !requirementsChanged) {
         showSuccess('No changes to save');
         navigation.goBack();
         return;
@@ -233,6 +255,8 @@ export function EditProfileScreen() {
       );
       dispatch(setProofOfOwnership(proofOfOwnership));
       dispatch(setProofOfResidency(proofOfResidency));
+      dispatch(setAda(ada));
+      dispatch(setPets(pets));
 
       if (locationsChanged) {
         const result = await dispatch(saveAlertLocations(alertLocations));
@@ -329,6 +353,22 @@ export function EditProfileScreen() {
               onProofOfResidencyChange={setProofOfResidencyLocal}
               onUploadOwnership={(file) => uploadDocument('ownership', file)}
               onUploadResidency={(file) => uploadDocument('residency', file)}
+            />
+
+            <RequirementEditor
+              title="ADA Requirements"
+              instruction="Do you or anyone in your household have ADA requirements?"
+              options={ADA_OPTIONS}
+              value={ada}
+              onChange={setAdaLocal}
+            />
+
+            <RequirementEditor
+              title="Pet / Livestock Information"
+              instruction="Do you have pets or livestock?"
+              options={PET_OPTIONS}
+              value={pets}
+              onChange={setPetsLocal}
             />
 
             <View style={styles.alertSection}>
