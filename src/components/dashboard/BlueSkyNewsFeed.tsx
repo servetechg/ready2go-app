@@ -200,7 +200,7 @@ const styles = StyleSheet.create({
     borderRadius: borderRadius.full,
     borderWidth: 1,
   },
-  issued: { maxWidth: 88, textAlign: 'right' },
+  issued: { maxWidth: 120, textAlign: 'right' },
   headline: { marginBottom: spacing.xs },
   location: {
     textTransform: 'uppercase',
@@ -208,7 +208,7 @@ const styles = StyleSheet.create({
     letterSpacing: 0.3,
   },
   body: { lineHeight: 20 },
-  emptyCard: {
+  emptyCard: { 
     borderRadius: borderRadius.lg,
     padding: spacing.xxl,
     alignItems: 'center',

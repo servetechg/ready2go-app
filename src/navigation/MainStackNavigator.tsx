@@ -4,9 +4,11 @@ import React from 'react';
 import { MAIN_STACK_ROUTES } from '@/constants/routes';
 import { FaqScreen } from '@/screens/dashboard/FaqScreen';
 import { SettingsScreen } from '@/screens/dashboard/SettingsScreen';
+import { SplashPreviewScreen } from '@/screens/dashboard/SplashPreviewScreen';
 import { StaticInfoScreen } from '@/screens/dashboard/StaticInfoScreen';
 import type { MainStackParamList } from '@/types/navigation';
 
+import { DisasterSurveyStackNavigator } from './DisasterSurveyStackNavigator';
 import { MainTabNavigator } from './MainTabNavigator';
 import { stackScreenOptions } from './screenOptions';
 
@@ -34,6 +36,16 @@ export function MainStackNavigator() {
         name={MAIN_STACK_ROUTES.FAQ}
         component={FaqScreen}
         options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name={MAIN_STACK_ROUTES.DISASTER_SURVEY}
+        component={DisasterSurveyStackNavigator}
+        options={{ headerShown: false, presentation: 'modal' }}
+      />
+      <Stack.Screen
+        name={MAIN_STACK_ROUTES.SPLASH_PREVIEW}
+        component={SplashPreviewScreen}
+        options={{ headerShown: false, presentation: 'fullScreenModal' }}
       />
     </Stack.Navigator>
   );
