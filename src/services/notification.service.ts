@@ -3,6 +3,7 @@ import * as Device from 'expo-device';
 import { Platform } from 'react-native';
 
 import { getProfileReminderDelaySeconds } from '@/utils/profileReminderDelay';
+import { DISASTER_NOTIFICATION_SCREEN } from '@/constants/disasterSurvey';
 import {
   clearStoredProfileReminder,
   loadStoredProfileReminder,
@@ -65,6 +66,7 @@ export async function initNotificationHandler(): Promise<void> {
 
 export const PROFILE_REMINDER_ID = 'profile-incomplete-reminder';
 export const PROFILE_REMINDER_CHANNEL_ID = 'profile-reminders';
+export const DISASTER_SURVEY_CHANNEL_ID = 'disaster-alerts';
 
 export const notificationService = {
   async requestPermissionsAsync(): Promise<boolean> {
@@ -88,6 +90,15 @@ export const notificationService = {
         lightColor: '#1B4F8A',
         sound: 'default',
         bypassDnd: false,
+      });
+      await Notifications.setNotificationChannelAsync(DISASTER_SURVEY_CHANNEL_ID, {
+        name: 'Disaster alerts',
+        description: 'Emergency disaster zone alerts and relief surveys',
+        importance: Notifications.AndroidImportance.MAX,
+        vibrationPattern: [0, 250, 250, 250],
+        lightColor: '#C62828',
+        sound: 'default',
+        bypassDnd: true,
       });
     }
 
@@ -255,6 +266,37 @@ export const notificationService = {
       await clearStoredProfileReminder();
     } catch (error) {
       console.warn('Failed to cancel profile reminder:', error);
+    }
+  },
+
+  async sendDisasterSurveyTestNotification(): Promise<string | null> {
+    if (!canUseNotifications()) return null;
+
+    const Notifications = await getNotifications();
+    if (!Notifications) return null;
+
+    try {
+      const hasPermission = await this.requestPermissionsAsync();
+      if (!hasPermission) {
+        return null;
+      }
+
+      const id = await Notifications.scheduleNotificationAsync({
+        content: {
+          title: 'DISASTER ALERT',
+          body: 'You are in a designated disaster zone. You may be eligible for disaster relief. Tap to complete your status assessment.',
+          sound: true,
+          priority: Notifications.AndroidNotificationPriority.MAX,
+          ...(Platform.OS === 'android' ? { channelId: DISASTER_SURVEY_CHANNEL_ID } : {}),
+          data: { screen: DISASTER_NOTIFICATION_SCREEN },
+        },
+        trigger: null,
+      });
+
+      return id;
+    } catch (error) {
+      console.warn('Failed to send disaster survey notification:', error);
+      return null;
     }
   },
 

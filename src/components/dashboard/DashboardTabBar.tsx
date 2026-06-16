@@ -102,7 +102,8 @@ const styles = StyleSheet.create({
     right: 0,
     bottom: 0,
     paddingHorizontal: spacing.lg,
-    backgroundColor: 'transparent',
+    backgroundColor: palette.background,
+    paddingTop: spacing.sm,
   },
   bar: {
     flexDirection: 'row',
@@ -118,7 +119,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 2,
-    paddingVertical: spacing.xs,
+    // paddingVertical: spacing.xs,
   },
   iconWrap: {
     position: 'relative',

@@ -47,6 +47,14 @@ export const MAIN_STACK_ROUTES = {
   SETTINGS: 'Settings',
   STATIC_INFO: 'StaticInfo',
   FAQ: 'Faq',
+  DISASTER_SURVEY: 'DisasterSurvey',
+  SPLASH_PREVIEW: 'SplashPreview',
+} as const;
+
+export const DISASTER_SURVEY_ROUTES = {
+  INTRO: 'DisasterSurveyIntro',
+  IMMEDIATE_NEEDS: 'DisasterImmediateNeeds',
+  COMPLETE: 'DisasterSurveyComplete',
 } as const;
 
 export const DRAWER_ROUTES = {
