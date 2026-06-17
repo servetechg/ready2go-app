@@ -1,5 +1,4 @@
 import { Ionicons } from '@expo/vector-icons';
-import React from 'react';
 import { ActivityIndicator, Image, Platform, Pressable, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
