@@ -17,6 +17,6 @@ export const NATIVE_SPLASH_IOS = {
 /** Square padded asset — matches Android APK native splash */
 export const NATIVE_SPLASH_ANDROID = {
   image: require('@/assets/images/logo1.png'),
-  imageWidth: 120,
+  imageWidth: 130,
   aspect: 1,
 };
