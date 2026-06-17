@@ -37,7 +37,7 @@
             "backgroundColor": "#1B4F8A"
           },
           "android": {
-            "image": "./assets/images/splash-logo-android.png",
+            "image": "./assets/images/logo1.png",
             "imageWidth": 200,
             "resizeMode": "contain",
             "backgroundColor": "#1B4F8A"
