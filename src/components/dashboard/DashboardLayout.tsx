@@ -39,6 +39,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 0,
   },
   tabBarInset: {
-    paddingBottom: TAB_BAR_CLEARANCE,
+    // paddingBottom: TAB_BAR_CLEARANCE,
+    // backgroundColor: 'grey',
   },
 });

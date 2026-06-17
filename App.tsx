@@ -10,11 +10,13 @@ import { PersistGate } from 'redux-persist/integration/react';
 
 import { AppSplashScreen } from '@/components/splash/AppSplashScreen';
 import { SplashReadyView } from '@/components/splash/SplashReadyView';
+import { useDisasterNotificationResponse } from '@/hooks/useDisasterNotificationResponse';
 import { useAppFonts } from '@/hooks/useAppFonts';
 import { useSessionBootstrap } from '@/hooks/useSessionBootstrap';
 import { useProfileReminder } from '@/hooks/useProfileReminder';
 import { usePushTokenRegistration } from '@/hooks/usePushTokenRegistration';
 import { RootNavigator } from '@/navigation';
+import { navigationRef } from '@/navigation/navigationRef';
 import { persistor, store } from '@/redux/store';
 import { initNotificationHandler } from '@/services/notification.service';
 import { palette } from '@/theme';
@@ -50,11 +52,12 @@ function AppNavigation() {
   useSessionBootstrap();
   usePushTokenRegistration();
   useProfileReminder();
+  useDisasterNotificationResponse();
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
-        <NavigationContainer theme={navTheme}>
+        <NavigationContainer ref={navigationRef} theme={navTheme}>
           <StatusBar style="auto" />
           <RootNavigator />
           <Toast />

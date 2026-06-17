@@ -26,7 +26,7 @@ export function HeroBanner({ children, style, compact = false }: HeroBannerProps
       ]}>
       <View style={[styles.inner, { borderBottomColor: colors.primaryDark }]}>
         <View style={styles.logoContainer}>
-          <Image source={require('@/assets/images/logo.png')}  style={styles.logo} />
+          <Image source={require('@/assets/images/logo1.png')}  style={styles.logo} />
         </View>
         <AppText variant="body" color={colors.accent} center={true} style={styles.tagline}>
           Be Prepared. Stay Informed. We&apos;re Ready2Go.

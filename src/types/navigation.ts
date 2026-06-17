@@ -2,6 +2,7 @@ import { NavigatorScreenParams } from '@react-navigation/native';
 
 import {
   AUTH_ROUTES,
+  DISASTER_SURVEY_ROUTES,
   DRAWER_ROUTES,
   HOME_STACK_ROUTES,
   MAIN_STACK_ROUTES,
@@ -60,11 +61,19 @@ export type MainTabParamList = {
   [TAB_ROUTES.PROFILE]: NavigatorScreenParams<ProfileStackParamList>;
 };
 
+export type DisasterSurveyStackParamList = {
+  [DISASTER_SURVEY_ROUTES.INTRO]: undefined;
+  [DISASTER_SURVEY_ROUTES.IMMEDIATE_NEEDS]: undefined;
+  [DISASTER_SURVEY_ROUTES.COMPLETE]: undefined;
+};
+
 export type MainStackParamList = {
   [MAIN_STACK_ROUTES.TABS]: NavigatorScreenParams<MainTabParamList>;
   [MAIN_STACK_ROUTES.SETTINGS]: undefined;
   [MAIN_STACK_ROUTES.STATIC_INFO]: { title: string; body: string };
   [MAIN_STACK_ROUTES.FAQ]: undefined;
+  [MAIN_STACK_ROUTES.DISASTER_SURVEY]: NavigatorScreenParams<DisasterSurveyStackParamList>;
+  [MAIN_STACK_ROUTES.SPLASH_PREVIEW]: undefined;
 };
 
 export type DrawerParamList = {

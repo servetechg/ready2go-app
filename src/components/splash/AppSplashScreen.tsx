@@ -1,31 +1,77 @@
-import React from 'react';
-import { ActivityIndicator, Image, StyleSheet, View } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { ActivityIndicator, Image, Platform, Pressable, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AppText } from '@/components/ui/AppText';
+import {
+  NATIVE_SPLASH_ANDROID,
+  NATIVE_SPLASH_CONFIG,
+  NATIVE_SPLASH_IOS,
+} from '@/constants/splash';
 import { palette, spacing } from '@/theme';
 
-/** logo.png is 1044×786 — scale down so full wordmark fits without horizontal clipping. */
-const LOGO_WIDTH = 190;
-const LOGO_ASPECT = 1044 / 786;
+export type AppSplashVariant = 'native' | 'loading';
 
-/** Branded splash UI — used on web and as a fallback while the native splash is visible. */
-export function AppSplashScreen() {
+interface AppSplashScreenProps {
+  /** `native` matches the APK launch splash (logo only). `loading` adds tagline + spinner. */
+  variant?: AppSplashVariant;
+  onClose?: () => void;
+}
+
+function getNativeSplashAsset() {
+  return Platform.OS === 'android' ? NATIVE_SPLASH_ANDROID : NATIVE_SPLASH_IOS;
+}
+
+export function AppSplashScreen({ variant = 'loading', onClose }: AppSplashScreenProps) {
   const insets = useSafeAreaInsets();
+  const isNative = variant === 'native';
+  const nativeAsset = getNativeSplashAsset();
+  const logoWidth = isNative ? nativeAsset.imageWidth : 180;
+  const logoSource = isNative ? nativeAsset.image : NATIVE_SPLASH_IOS.image;
+  const logoAspect = isNative ? nativeAsset.aspect : NATIVE_SPLASH_IOS.aspect;
 
   return (
-    <View style={[styles.root, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
-      <View style={styles.content}>
+    <View
+      style={[
+        styles.root,
+        {
+          backgroundColor: NATIVE_SPLASH_CONFIG.backgroundColor,
+          paddingTop: insets.top,
+          paddingBottom: insets.bottom,
+        },
+      ]}>
+      {onClose ? (
+        <Pressable
+          onPress={onClose}
+          style={[styles.closeBtn, { top: insets.top + spacing.sm }]}
+          accessibilityRole="button"
+          accessibilityLabel="Close splash preview">
+          <Ionicons name="close" size={28} color={palette.white} />
+        </Pressable>
+      ) : null}
+
+      <View style={[styles.content, isNative && styles.contentNative]}>
         <Image
           accessibilityLabel="Ready2Go logo"
-          source={require('@/assets/images/logo.png')}
-          style={styles.logo}
+          source={logoSource}
+          style={[
+            styles.logo,
+            {
+              width: logoWidth,
+              height: logoWidth / logoAspect,
+            },
+          ]}
         />
-        <AppText variant="body" color={palette.accent} center style={styles.tagline}>
-          Be Prepared. Stay Informed. We&apos;re Ready2Go.
-        </AppText>
+        {!isNative ? (
+          <AppText variant="body" color={palette.accent} center style={styles.tagline}>
+            Be Prepared. Stay Informed. We&apos;re Ready2Go.
+          </AppText>
+        ) : null}
       </View>
-      <ActivityIndicator size="small" color={palette.accent} style={styles.spinner} />
+
+      {!isNative ? (
+        <ActivityIndicator size="small" color={palette.accent} style={styles.spinner} />
+      ) : null}
     </View>
   );
 }
@@ -33,9 +79,14 @@ export function AppSplashScreen() {
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: palette.primary,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  closeBtn: {
+    position: 'absolute',
+    right: spacing.lg,
+    zIndex: 10,
+    padding: spacing.sm,
   },
   content: {
     flex: 1,
@@ -44,9 +95,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.xxl,
     width: '100%',
   },
+  contentNative: {
+    flex: 0,
+    paddingHorizontal: 0,
+  },
   logo: {
-    width: LOGO_WIDTH,
-    height: LOGO_WIDTH / LOGO_ASPECT,
     maxWidth: '90%',
     resizeMode: 'contain',
   },

@@ -89,7 +89,7 @@ export function AnimatedIcon() {
 
       <Animated.View entering={keyframe.duration(DURATION)} style={styles.background} />
       <Animated.View style={styles.imageContainer} entering={logoKeyframe.duration(DURATION)}>
-        <Image style={styles.image} contentFit="contain" source={require('@/assets/images/logo.png')} />
+        <Image style={styles.image} contentFit="contain" source={require('@/assets/images/logo1.png')} />
       </Animated.View>
     </View>
   );
