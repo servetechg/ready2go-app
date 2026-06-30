@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import React from 'react';
-import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
 import { AppCheckbox } from '@/components/form/AppCheckbox';
 import { AppText } from '@/components/ui/AppText';
@@ -13,13 +13,25 @@ type MapLayersPanelProps = {
   enabledLayers: Record<GisMapLayerId, boolean>;
   onToggleLayer: (layerId: GisMapLayerId) => void;
   onClose: () => void;
+  /** Fixed panel height so the layer list can scroll inside the map viewport. */
+  panelHeight?: number;
 };
 
-export function MapLayersPanel({ enabledLayers, onToggleLayer, onClose }: MapLayersPanelProps) {
+export function MapLayersPanel({
+  enabledLayers,
+  onToggleLayer,
+  onClose,
+  panelHeight = 320,
+}: MapLayersPanelProps) {
   const { colors } = useAppTheme();
 
   return (
-    <View style={[styles.panel, shadows.md, { backgroundColor: colors.surface }]}>
+    <View
+      style={[
+        styles.panel,
+        shadows.md,
+        { backgroundColor: colors.surface, height: panelHeight },
+      ]}>
       <View style={styles.header}>
         <AppText variant="h3" color={colors.primary}>
           Map Layers
@@ -33,7 +45,12 @@ export function MapLayersPanel({ enabledLayers, onToggleLayer, onClose }: MapLay
         </Pressable>
       </View>
 
-      <ScrollView style={styles.list} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        style={styles.list}
+        contentContainerStyle={styles.listContent}
+        showsVerticalScrollIndicator={true}
+        nestedScrollEnabled={Platform.OS === 'android'}
+        keyboardShouldPersistTaps="handled">
         {GIS_MAP_LAYERS.map((layer) => {
           const enabled = enabledLayers[layer.id];
 
@@ -86,8 +103,8 @@ const styles = StyleSheet.create({
   panel: {
     borderRadius: borderRadius.lg,
     padding: spacing.lg,
-    maxHeight: 360,
     width: 280,
+    overflow: 'hidden',
   },
   header: {
     flexDirection: 'row',
@@ -96,7 +113,10 @@ const styles = StyleSheet.create({
     marginBottom: spacing.sm,
   },
   list: {
-    maxHeight: 300,
+    flex: 1,
+  },
+  listContent: {
+    paddingBottom: spacing.sm,
   },
   layerRow: {
     flexDirection: 'row',

@@ -8,16 +8,16 @@ import {
   View,
   type ViewStyle,
 } from 'react-native';
-import MapView, { Heatmap, Polygon, PROVIDER_GOOGLE, type Region } from 'react-native-maps';
+import MapView, { Polygon, UrlTile, type Region } from 'react-native-maps';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { MapIncidentDetailCard } from '@/components/dashboard/MapIncidentDetailCard';
+import { MapIncidentHeatmapLayer } from '@/components/dashboard/MapIncidentHeatmapLayer';
 import { MapLayerMarker } from '@/components/dashboard/MapLayerMarker';
 import { MapLayersPanel } from '@/components/dashboard/MapLayersPanel';
-import { AppCard } from '@/components/ui/AppCard';
 import { AppText } from '@/components/ui/AppText';
-import { ENV } from '@/constants/env';
 import { DEFAULT_GIS_LAYER_STATE } from '@/constants/mapLayers';
+import { OSM_ATTRIBUTION, OSM_TILE_MAX_ZOOM, OSM_TILE_URL } from '@/constants/openStreetMap';
 import { useAppTheme } from '@/hooks/useAppTheme';
 import { borderRadius, palette, shadows, spacing } from '@/theme';
 import type { GisMapLayerId, MapMarkerPoint, MapPolygonOverlay } from '@/types/emergency';
@@ -109,7 +109,6 @@ interface MapCanvasProps {
   mapStyle: ViewStyle;
   onRegionChangeComplete: (next: Region) => void;
   onIncidentTap: (incident: MapMarkerPoint | null) => void;
-  showTraffic?: boolean;
 }
 
 function MapCanvas({
@@ -122,10 +121,7 @@ function MapCanvas({
   mapStyle,
   onRegionChangeComplete,
   onIncidentTap,
-  showTraffic = false,
 }: MapCanvasProps) {
-  const useGoogleProvider = Platform.OS !== 'web' && Boolean(ENV.GOOGLE_MAPS_API_KEY);
-
   const handleMapPress = useCallback(
     (event: { nativeEvent: { coordinate: { latitude: number; longitude: number } } }) => {
       if (incidentMarkers.length === 0) {
@@ -144,16 +140,23 @@ function MapCanvas({
     <MapView
       ref={mapRef}
       style={mapStyle}
-      provider={useGoogleProvider ? PROVIDER_GOOGLE : undefined}
+      mapType="none"
       initialRegion={region}
       onRegionChangeComplete={onRegionChangeComplete}
       onPress={handleMapPress}
       showsUserLocation={true}
       showsCompass={true}
       showsMyLocationButton={false}
-      showsTraffic={showTraffic}
       toolbarEnabled={false}
-      mapType="standard">
+      rotateEnabled={false}>
+      <UrlTile
+        urlTemplate={OSM_TILE_URL}
+        maximumZ={OSM_TILE_MAX_ZOOM}
+        flipY={false}
+        tileSize={256}
+        zIndex={-1}
+        shouldReplaceMapContent={Platform.OS === 'ios'}
+      />
       {overlays.map((overlay) => {
         const colors = overlayColors(overlay.layer);
         return (
@@ -163,21 +166,11 @@ function MapCanvas({
             fillColor={overlay.fillColor ?? colors.fill}
             strokeColor={overlay.strokeColor ?? colors.stroke}
             strokeWidth={2}
+            zIndex={2}
           />
         );
       })}
-      {heatmapPoints.length > 0 && useGoogleProvider ? (
-        <Heatmap
-          points={heatmapPoints}
-          radius={40}
-          opacity={0.75}
-          gradient={{
-            colors: ['#4CAF50', '#FFEB3B', '#FF5722', '#B71C1C'],
-            startPoints: [0.1, 0.35, 0.65, 1.0],
-            colorMapSize: 256,
-          }}
-        />
-      ) : null}
+      {heatmapPoints.length > 0 ? <MapIncidentHeatmapLayer points={heatmapPoints} /> : null}
       {pointMarkers.map((marker) => (
         <MapLayerMarker key={marker.id} marker={marker} />
       ))}
@@ -187,13 +180,12 @@ function MapCanvas({
 
 export function EmergencyMap({
   region: initialRegion,
-  markers,
+  markers = [],
   overlays = [],
   variant = 'situation',
 }: EmergencyMapProps) {
   const { colors } = useAppTheme();
   const insets = useSafeAreaInsets();
-  const hasKey = Boolean(ENV.GOOGLE_MAPS_API_KEY);
   const mapRef = useRef<MapView>(null);
   const fullscreenMapRef = useRef<MapView>(null);
   const [mapRegion, setMapRegion] = useState<Region>(initialRegion);
@@ -220,7 +212,6 @@ export function EmergencyMap({
     () => filterOverlaysByLayers(overlays, enabledLayers),
     [overlays, enabledLayers],
   );
-  const showTraffic = enabledLayers.roadClosures;
 
   const handleIncidentTap = useCallback((incident: MapMarkerPoint | null) => {
     setSelectedIncident(incident);
@@ -280,18 +271,24 @@ export function EmergencyMap({
     isFullscreen = false,
   ) => (
     <View style={isFullscreen ? styles.fullscreenMapWrap : styles.mapWrap}>
-      <MapCanvas
-        region={mapRegion}
-        pointMarkers={pointMarkers}
-        incidentMarkers={incidentMarkers}
-        heatmapPoints={heatmapPoints}
-        overlays={visibleOverlays}
-        mapRef={ref}
-        mapStyle={mapStyle}
-        onRegionChangeComplete={setMapRegion}
-        onIncidentTap={handleIncidentTap}
-        showTraffic={showTraffic}
-      />
+      <View style={isFullscreen ? styles.fullscreenMapClip : styles.mapClip}>
+        <MapCanvas
+          region={mapRegion}
+          pointMarkers={pointMarkers}
+          incidentMarkers={incidentMarkers}
+          heatmapPoints={heatmapPoints}
+          overlays={visibleOverlays}
+          mapRef={ref}
+          mapStyle={mapStyle}
+          onRegionChangeComplete={setMapRegion}
+          onIncidentTap={handleIncidentTap}
+        />
+        <View style={styles.attribution} pointerEvents="none">
+          <AppText variant="caption" style={styles.attributionText}>
+            {OSM_ATTRIBUTION}
+          </AppText>
+        </View>
+      </View>
       <MapControls
         fullscreen={isFullscreen}
         layersOpen={layersOpen}
@@ -299,11 +296,12 @@ export function EmergencyMap({
         style={styles.controlsOverlay}
       />
       {layersOpen ? (
-        <View style={styles.layersPanelOverlay}>
+        <View style={styles.layersPanelOverlay} pointerEvents="box-none">
           <MapLayersPanel
             enabledLayers={enabledLayers}
             onToggleLayer={toggleLayer}
             onClose={() => setLayersOpen(false)}
+            panelHeight={isFullscreen ? 420 : 248}
           />
         </View>
       ) : null}
@@ -317,32 +315,19 @@ export function EmergencyMap({
   );
 
   const isAreaMap = variant === 'area';
-  const mapTitle = isAreaMap ? 'Area map' : 'GIS incident map';
+  const mapTitle = isAreaMap ? 'Area map' : 'Situation map';
   const mapSubtitle = isAreaMap
-    ? 'Tap the heatmap for incident details. Layer pins show hospitals, shelters, and resources.'
-    : 'Tap heat areas for incident info. Toggle layers for traffic, flood zones, hospitals, and more.';
-  const fullscreenTitle = isAreaMap ? 'Area map' : 'Situation map';
+    ? 'OpenStreetMap · Tap heat areas for incident details. Layer pins show hospitals, shelters, and resources.'
+    : 'OpenStreetMap · Tap heat areas for incident info. Toggle layers for flood zones, hospitals, and more.';
+  const fullscreenTitle = mapTitle;
 
   if (Platform.OS === 'web') {
     return (
-      <AppCard>
+      <View style={styles.webFallback}>
         <AppText variant="body" color={colors.textSecondary}>
-          Map view is available on iOS and Android. Open the app on a device to view the GIS map.
+          Map view is available on iOS and Android. Open the app on a device to view the map.
         </AppText>
-      </AppCard>
-    );
-  }
-
-  if (!hasKey) {
-    return (
-      <AppCard>
-        <View style={styles.warnRow}>
-          <Ionicons name="warning-outline" size={22} color={palette.warning} />
-          <AppText variant="bodySmall" color={colors.textSecondary} style={styles.warnText}>
-            Add GOOGLE_MAPS_API_KEY to your .env file and restart Expo to enable the map.
-          </AppText>
-        </View>
-      </AppCard>
+      </View>
     );
   }
 
@@ -386,14 +371,36 @@ export function EmergencyMap({
 const styles = StyleSheet.create({
   title: { marginBottom: spacing.xs },
   subtitle: { marginBottom: spacing.md },
+  webFallback: { paddingVertical: spacing.md },
   mapWrap: {
     borderRadius: borderRadius.lg,
-    overflow: 'hidden',
     borderWidth: 1,
     borderColor: palette.borderLight,
     position: 'relative',
   },
+  mapClip: {
+    borderRadius: borderRadius.lg,
+    overflow: 'hidden',
+  },
   map: { width: '100%', height: 280 },
+  fullscreenMapClip: {
+    flex: 1,
+    overflow: 'hidden',
+  },
+  attribution: {
+    position: 'absolute',
+    left: spacing.sm,
+    bottom: spacing.xs,
+    backgroundColor: 'rgba(255,255,255,0.88)',
+    paddingHorizontal: spacing.xs,
+    paddingVertical: 2,
+    borderRadius: borderRadius.sm,
+    zIndex: 5,
+  },
+  attributionText: {
+    fontSize: 9,
+    color: palette.textSecondary,
+  },
   controlsOverlay: {
     position: 'absolute',
     top: spacing.sm,
@@ -417,8 +424,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   controlBtnPressed: { opacity: 0.85 },
-  warnRow: { flexDirection: 'row', gap: spacing.md, alignItems: 'flex-start' },
-  warnText: { flex: 1 },
   fullscreenRoot: {
     flex: 1,
     backgroundColor: palette.white,
