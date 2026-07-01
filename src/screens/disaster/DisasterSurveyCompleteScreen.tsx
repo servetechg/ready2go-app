@@ -35,18 +35,18 @@ export function DisasterSurveyCompleteScreen() {
           <Ionicons name="checkmark-circle" size={72} color={colors.primary} />
         </View>
 
-        <AppText variant="h2" color={colors.primary} center={true} style={styles.title}>
+        <AppText variant="h2" color={colors.primary} center style={styles.title}>
           Thank you
         </AppText>
 
-        <AppText variant="body" color={colors.textSecondary} center={true} style={styles.body}>
-          Your immediate needs have been recorded. Relief coordination and funding will be handled
-          in a future update — for now this is a test submission.
+        <AppText variant="body" color={colors.textSecondary} center style={styles.body}>
+          Your disaster status survey has been submitted. Relief coordinators will review your
+          responses for emergency lodging and funding assistance.
         </AppText>
 
         {needs.length > 0 ? (
-          <AppText variant="bodySmall" color={colors.textMuted} center={true} style={styles.summary}>
-            {needs.length} need{needs.length === 1 ? '' : 's'} selected
+          <AppText variant="bodySmall" color={colors.textMuted} center style={styles.summary}>
+            {needs.length} immediate need{needs.length === 1 ? '' : 's'} reported
           </AppText>
         ) : null}
       </ScreenWrapper>
