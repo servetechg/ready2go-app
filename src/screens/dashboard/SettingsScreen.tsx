@@ -86,6 +86,15 @@ export function SettingsScreen() {
           </Pressable>
         ) : null}
 
+        <Pressable onPress={() => navigation.navigate(MAIN_STACK_ROUTES.CITIZEN_ASSISTANCE)}>
+          <AppCard style={styles.card}>
+            <AppText variant="label">Citizen assistance</AppText>
+            <AppText variant="bodySmall" color={colors.textSecondary}>
+              Mark safe, request help, or report a need to coordinators
+            </AppText>
+          </AppCard>
+        </Pressable>
+
         <Pressable onPress={openWeatherAlerts}>
           <AppCard style={styles.card}>
             <AppText variant="label">Weather alert subscriptions</AppText>

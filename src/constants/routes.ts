@@ -48,6 +48,7 @@ export const MAIN_STACK_ROUTES = {
   STATIC_INFO: 'StaticInfo',
   FAQ: 'Faq',
   DISASTER_SURVEY: 'DisasterSurvey',
+  CITIZEN_ASSISTANCE: 'CitizenAssistance',
   SPLASH_PREVIEW: 'SplashPreview',
 } as const;
 
