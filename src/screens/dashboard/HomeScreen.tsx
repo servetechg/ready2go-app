@@ -14,16 +14,18 @@ import { PreparednessCategoryCard } from '@/components/dashboard/PreparednessCat
 import { PreparednessEmptyMessage } from '@/components/dashboard/PreparednessEmptyMessage';
 import { WeatherSummaryCard } from '@/components/dashboard/WeatherSummaryCard';
 import { AppButton } from '@/components/ui/AppButton';
+import { AppCard } from '@/components/ui/AppCard';
 import { AppText } from '@/components/ui/AppText';
 import {
-    HOME_STACK_ROUTES,
-    PREPAREDNESS_STACK_ROUTES,
-    TAB_ROUTES,
+  HOME_STACK_ROUTES,
+  PREPAREDNESS_STACK_ROUTES,
+  TAB_ROUTES,
 } from '@/constants/routes';
 import { useAppTheme } from '@/hooks/useAppTheme';
 import { useHomeDashboard } from '@/hooks/useHomeDashboard';
 import { usePullToRefresh } from '@/hooks/usePullToRefresh';
 import { navigateToAlertsTab, navigateToTab } from '@/navigation/navigationHelpers';
+import { navigateToCitizenAssistance } from '@/navigation/navigationRef';
 import { useAppSelector } from '@/redux/hooks';
 import { selectPreparednessCategories } from '@/redux/slices/dashboardSlice';
 import { spacing } from '@/theme';
@@ -131,7 +133,17 @@ export function HomeScreen() {
         contentContainerStyle={styles.scroll}
         refreshControl={<RefreshControl {...refreshControlProps} />}>
         {isCloudy ? (
-          <DisruptionStatusBanner status={home?.status} onViewSituation={scrollToSituation} />
+          <>
+            <DisruptionStatusBanner status={home?.status} onViewSituation={scrollToSituation} />
+            <Pressable onPress={navigateToCitizenAssistance}>
+              <AppCard style={styles.assistanceCard}>
+                <AppText variant="label">Need help or want to check in?</AppText>
+                <AppText variant="bodySmall" color={colors.textSecondary}>
+                  Tap to mark safe or send a request to emergency coordinators
+                </AppText>
+              </AppCard>
+            </Pressable>
+          </>
         ) : (
           <BlueSkyStatusBanner status={home?.status} />
         )}
@@ -232,6 +244,7 @@ export function HomeScreen() {
 
 const styles = StyleSheet.create({
   scroll: { paddingBottom: spacing.xl, paddingVertical: spacing.sm },
+  assistanceCard: { marginBottom: spacing.lg },
   loader: { marginVertical: spacing.lg },
   prepLoader: { marginBottom: spacing.lg },
   errorWrap: {
