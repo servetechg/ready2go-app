@@ -1,4 +1,5 @@
 /** @type {import('expo/config').ExpoConfig} */
+// Expo CLI / EAS local builds load .env automatically before this file runs.
 const appJson = require('./app.json');
 
 const googleMapsApiKey =

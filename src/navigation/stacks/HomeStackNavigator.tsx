@@ -4,6 +4,7 @@ import React from 'react';
 import { HOME_STACK_ROUTES } from '@/constants/routes';
 import { EmergencyNewsScreen } from '@/screens/dashboard/EmergencyNewsScreen';
 import { HomeScreen } from '@/screens/dashboard/HomeScreen';
+import { NewsDetailScreen } from '@/screens/dashboard/NewsDetailScreen';
 import { WeatherAlertSettingsScreen } from '@/screens/dashboard/WeatherAlertSettingsScreen';
 import { WeatherScreen } from '@/screens/dashboard/WeatherScreen';
 import type { HomeStackParamList } from '@/types/navigation';
@@ -33,6 +34,11 @@ export function HomeStackNavigator() {
       <Stack.Screen
         name={HOME_STACK_ROUTES.EMERGENCY_NEWS}
         component={EmergencyNewsScreen}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name={HOME_STACK_ROUTES.NEWS_DETAIL}
+        component={NewsDetailScreen}
         options={{ headerShown: false }}
       />
     </Stack.Navigator>

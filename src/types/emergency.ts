@@ -1,8 +1,10 @@
 export type DashboardMode = 'blue_sky' | 'cloudy';
 
-export type NewsFeedSource = 'emergency' | 'admin';
+export type NewsFeedSource = 'emergency' | 'admin' | 'news' | 'community' | 'nws';
 
-export type NewsCategory = 'ADVISORY' | 'PREPAREDNESS' | 'ADMIN' | 'REGIONAL';
+export type NewsSeverity = 'info' | 'warning' | 'critical';
+
+export type NewsCategory = 'ADVISORY' | 'PREPAREDNESS' | 'ADMIN' | 'REGIONAL' | (string & {});
 
 export type NewsIconType =
   | 'newspaper-outline'
@@ -18,11 +20,24 @@ export interface EmergencyNewsItem {
   body: string;
   timestamp: string;
   source: NewsFeedSource;
-  severity?: 'info' | 'warning' | 'critical';
+  severity?: NewsSeverity;
   category?: NewsCategory;
   location?: string;
   icon?: NewsIconType;
+  url?: string;
+  imageUrl?: string;
+  publisher?: string;
+  sourceName?: string;
 }
+
+export type EmergencyNewsResponse = {
+  items: EmergencyNewsItem[];
+  page: number;
+  limit: number;
+  total: number;
+  hasMore: boolean;
+  stateCode?: string | null;
+};
 
 export interface IncidentLogEntry {
   id: string;
