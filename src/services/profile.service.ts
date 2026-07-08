@@ -135,13 +135,4 @@ export const profileService = {
       token,
     });
   },
-
-  async sendTestServerPush(
-    token: string,
-  ): Promise<{ message: string; tokenPreview?: string }> {
-    return apiRequest<{ message: string; tokenPreview?: string }>('/notifications/test-push', {
-      method: 'POST',
-      token,
-    });
-  },
 };

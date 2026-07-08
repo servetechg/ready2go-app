@@ -10,7 +10,8 @@ import { PersistGate } from 'redux-persist/integration/react';
 
 import { AppSplashScreen } from '@/components/splash/AppSplashScreen';
 import { SplashReadyView } from '@/components/splash/SplashReadyView';
-import { useDisasterNotificationResponse } from '@/hooks/useDisasterNotificationResponse';
+import { useInboxNotificationResponse } from '@/hooks/useInboxNotificationResponse';
+import { useInboxNotificationsPolling } from '@/hooks/useInboxNotificationsPolling';
 import { useAppFonts } from '@/hooks/useAppFonts';
 import { useSessionBootstrap } from '@/hooks/useSessionBootstrap';
 import { useProfileReminder } from '@/hooks/useProfileReminder';
@@ -52,7 +53,8 @@ function AppNavigation() {
   useSessionBootstrap();
   usePushTokenRegistration();
   useProfileReminder();
-  useDisasterNotificationResponse();
+  useInboxNotificationsPolling();
+  useInboxNotificationResponse();
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>

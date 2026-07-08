@@ -74,6 +74,7 @@ export type MainStackParamList = {
   [MAIN_STACK_ROUTES.FAQ]: undefined;
   [MAIN_STACK_ROUTES.DISASTER_SURVEY]: NavigatorScreenParams<DisasterSurveyStackParamList>;
   [MAIN_STACK_ROUTES.CITIZEN_ASSISTANCE]: undefined;
+  [MAIN_STACK_ROUTES.NOTIFICATIONS]: undefined;
   [MAIN_STACK_ROUTES.SPLASH_PREVIEW]: undefined;
 };
 

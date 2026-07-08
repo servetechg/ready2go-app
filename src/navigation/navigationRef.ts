@@ -26,6 +26,22 @@ export function navigateToCitizenAssistance(): void {
   );
 }
 
+export function navigateToNotifications(): void {
+  if (!navigationRef.isReady()) return;
+
+  navigationRef.dispatch(
+    CommonActions.navigate({
+      name: ROOT_ROUTES.MAIN,
+      params: {
+        screen: DRAWER_ROUTES.MAIN,
+        params: {
+          screen: MAIN_STACK_ROUTES.NOTIFICATIONS,
+        },
+      },
+    }),
+  );
+}
+
 export function navigateToDisasterSurveyIntro(): void {
   if (!navigationRef.isReady()) return;
 
