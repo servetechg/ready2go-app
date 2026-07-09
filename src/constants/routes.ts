@@ -50,6 +50,7 @@ export const MAIN_STACK_ROUTES = {
   FAQ: 'Faq',
   DISASTER_SURVEY: 'DisasterSurvey',
   CITIZEN_ASSISTANCE: 'CitizenAssistance',
+  NOTIFICATIONS: 'Notifications',
   SPLASH_PREVIEW: 'SplashPreview',
 } as const;
 
