@@ -52,6 +52,7 @@ async function loadHomeWithToken(
   query?: HomeQuery,
 ): Promise<FetchHomeResult> {
   const home = await getHome(token, {
+    include: ['news'],
     newsLimit: 4,
     alertsLimit: 2,
     ...query,

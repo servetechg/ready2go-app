@@ -17,6 +17,7 @@ import alertsReducer from './slices/alertsSlice';
 import authReducer from './slices/authSlice';
 import dashboardReducer from './slices/dashboardSlice';
 import disasterSurveyReducer from './slices/disasterSurveySlice';
+import emergencyNewsReducer from './slices/emergencyNewsSlice';
 import notificationsReducer from './slices/notificationsSlice';
 import preparednessReducer from './slices/preparednessSlice';
 import registrationReducer from './slices/registrationSlice';
@@ -41,6 +42,7 @@ const rootReducer = combineReducers({
   registration: persistReducer(registrationPersistConfig, registrationReducer),
   alerts: alertsReducer,
   dashboard: dashboardReducer,
+  emergencyNews: emergencyNewsReducer,
   disasterSurvey: disasterSurveyReducer,
   notifications: notificationsReducer,
   preparedness: preparednessReducer,
@@ -61,6 +63,7 @@ export const store = configureStore({
           'dashboard.emergency',
           'dashboard.home',
           'alerts.items',
+          'emergencyNews.items',
           'preparedness.tasksByCategoryId',
           'preparedness.categoryDetails',
         ],
@@ -71,6 +74,7 @@ export const store = configureStore({
           'dashboard.emergency',
           'dashboard.home',
           'alerts.items',
+          'emergencyNews.items',
           'preparedness.tasksByCategoryId',
           'preparedness.categoryDetails',
         ],

@@ -33,6 +33,11 @@ export type DashboardHomeNewsItem = {
   category: string;
   location: string;
   icon: string;
+  url?: string;
+  imageUrl?: string;
+  publisher?: string;
+  source_name?: string;
+  sourceName?: string;
 };
 
 export type MobilePreparednessCategory = {

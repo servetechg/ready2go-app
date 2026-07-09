@@ -2,66 +2,86 @@ import { Ionicons } from '@expo/vector-icons';
 import React, { useMemo, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 
+import { formatCategoryLabel, getCategoryStyle } from '@/components/dashboard/newsFeedStyles';
 import { AppText } from '@/components/ui/AppText';
 import { useAppTheme } from '@/hooks/useAppTheme';
 import { borderRadius, fontFamily, palette, shadows, spacing } from '@/theme';
-import type { EmergencyNewsItem, NewsCategory, NewsIconType } from '@/types/emergency';
-import { formatIssuedDate } from '@/utils/formatTimestamp';
+import type { EmergencyNewsItem, NewsIconType, NewsSeverity } from '@/types/emergency';
+import { formatRelativeTime } from '@/utils/formatTimestamp';
 
 interface BlueSkyNewsFeedProps {
   items: EmergencyNewsItem[];
   maxVisible?: number;
   /** When set, "View all" navigates instead of expanding inline. */
   onViewAll?: () => void;
+  /** Called when a news card is tapped. */
+  onItemPress?: (item: EmergencyNewsItem) => void;
   /** Hide section title/subtitle (e.g. full-screen view has its own header). */
   showSectionHeader?: boolean;
   /** List every item (full-screen feed). */
   showAll?: boolean;
+  emptyMessage?: string;
+  emptyActionLabel?: string;
+  onEmptyAction?: () => void;
 }
 
-const CATEGORY_STYLES: Record<
-  NewsCategory,
-  { bg: string; text: string; border: string }
-> = {
-  ADVISORY: { bg: '#E3F2FD', text: '#1565C0', border: '#90CAF9' },
-  PREPAREDNESS: { bg: '#E8F5E9', text: '#2E7D32', border: '#A5D6A7' },
-  ADMIN: { bg: '#EDE7F6', text: '#4527A0', border: '#B39DDB' },
-  REGIONAL: { bg: palette.accent, text: palette.tabActive, border: palette.border },
+const SEVERITY_BORDER: Record<NewsSeverity, string> = {
+  critical: '#C62828',
+  warning: '#F9A825',
+  info: '#90A4AE',
 };
 
 const DEFAULT_ICON: NewsIconType = 'newspaper-outline';
 
-function NewsFeedCard({ item }: { item: EmergencyNewsItem }) {
+interface NewsFeedCardProps {
+  item: EmergencyNewsItem;
+  onPress?: () => void;
+}
+
+export function NewsFeedCard({ item, onPress }: NewsFeedCardProps) {
   const { colors } = useAppTheme();
   const category = item.category ?? 'ADVISORY';
-  const catStyle = CATEGORY_STYLES[category];
+  const catStyle = getCategoryStyle(category);
   const iconName = item.icon ?? DEFAULT_ICON;
-  const sourceLabel = item.source === 'admin' ? 'ADMIN' : 'READY2GO';
+  const severityBorder = item.severity ? SEVERITY_BORDER[item.severity] : undefined;
+  const sourceLabel = item.sourceName?.trim() || item.publisher?.trim();
 
-  return (
-    <View style={[styles.card, shadows.sm, { backgroundColor: colors.surface }]}>
+  const content = (
+    <View
+      style={[
+        styles.card,
+        shadows.sm,
+        { backgroundColor: colors.surface },
+        severityBorder ? { borderLeftWidth: 4, borderLeftColor: severityBorder } : null,
+      ]}>
       <View style={styles.topRow}>
         <View style={styles.badges}>
-          <View style={[styles.categoryBadge, { backgroundColor: catStyle.bg, borderColor: catStyle.border }]}>
+          <View
+            style={[
+              styles.categoryBadge,
+              { backgroundColor: catStyle.bg, borderColor: catStyle.border },
+            ]}>
             <AppText variant="caption" style={[styles.categoryText, { color: catStyle.text }]}>
-              {category}
+              {formatCategoryLabel(category)}
             </AppText>
           </View>
           <View style={styles.iconBadge}>
             <Ionicons name={iconName} size={16} color={colors.primary} />
           </View>
-          <View style={[styles.sourceBadge, { borderColor: colors.secondary }]}>
-            <AppText variant="caption" color={colors.secondary}>
-              SOURCE: {sourceLabel}
-            </AppText>
-          </View>
+          {sourceLabel ? (
+            <View style={[styles.sourceBadge, { borderColor: colors.secondary }]}>
+              <AppText variant="caption" color={colors.secondary} numberOfLines={1}>
+                {sourceLabel}
+              </AppText>
+            </View>
+          ) : null}
         </View>
         <AppText variant="caption" color={colors.textMuted} style={styles.issued}>
-          {formatIssuedDate(item.timestamp)}
+          {formatRelativeTime(item.timestamp)}
         </AppText>
       </View>
 
-      <AppText variant="h3" color={colors.primary} style={styles.headline}>
+      <AppText variant="h3" color={colors.primary} style={styles.headline} numberOfLines={2}>
         {item.title}
       </AppText>
 
@@ -71,19 +91,39 @@ function NewsFeedCard({ item }: { item: EmergencyNewsItem }) {
         </AppText>
       ) : null}
 
-      <AppText variant="bodySmall" color={colors.textSecondary} style={styles.body}>
+      <AppText variant="bodySmall" color={colors.textSecondary} style={styles.body} numberOfLines={3}>
         {item.body}
       </AppText>
+
+      {onPress ? (
+        <AppText variant="label" color={colors.primary} style={styles.readMore}>
+          Read more
+        </AppText>
+      ) : null}
     </View>
   );
+
+  if (onPress) {
+    return (
+      <Pressable onPress={onPress} accessibilityRole="button">
+        {content}
+      </Pressable>
+    );
+  }
+
+  return content;
 }
 
 export function BlueSkyNewsFeed({
   items,
   maxVisible = 4,
   onViewAll,
+  onItemPress,
   showSectionHeader = true,
   showAll = false,
+  emptyMessage,
+  emptyActionLabel,
+  onEmptyAction,
 }: BlueSkyNewsFeedProps) {
   const { colors } = useAppTheme();
   const [expanded, setExpanded] = useState(false);
@@ -102,9 +142,16 @@ export function BlueSkyNewsFeed({
       <View style={[styles.emptyCard, shadows.sm, { backgroundColor: colors.surface }]}>
         <Ionicons name="newspaper-outline" size={28} color={colors.textMuted} />
         <AppText variant="body" color={colors.textSecondary} center={true} style={styles.emptyText}>
-          No emergency news at this time. Check back for regional advisories and administrator
-          messages.
+          {emptyMessage ??
+            'No disaster news right now. Pull to refresh for the latest headlines in your area.'}
         </AppText>
+        {emptyActionLabel && onEmptyAction ? (
+          <Pressable onPress={onEmptyAction} hitSlop={8}>
+            <AppText variant="label" color={colors.primary}>
+              {emptyActionLabel}
+            </AppText>
+          </Pressable>
+        ) : null}
       </View>
     );
   }
@@ -123,7 +170,7 @@ export function BlueSkyNewsFeed({
         <>
           <View style={styles.sectionHeader}>
             <AppText variant="h3" color={colors.primary}>
-              Emergency News
+              News Feed
             </AppText>
             {hasMore ? (
               <Pressable onPress={handleViewAll} hitSlop={8}>
@@ -135,13 +182,17 @@ export function BlueSkyNewsFeed({
           </View>
 
           <AppText variant="bodySmall" color={colors.textSecondary} style={styles.subtitle}>
-            Emergency-related updates and messages from administrators only.
+            State-scoped disaster headlines from trusted news sources.
           </AppText>
         </>
       ) : null}
 
       {visible.map((item) => (
-        <NewsFeedCard key={item.id} item={item} />
+        <NewsFeedCard
+          key={item.id}
+          item={item}
+          onPress={onItemPress ? () => onItemPress(item) : undefined}
+        />
       ))}
     </View>
   );
@@ -160,12 +211,13 @@ const styles = StyleSheet.create({
     borderRadius: borderRadius.lg,
     padding: spacing.lg,
     marginBottom: spacing.md,
+    overflow: 'hidden',
   },
   topRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-    marginBottom: spacing.md,
+    marginBottom: spacing.sm,
     gap: spacing.sm,
   },
   badges: {
@@ -174,6 +226,14 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     gap: spacing.sm,
     flex: 1,
+  },
+  iconBadge: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    backgroundColor: palette.accent,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   categoryBadge: {
     paddingHorizontal: spacing.sm,
@@ -186,21 +246,14 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
     fontSize: 10,
   },
-  iconBadge: {
-    width: 26,
-    height: 26,
-    borderRadius: 13,
-    backgroundColor: palette.accent,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
   sourceBadge: {
     paddingHorizontal: spacing.sm,
     paddingVertical: 2,
     borderRadius: borderRadius.full,
     borderWidth: 1,
+    maxWidth: 120,
   },
-  issued: { maxWidth: 120, textAlign: 'right' },
+  issued: { maxWidth: 88, textAlign: 'right' },
   headline: { marginBottom: spacing.xs },
   location: {
     textTransform: 'uppercase',
@@ -208,7 +261,8 @@ const styles = StyleSheet.create({
     letterSpacing: 0.3,
   },
   body: { lineHeight: 20 },
-  emptyCard: { 
+  readMore: { marginTop: spacing.sm },
+  emptyCard: {
     borderRadius: borderRadius.lg,
     padding: spacing.xxl,
     alignItems: 'center',

@@ -10,6 +10,8 @@
     "web": "expo start --web",
     "lint": "expo lint",
     "build:android:share": "eas build --platform android --profile share",
+    "build:android:local": "powershell -ExecutionPolicy Bypass -File ./scripts/build-android-apk.ps1",
+    "apk:release": "powershell -ExecutionPolicy Bypass -File ./scripts/build-android-apk.ps1",
     "apk:link": "eas build:list --platform android --limit 1 --json"
   },
   "dependencies": {

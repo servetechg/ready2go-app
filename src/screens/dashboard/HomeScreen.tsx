@@ -1,6 +1,6 @@
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
-import React, { useMemo, useRef } from 'react';
+import React, { useCallback, useMemo, useRef } from 'react';
 import { ActivityIndicator, Pressable, RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
 
 import { AlertCard } from '@/components/dashboard/AlertCard';
@@ -30,6 +30,7 @@ import { useAppSelector } from '@/redux/hooks';
 import { selectPreparednessCategories } from '@/redux/slices/dashboardSlice';
 import { spacing } from '@/theme';
 import type { HomeStackParamList, MainTabParamList } from '@/types/navigation';
+import type { EmergencyNewsItem } from '@/types/emergency';
 import { mapHomeAlertToWeatherAlert, mapHomeNewsToEmergencyNewsItem } from '@/utils/dashboardMappers';
 import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import type { CompositeNavigationProp } from '@react-navigation/native';
@@ -109,6 +110,13 @@ export function HomeScreen() {
     navigateToTab(navigation, TAB_ROUTES.PROFILE);
   };
 
+  const openNewsDetail = useCallback(
+    (item: EmergencyNewsItem) => {
+      navigation.navigate(HOME_STACK_ROUTES.NEWS_DETAIL, { item });
+    },
+    [navigation],
+  );
+
   if (error && !home) {
     return (
       <DashboardLayout>
@@ -158,6 +166,7 @@ export function HomeScreen() {
               items={newsItems}
               maxVisible={4}
               onViewAll={() => navigation.navigate(HOME_STACK_ROUTES.EMERGENCY_NEWS)}
+              onItemPress={openNewsDetail}
             />
             {showMap && emergency ? (
               <View
