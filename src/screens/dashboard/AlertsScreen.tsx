@@ -16,6 +16,7 @@ import { AppButton } from '@/components/ui/AppButton';
 import { AppText } from '@/components/ui/AppText';
 import { PROFILE_STACK_ROUTES, TAB_ROUTES } from '@/constants/routes';
 import { useAlertsDashboard } from '@/hooks/useAlertsDashboard';
+import { useAlertSourcePress } from '@/hooks/useAlertSourcePress';
 import { useAppTheme } from '@/hooks/useAppTheme';
 import { usePullToRefresh } from '@/hooks/usePullToRefresh';
 import { useAppDispatch, useAppSelector } from '@/redux/hooks';
@@ -102,6 +103,7 @@ export function AlertsScreen() {
   const alertLocations = useAppSelector((s) => s.registration.alertLocations ?? []);
 
   const { refreshControlProps } = usePullToRefresh(reload);
+  const handleAlertPress = useAlertSourcePress();
 
   const zoneSummary = useMemo(() => {
     const zones: string[] = [];
@@ -204,7 +206,7 @@ export function AlertsScreen() {
             zoneSummary={zoneSummary}
           />
         }
-        renderItem={({ item }) => <AlertCard alert={item} />}
+        renderItem={({ item }) => <AlertCard alert={item} onPress={handleAlertPress} />}
         ListEmptyComponent={listEmpty}
         ListFooterComponent={
           loadingMore ? (

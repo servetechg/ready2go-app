@@ -22,6 +22,7 @@ import {
   TAB_ROUTES,
 } from '@/constants/routes';
 import { useAppTheme } from '@/hooks/useAppTheme';
+import { useAlertSourcePress } from '@/hooks/useAlertSourcePress';
 import { useHomeDashboard } from '@/hooks/useHomeDashboard';
 import { usePullToRefresh } from '@/hooks/usePullToRefresh';
 import { navigateToAlertsTab, navigateToTab } from '@/navigation/navigationHelpers';
@@ -48,6 +49,7 @@ export function HomeScreen() {
   const preparednessCategories = useAppSelector(selectPreparednessCategories);
   const { home, emergency, isCloudy, loading, error, reload } = useHomeDashboard();
   const { refreshControlProps } = usePullToRefresh(reload);
+  const handleAlertPress = useAlertSourcePress();
 
   const newsItems = useMemo(() => {
     const items = (home?.news ?? []).map(mapHomeNewsToEmergencyNewsItem);
@@ -202,7 +204,7 @@ export function HomeScreen() {
               </AppText>
             ) : (
               recentAlerts.map((alert) => (
-                <AlertCard key={alert.id} alert={alert} />
+                <AlertCard key={alert.id} alert={alert} onPress={handleAlertPress} />
               ))
             )}
           </>
