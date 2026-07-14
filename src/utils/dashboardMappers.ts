@@ -58,6 +58,7 @@ export function mapMobileAlertToWeatherAlert(alert: MobileWeatherAlert): Weather
     issuedAgo: formatIssuedLabel(alert.issuedAt),
     expires: alert.expiresLabel?.trim() || formatExpiresLabel(alert.expiresAt),
     read: alert.read,
+    sourceUrl: alert.sourceUrl,
   };
 }
 

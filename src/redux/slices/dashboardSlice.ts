@@ -2,6 +2,7 @@ import { createAsyncThunk, createSelector, createSlice, PayloadAction } from '@r
 
 import { DEFAULT_WEATHER_ALERT_PREFERENCES } from '@/constants/dashboard';
 import { logoutUser, refreshSession } from '@/redux/slices/authSlice';
+import { markAlertReadRemote, markAllAlertsReadRemote } from '@/redux/slices/alertsSlice';
 import type { RootState } from '@/redux/store';
 import { isApiClientError } from '@/services/api/errors';
 import { getHome, type HomeQuery } from '@/services/dashboard.service';
@@ -158,6 +159,23 @@ const dashboardSlice = createSlice({
         const message = (action.payload as string) ?? action.error.message ?? 'Failed to load home';
         state.homeError = message;
         state.emergencyError = message;
+      })
+      .addCase(markAlertReadRemote.fulfilled, (state, action) => {
+        const alert = state.home?.recentAlerts.find((item) => item.id === action.payload.alertId);
+        if (alert) alert.read = true;
+        state.unreadAlertsCount = action.payload.unreadCount;
+        if (state.home) {
+          state.home.badges.unreadAlerts = action.payload.unreadCount;
+        }
+      })
+      .addCase(markAllAlertsReadRemote.fulfilled, (state, action) => {
+        state.home?.recentAlerts.forEach((item) => {
+          item.read = true;
+        });
+        state.unreadAlertsCount = action.payload;
+        if (state.home) {
+          state.home.badges.unreadAlerts = action.payload;
+        }
       })
       .addCase(logoutUser.fulfilled, () => initialState)
       .addCase(logoutUser.rejected, () => initialState);
