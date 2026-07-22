@@ -85,9 +85,7 @@ module.exports = {
     ],
     extra: {
       ...appJson.expo.extra,
-      eas: {
-        projectId: '84aff598-2a54-47e3-a3f4-e36ba11bda0b',
-      },
+      eas: {projectId: 'fa398a3b-4d43-4415-8e4b-a4144bff2906'},
       googleMapsApiKey,
       profileReminderSeconds: profileReminderSeconds
         ? Number(profileReminderSeconds)

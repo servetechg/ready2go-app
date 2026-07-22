@@ -89,6 +89,8 @@ export interface WeatherAlertPreference {
   label: string;
   description: string;
   enabled: boolean;
+  category?: string;
+  severity?: string;
 }
 
 export interface DashboardQuickAction {
