@@ -182,6 +182,13 @@ export const DEFAULT_WEATHER_ALERT_PREFERENCES: WeatherAlertPreference[] = [
     enabled: true,
   },
   {
+    id: 'tropical_storm_watch',
+    label: 'Tropical Storm Watch',
+    description: 'Tropical storm conditions are possible within 48 hours.',
+    category: 'Coastal',
+    enabled: true,
+  },
+  {
     id: 'tsunami_warning',
     label: 'Tsunami Warning',
     description: 'A tsunami with significant inundation is imminent or expected.',
