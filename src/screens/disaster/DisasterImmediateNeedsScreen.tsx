@@ -13,10 +13,10 @@ import {
   DISASTER_IMMEDIATE_NEEDS,
   type DisasterImmediateNeedId,
 } from '@/constants/disasterSurvey';
-import { DISASTER_SURVEY_ROUTES, MAIN_STACK_ROUTES } from '@/constants/routes';
+import { DISASTER_SURVEY_ROUTES } from '@/constants/routes';
 import { useAppTheme } from '@/hooks/useAppTheme';
 import { useToast } from '@/hooks/useToast';
-import { navigateToMainScreen } from '@/navigation/navigationHelpers';
+import { dismissToHomeTabs } from '@/navigation/navigationHelpers';
 import { useAppDispatch, useAppSelector } from '@/redux/hooks';
 import {
   markDisasterSubmitted,
@@ -79,7 +79,10 @@ export function DisasterImmediateNeedsScreen() {
   const goHome = () => {
     setShowThankYou(false);
     dispatch(clearDisasterSurvey());
-    navigateToMainScreen(navigation, MAIN_STACK_ROUTES.TABS);
+    // Defer reset until after the thank-you Modal unmounts (avoids Android ghost overlay).
+    requestAnimationFrame(() => {
+      dismissToHomeTabs(navigation);
+    });
   };
 
   return (

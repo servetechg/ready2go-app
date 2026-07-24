@@ -1,4 +1,4 @@
-import { NavigationProp, ParamListBase } from '@react-navigation/native';
+import { CommonActions, NavigationProp, ParamListBase } from '@react-navigation/native';
 
 import { MAIN_STACK_ROUTES, TAB_ROUTES } from '@/constants/routes';
 
@@ -59,4 +59,34 @@ export function navigateToMainScreen(
     root = root.getParent() ?? undefined;
   }
   root?.navigate(screen as never, params as never);
+}
+
+/**
+ * Closes Disaster Survey (and any modal on Main stack) and lands on Home tabs.
+ * Uses reset so the survey screen is removed from the stack — otherwise pull-to-refresh
+ * on Home can reveal the survey behind it (detachPreviousScreen: false).
+ */
+export function dismissToHomeTabs(navigation: NavLike) {
+  let current: NavLike | undefined = navigation;
+
+  while (current) {
+    const state = current.getState();
+    if (state?.routeNames.includes(MAIN_STACK_ROUTES.TABS)) {
+      current.dispatch(
+        CommonActions.reset({
+          index: 0,
+          routes: [
+            {
+              name: MAIN_STACK_ROUTES.TABS,
+              params: { screen: TAB_ROUTES.HOME },
+            },
+          ],
+        }),
+      );
+      return;
+    }
+    current = current.getParent() ?? undefined;
+  }
+
+  navigateToMainScreen(navigation, MAIN_STACK_ROUTES.TABS, { screen: TAB_ROUTES.HOME });
 }

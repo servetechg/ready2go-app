@@ -4,8 +4,8 @@ import React from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import { DisasterSurveyThankYouModal } from '@/components/disaster/DisasterSurveyThankYouModal';
-import { DISASTER_SURVEY_ROUTES, MAIN_STACK_ROUTES } from '@/constants/routes';
-import { navigateToMainScreen } from '@/navigation/navigationHelpers';
+import { DISASTER_SURVEY_ROUTES } from '@/constants/routes';
+import { dismissToHomeTabs } from '@/navigation/navigationHelpers';
 import { useAppSelector } from '@/redux/hooks';
 import type { DisasterSurveyStackParamList } from '@/types/navigation';
 
@@ -20,7 +20,7 @@ export function DisasterSurveyCompleteScreen() {
   const needs = useAppSelector((s) => s.disasterSurvey.immediateNeeds);
 
   const goHome = () => {
-    navigateToMainScreen(navigation, MAIN_STACK_ROUTES.TABS);
+    dismissToHomeTabs(navigation);
   };
 
   return (

@@ -2,6 +2,7 @@ import React from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import { ScreenWrapper } from '@/components/layout/ScreenWrapper';
+import { useAppTheme } from '@/hooks/useAppTheme';
 import { spacing } from '@/theme';
 
 import { DashboardTopBar } from './DashboardTopBar';
@@ -18,12 +19,16 @@ export function DashboardLayout({
   showSearch = true,
   tabBarInset = true,
 }: DashboardLayoutProps) {
+  const { colors } = useAppTheme();
+
   return (
     <ScreenWrapper scrollable={false}>
-      <View style={styles.header}>
-        <DashboardTopBar showSearch={showSearch} />
+      <View style={[styles.root, { backgroundColor: colors.background }]}>
+        <View style={styles.header}>
+          <DashboardTopBar showSearch={showSearch} />
+        </View>
+        <View style={[styles.content, tabBarInset && styles.tabBarInset]}>{children}</View>
       </View>
-      <View style={[styles.content, tabBarInset && styles.tabBarInset]}>{children}</View>
     </ScreenWrapper>
   );
 }
@@ -31,6 +36,9 @@ export function DashboardLayout({
 const TAB_BAR_CLEARANCE = 72;
 
 const styles = StyleSheet.create({
+  root: {
+    flex: 1,
+  },
   header: {
     paddingHorizontal: spacing.sm,
   },
