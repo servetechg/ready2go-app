@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import { DisasterNeedOption } from '@/components/disaster/DisasterNeedOption';
+import { DisasterSurveyThankYouModal } from '@/components/disaster/DisasterSurveyThankYouModal';
 import { AppHeader } from '@/components/layout/AppHeader';
 import { BottomButtonBar } from '@/components/layout/BottomButtonBar';
 import { ScreenWrapper } from '@/components/layout/ScreenWrapper';
@@ -12,13 +13,16 @@ import {
   DISASTER_IMMEDIATE_NEEDS,
   type DisasterImmediateNeedId,
 } from '@/constants/disasterSurvey';
-import { DISASTER_SURVEY_ROUTES } from '@/constants/routes';
+import { DISASTER_SURVEY_ROUTES, MAIN_STACK_ROUTES } from '@/constants/routes';
 import { useAppTheme } from '@/hooks/useAppTheme';
 import { useToast } from '@/hooks/useToast';
+import { navigateToMainScreen } from '@/navigation/navigationHelpers';
 import { useAppDispatch, useAppSelector } from '@/redux/hooks';
 import {
   markDisasterSubmitted,
   setDisasterImmediateNeeds,
+  clearDisasterSurvey,
+  setDisasterSurveyInvitation,
 } from '@/redux/slices/disasterSurveySlice';
 import { disasterSurveyService } from '@/services/disasterSurvey.service';
 import { spacing } from '@/theme';
@@ -38,6 +42,7 @@ export function DisasterImmediateNeedsScreen() {
   const invitation = useAppSelector((s) => s.disasterSurvey.invitation);
   const [selected, setSelected] = useState<DisasterImmediateNeedId[]>([]);
   const [submitting, setSubmitting] = useState(false);
+  const [showThankYou, setShowThankYou] = useState(false);
 
   const toggleNeed = (id: DisasterImmediateNeedId) => {
     setSelected((prev) => (prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]));
@@ -61,12 +66,20 @@ export function DisasterImmediateNeedsScreen() {
       });
       dispatch(setDisasterImmediateNeeds(selected));
       dispatch(markDisasterSubmitted(result.submittedAt));
-      navigation.navigate(DISASTER_SURVEY_ROUTES.COMPLETE);
+      // Hide survey entry in Settings immediately after submit.
+      dispatch(setDisasterSurveyInvitation(null));
+      setShowThankYou(true);
     } catch {
       showError('Failed to submit survey. Please try again.');
     } finally {
       setSubmitting(false);
     }
+  };
+
+  const goHome = () => {
+    setShowThankYou(false);
+    dispatch(clearDisasterSurvey());
+    navigateToMainScreen(navigation, MAIN_STACK_ROUTES.TABS);
   };
 
   return (
@@ -102,6 +115,12 @@ export function DisasterImmediateNeedsScreen() {
         primaryTitle="SUBMIT SURVEY"
         onPrimaryPress={() => void handleContinue()}
         primaryLoading={submitting}
+      />
+
+      <DisasterSurveyThankYouModal
+        visible={showThankYou}
+        needsCount={selected.length}
+        onGoHome={goHome}
       />
     </View>
   );

@@ -3,7 +3,7 @@ import { useEffect } from 'react';
 import { DISASTER_NOTIFICATION_SCREEN } from '@/constants/disasterSurvey';
 import { INBOX_NOTIFICATION_SCREEN } from '@/constants/notifications';
 import {
-  navigateToDisasterSurveyIntro,
+  navigateToDisasterSurveyIfActive,
   navigateToNotifications,
 } from '@/navigation/navigationRef';
 import { canUseNotifications } from '@/utils/notification-capability';
@@ -14,11 +14,14 @@ function screenFromData(data: Record<string, unknown> | undefined): string | und
 }
 
 function handleNotificationNavigation(data: Record<string, unknown> | undefined): void {
-  const screen = screenFromData(data);
-  if (!screen) return;
+  if (!data) return;
 
-  if (screen === DISASTER_NOTIFICATION_SCREEN) {
-    navigateToDisasterSurveyIntro();
+  const screen = screenFromData(data);
+  const notificationType =
+    typeof data.notificationType === 'string' ? data.notificationType : undefined;
+
+  if (screen === DISASTER_NOTIFICATION_SCREEN || notificationType === 'disaster_survey') {
+    void navigateToDisasterSurveyIfActive();
     return;
   }
   if (screen === INBOX_NOTIFICATION_SCREEN) {
