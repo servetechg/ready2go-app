@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import { DisasterNeedOption } from '@/components/disaster/DisasterNeedOption';
+import { DisasterSurveyThankYouModal } from '@/components/disaster/DisasterSurveyThankYouModal';
 import { AppHeader } from '@/components/layout/AppHeader';
 import { BottomButtonBar } from '@/components/layout/BottomButtonBar';
 import { ScreenWrapper } from '@/components/layout/ScreenWrapper';
@@ -12,11 +13,18 @@ import {
   DISASTER_IMMEDIATE_NEEDS,
   type DisasterImmediateNeedId,
 } from '@/constants/disasterSurvey';
-import { DISASTER_SURVEY_ROUTES } from '@/constants/routes';
+import { DISASTER_SURVEY_ROUTES, MAIN_STACK_ROUTES } from '@/constants/routes';
 import { useAppTheme } from '@/hooks/useAppTheme';
 import { useToast } from '@/hooks/useToast';
-import { useAppDispatch } from '@/redux/hooks';
-import { submitDisasterImmediateNeeds } from '@/redux/slices/disasterSurveySlice';
+import { navigateToMainScreen } from '@/navigation/navigationHelpers';
+import { useAppDispatch, useAppSelector } from '@/redux/hooks';
+import {
+  markDisasterSubmitted,
+  setDisasterImmediateNeeds,
+  clearDisasterSurvey,
+  setDisasterSurveyInvitation,
+} from '@/redux/slices/disasterSurveySlice';
+import { disasterSurveyService } from '@/services/disasterSurvey.service';
 import { spacing } from '@/theme';
 import type { DisasterSurveyStackParamList } from '@/types/navigation';
 
@@ -30,31 +38,59 @@ export function DisasterImmediateNeedsScreen() {
   const dispatch = useAppDispatch();
   const { colors } = useAppTheme();
   const { showError } = useToast();
+  const authToken = useAppSelector((s) => s.auth.token);
+  const invitation = useAppSelector((s) => s.disasterSurvey.invitation);
   const [selected, setSelected] = useState<DisasterImmediateNeedId[]>([]);
+  const [submitting, setSubmitting] = useState(false);
+  const [showThankYou, setShowThankYou] = useState(false);
 
   const toggleNeed = (id: DisasterImmediateNeedId) => {
     setSelected((prev) => (prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]));
   };
 
-  const handleContinue = () => {
+  const handleContinue = async () => {
     if (selected.length === 0) {
       showError('Select at least one immediate need to continue.');
       return;
     }
+    if (!authToken || !invitation) {
+      showError('Survey invitation expired. Please reopen from Settings or your notification.');
+      return;
+    }
 
-    dispatch(submitDisasterImmediateNeeds({ needs: selected, isTest: true }));
-    navigation.navigate(DISASTER_SURVEY_ROUTES.COMPLETE);
+    setSubmitting(true);
+    try {
+      const result = await disasterSurveyService.submit(authToken, {
+        invitationId: invitation.invitationId,
+        immediateNeeds: selected,
+      });
+      dispatch(setDisasterImmediateNeeds(selected));
+      dispatch(markDisasterSubmitted(result.submittedAt));
+      // Hide survey entry in Settings immediately after submit.
+      dispatch(setDisasterSurveyInvitation(null));
+      setShowThankYou(true);
+    } catch {
+      showError('Failed to submit survey. Please try again.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const goHome = () => {
+    setShowThankYou(false);
+    dispatch(clearDisasterSurvey());
+    navigateToMainScreen(navigation, MAIN_STACK_ROUTES.TABS);
   };
 
   return (
     <View style={styles.wrapper}>
       <ScreenWrapper contentContainerStyle={styles.content}>
-        <AppHeader showBack={true} onBack={() => navigation.goBack()} />
+        <AppHeader showBack onBack={() => navigation.goBack()} />
 
-        <AppText variant="h3" color={colors.primary} center={true} style={styles.title}>
+        <AppText variant="h3" color={colors.primary} center style={styles.title}>
           YOUR IMMEDIATE NEEDS
         </AppText>
-        <AppText variant="label" color={colors.textSecondary} center={true} style={styles.subtitle}>
+        <AppText variant="label" color={colors.textSecondary} center style={styles.subtitle}>
           (Next 72 Hours)
         </AppText>
 
@@ -75,7 +111,17 @@ export function DisasterImmediateNeedsScreen() {
         </View>
       </ScreenWrapper>
 
-      <BottomButtonBar primaryTitle="CONTINUE" onPrimaryPress={handleContinue} />
+      <BottomButtonBar
+        primaryTitle="SUBMIT SURVEY"
+        onPrimaryPress={() => void handleContinue()}
+        primaryLoading={submitting}
+      />
+
+      <DisasterSurveyThankYouModal
+        visible={showThankYou}
+        needsCount={selected.length}
+        onGoHome={goHome}
+      />
     </View>
   );
 }

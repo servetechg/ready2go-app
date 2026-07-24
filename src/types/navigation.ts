@@ -37,11 +37,14 @@ export type OnboardingStackParamList = {
   [ONBOARDING_ROUTES.STEP_LODGING]: undefined;
 };
 
+import type { EmergencyNewsItem } from '@/types/emergency';
+
 export type HomeStackParamList = {
   [HOME_STACK_ROUTES.HOME]: undefined;
   [HOME_STACK_ROUTES.WEATHER]: undefined;
   [HOME_STACK_ROUTES.WEATHER_ALERT_SETTINGS]: undefined;
   [HOME_STACK_ROUTES.EMERGENCY_NEWS]: undefined;
+  [HOME_STACK_ROUTES.NEWS_DETAIL]: { item: EmergencyNewsItem };
 };
 
 export type PreparednessStackParamList = {
@@ -73,6 +76,8 @@ export type MainStackParamList = {
   [MAIN_STACK_ROUTES.STATIC_INFO]: { title: string; body: string };
   [MAIN_STACK_ROUTES.FAQ]: undefined;
   [MAIN_STACK_ROUTES.DISASTER_SURVEY]: NavigatorScreenParams<DisasterSurveyStackParamList>;
+  [MAIN_STACK_ROUTES.CITIZEN_ASSISTANCE]: undefined;
+  [MAIN_STACK_ROUTES.NOTIFICATIONS]: undefined;
   [MAIN_STACK_ROUTES.SPLASH_PREVIEW]: undefined;
 };
 

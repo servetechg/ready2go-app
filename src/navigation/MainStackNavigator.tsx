@@ -11,6 +11,8 @@ import type { MainStackParamList } from '@/types/navigation';
 import { DisasterSurveyStackNavigator } from './DisasterSurveyStackNavigator';
 import { MainTabNavigator } from './MainTabNavigator';
 import { stackScreenOptions } from './screenOptions';
+import { CitizenAssistanceScreen } from '@/screens/citizen/CitizenAssistanceScreen';
+import { NotificationsScreen } from '@/screens/dashboard/NotificationsScreen';
 
 const Stack = createStackNavigator<MainStackParamList>();
 
@@ -41,6 +43,16 @@ export function MainStackNavigator() {
         name={MAIN_STACK_ROUTES.DISASTER_SURVEY}
         component={DisasterSurveyStackNavigator}
         options={{ headerShown: false, presentation: 'modal' }}
+      />
+      <Stack.Screen
+        name={MAIN_STACK_ROUTES.CITIZEN_ASSISTANCE}
+        component={CitizenAssistanceScreen}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name={MAIN_STACK_ROUTES.NOTIFICATIONS}
+        component={NotificationsScreen}
+        options={{ headerShown: false }}
       />
       <Stack.Screen
         name={MAIN_STACK_ROUTES.SPLASH_PREVIEW}

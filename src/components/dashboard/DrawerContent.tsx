@@ -131,7 +131,7 @@ export function DrawerContent(props: DrawerContentComponentProps) {
     { label: 'Preparedness Guide', icon: 'briefcase-outline', onPress: goPreparedness },
     { label: 'Profile', icon: 'person-outline', onPress: goProfile },
     {
-      label: 'Emergency News',
+      label: 'News Feed',
       icon: 'newspaper-outline',
       onPress: goEmergencyNews,
     },

@@ -14,6 +14,8 @@ export interface MobileWeatherAlert {
   expiresLabel?: string;
   read: boolean;
   description?: string;
+  /** Official source page (NWS, USGS, InciWeb, etc.) */
+  sourceUrl?: string;
 }
 
 export type DashboardStatus = {
@@ -33,6 +35,11 @@ export type DashboardHomeNewsItem = {
   category: string;
   location: string;
   icon: string;
+  url?: string;
+  imageUrl?: string;
+  publisher?: string;
+  source_name?: string;
+  sourceName?: string;
 };
 
 export type MobilePreparednessCategory = {
@@ -62,6 +69,7 @@ export interface WeatherAlert {
   issuedAgo: string;
   expires: string;
   read: boolean;
+  sourceUrl?: string;
 }
 
 export interface WeatherSnapshot {
@@ -81,6 +89,8 @@ export interface WeatherAlertPreference {
   label: string;
   description: string;
   enabled: boolean;
+  category?: string;
+  severity?: string;
 }
 
 export interface DashboardQuickAction {

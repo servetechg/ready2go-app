@@ -1,17 +1,19 @@
 import { Ionicons } from '@expo/vector-icons';
-import React from 'react';
-import { StyleSheet, View } from 'react-native';
+import React, { useCallback } from 'react';
+import { Pressable, StyleSheet, View } from 'react-native';
 
 import { AppText } from '@/components/ui/AppText';
 import { useAppTheme } from '@/hooks/useAppTheme';
 import { borderRadius, fontFamily, palette, spacing } from '@/theme';
 import type { WeatherAlert } from '@/types/dashboard';
+import { openAlertSourceUrl } from '@/utils/openAlertSource';
 
 interface AlertCardProps {
   alert: WeatherAlert;
+  onPress?: (alert: WeatherAlert) => void;
 }
 
-export function AlertCard({ alert }: AlertCardProps) {
+export function AlertCard({ alert, onPress }: AlertCardProps) {
   const { colors } = useAppTheme();
 
   const severityStyle =
@@ -21,14 +23,20 @@ export function AlertCard({ alert }: AlertCardProps) {
         ? styles.highBadge
         : styles.lowBadge;
 
-  return (
-    <View
-      style={[
-        styles.card,
-        { backgroundColor: colors.surface, borderColor: colors.border },
-        !alert.read && styles.unreadCard,
-        !alert.read && { borderLeftColor: colors.primary },
-      ]}>
+  const handlePress = useCallback(() => {
+    if (onPress) {
+      onPress(alert);
+      return;
+    }
+    if (alert.sourceUrl) {
+      void openAlertSourceUrl(alert.sourceUrl);
+    }
+  }, [alert, onPress]);
+
+  const isInteractive = Boolean(onPress || alert.sourceUrl);
+
+  const content = (
+    <>
       <View style={styles.topRow}>
         <View style={styles.badges}>
           <View style={[styles.severityBadge, severityStyle]}>
@@ -43,9 +51,14 @@ export function AlertCard({ alert }: AlertCardProps) {
             </AppText>
           </View>
         </View>
-        <AppText variant="caption" color={colors.textMuted} style={styles.issued}>
-          {alert.issuedAgo}
-        </AppText>
+        <View style={styles.metaRight}>
+          {alert.sourceUrl ? (
+            <Ionicons name="open-outline" size={16} color={colors.primary} style={styles.linkIcon} />
+          ) : null}
+          <AppText variant="caption" color={colors.textMuted} style={styles.issued}>
+            {alert.issuedAgo}
+          </AppText>
+        </View>
       </View>
 
       <View style={styles.titleRow}>
@@ -66,8 +79,43 @@ export function AlertCard({ alert }: AlertCardProps) {
         <AppText variant="caption" color={colors.textMuted}>
           {alert.expires}
         </AppText>
+        {alert.sourceUrl ? (
+          <AppText variant="caption" color={colors.primary} style={styles.viewSource}>
+            View official source
+          </AppText>
+        ) : null}
       </View>
-    </View>
+    </>
+  );
+
+  if (!isInteractive) {
+    return (
+      <View
+        style={[
+          styles.card,
+          { backgroundColor: colors.surface, borderColor: colors.border },
+          !alert.read && styles.unreadCard,
+          !alert.read && { borderLeftColor: colors.primary },
+        ]}>
+        {content}
+      </View>
+    );
+  }
+
+  return (
+    <Pressable
+      onPress={handlePress}
+      accessibilityRole="button"
+      accessibilityLabel={`${alert.title}. ${alert.sourceUrl ? 'Opens official source' : 'Alert details'}`}
+      style={({ pressed }) => [
+        styles.card,
+        { backgroundColor: colors.surface, borderColor: colors.border },
+        !alert.read && styles.unreadCard,
+        !alert.read && { borderLeftColor: colors.primary },
+        pressed && styles.pressed,
+      ]}>
+      {content}
+    </Pressable>
   );
 }
 
@@ -77,6 +125,9 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     padding: spacing.lg,
     marginBottom: spacing.md,
+  },
+  pressed: {
+    opacity: 0.92,
   },
   unreadCard: {
     borderLeftWidth: 4,
@@ -104,6 +155,13 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
   },
   badges: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: spacing.sm, flex: 1 },
+  metaRight: {
+    alignItems: 'flex-end',
+    gap: spacing.xs,
+  },
+  linkIcon: {
+    marginBottom: 2,
+  },
   severityBadge: {
     paddingHorizontal: spacing.sm,
     paddingVertical: 2,
@@ -130,5 +188,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.xs,
+    flexWrap: 'wrap',
+  },
+  viewSource: {
+    marginLeft: 'auto',
+    fontFamily: fontFamily.medium,
   },
 });

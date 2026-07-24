@@ -1,35 +1,96 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
 
+
+
 import type { DisasterImmediateNeedId } from '@/constants/disasterSurvey';
 
+import type { DisasterSurveyInvitation } from '@/services/disasterSurvey.service';
+
+
+
 interface DisasterSurveyState {
+
+  invitation: DisasterSurveyInvitation | null;
+
   immediateNeeds: DisasterImmediateNeedId[];
-  submittedAt: number | null;
-  isTestSubmission: boolean;
+
+  submittedAt: string | null;
+
 }
 
+
+
 const initialState: DisasterSurveyState = {
+
+  invitation: null,
+
   immediateNeeds: [],
+
   submittedAt: null,
-  isTestSubmission: false,
+
 };
 
+
+
 const disasterSurveySlice = createSlice({
+
   name: 'disasterSurvey',
+
   initialState,
+
   reducers: {
-    submitDisasterImmediateNeeds: (
+
+    setDisasterSurveyInvitation: (
+
       state,
-      action: PayloadAction<{ needs: DisasterImmediateNeedId[]; isTest?: boolean }>,
+
+      action: PayloadAction<DisasterSurveyInvitation | null>,
+
     ) => {
-      state.immediateNeeds = action.payload.needs;
-      state.submittedAt = Date.now();
-      state.isTestSubmission = action.payload.isTest ?? false;
+
+      state.invitation = action.payload;
+
     },
+
+    setDisasterImmediateNeeds: (state, action: PayloadAction<DisasterImmediateNeedId[]>) => {
+
+      state.immediateNeeds = action.payload;
+
+    },
+
+    markDisasterSubmitted: (state, action: PayloadAction<string>) => {
+
+      state.submittedAt = action.payload;
+
+      if (state.invitation) {
+
+        state.invitation = { ...state.invitation, status: 'submitted' };
+
+      }
+
+    },
+
     clearDisasterSurvey: () => initialState,
+
   },
+
 });
 
-export const { submitDisasterImmediateNeeds, clearDisasterSurvey } = disasterSurveySlice.actions;
+
+
+export const {
+
+  setDisasterSurveyInvitation,
+
+  setDisasterImmediateNeeds,
+
+  markDisasterSubmitted,
+
+  clearDisasterSurvey,
+
+} = disasterSurveySlice.actions;
+
+
 
 export default disasterSurveySlice.reducer;
+

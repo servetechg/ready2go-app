@@ -23,13 +23,15 @@ const PREPAREDNESS_ICON_ALIASES: Record<string, string> = {
   'flame-outline': 'flame',
 };
 
-const NEWS_CATEGORY_VALUES: NewsCategory[] = ['ADVISORY', 'PREPAREDNESS', 'ADMIN', 'REGIONAL'];
+const LEGACY_NEWS_CATEGORIES: NewsCategory[] = ['ADVISORY', 'PREPAREDNESS', 'ADMIN', 'REGIONAL'];
 
 function toNewsCategory(value: string | undefined): NewsCategory {
-  const upper = (value ?? 'ADVISORY').toUpperCase();
-  return NEWS_CATEGORY_VALUES.includes(upper as NewsCategory)
-    ? (upper as NewsCategory)
-    : 'ADVISORY';
+  if (!value) return 'ADVISORY';
+  const upper = value.toUpperCase();
+  if (LEGACY_NEWS_CATEGORIES.includes(upper as NewsCategory)) {
+    return upper as NewsCategory;
+  }
+  return value.toLowerCase();
 }
 
 function toNewsIcon(icon: string | undefined): NewsIconType {
@@ -40,6 +42,9 @@ function toNewsIcon(icon: string | undefined): NewsIconType {
 
 function toNewsSource(source: string): EmergencyNewsItem['source'] {
   if (source === 'admin') return 'admin';
+  if (source === 'news') return 'news';
+  if (source === 'community') return 'community';
+  if (source === 'nws') return 'nws';
   return 'emergency';
 }
 
@@ -53,6 +58,7 @@ export function mapMobileAlertToWeatherAlert(alert: MobileWeatherAlert): Weather
     issuedAgo: formatIssuedLabel(alert.issuedAt),
     expires: alert.expiresLabel?.trim() || formatExpiresLabel(alert.expiresAt),
     read: alert.read,
+    sourceUrl: alert.sourceUrl,
   };
 }
 
@@ -60,6 +66,12 @@ export function mapMobileAlertToWeatherAlert(alert: MobileWeatherAlert): Weather
 export const mapHomeAlertToWeatherAlert = mapMobileAlertToWeatherAlert;
 
 export function mapHomeNewsToEmergencyNewsItem(item: DashboardHomeNewsItem): EmergencyNewsItem {
+  const sourceName =
+    item.source_name?.trim() ||
+    item.sourceName?.trim() ||
+    item.publisher?.trim() ||
+    undefined;
+
   return {
     id: item.id,
     title: item.title,
@@ -73,6 +85,10 @@ export function mapHomeNewsToEmergencyNewsItem(item: DashboardHomeNewsItem): Eme
     category: toNewsCategory(item.category),
     location: item.location || undefined,
     icon: toNewsIcon(item.icon),
+    url: item.url,
+    imageUrl: item.imageUrl,
+    publisher: item.publisher,
+    sourceName,
   };
 }
 

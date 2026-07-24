@@ -1,14 +1,14 @@
 import { Ionicons } from '@expo/vector-icons';
-import { DrawerActions, NavigationProp, ParamListBase, useNavigation } from '@react-navigation/native';
+import { DrawerActions, useNavigation } from '@react-navigation/native';
 import React from 'react';
 import { Platform, Pressable, StyleSheet, TextInput, View } from 'react-native';
 
 import { MenuIcon } from '@/components/icons/MenuIcon';
 import { AppText } from '@/components/ui/AppText';
 import { useAppTheme } from '@/hooks/useAppTheme';
-import { navigateToAlertsTab } from '@/navigation/navigationHelpers';
+import { navigateToNotifications } from '@/navigation/navigationRef';
 import { useAppDispatch, useAppSelector } from '@/redux/hooks';
-import { selectUnreadAlertCount } from '@/redux/slices/alertsSlice';
+import { selectUnreadInboxCount } from '@/redux/slices/notificationsSlice';
 import { setSearchQuery } from '@/redux/slices/dashboardSlice';
 import { borderRadius, fontSize, googleSans, inputHeight, palette, spacing } from '@/theme';
 
@@ -21,14 +21,14 @@ export function DashboardTopBar({ showSearch = true }: DashboardTopBarProps) {
   const dispatch = useAppDispatch();
   const { colors } = useAppTheme();
   const searchQuery = useAppSelector((s) => s.dashboard.searchQuery);
-  const unreadCount = useAppSelector(selectUnreadAlertCount);
+  const unreadCount = useAppSelector(selectUnreadInboxCount);
 
   const openDrawer = () => {
     navigation.dispatch(DrawerActions.openDrawer());
   };
 
-  const openAlerts = () => {
-    navigateToAlertsTab(navigation as NavigationProp<ParamListBase>);
+  const openNotifications = () => {
+    navigateToNotifications();
   };
 
   return (
@@ -55,9 +55,15 @@ export function DashboardTopBar({ showSearch = true }: DashboardTopBarProps) {
         <View style={styles.searchPlaceholder} />
       )}
 
-      <Pressable onPress={openAlerts} hitSlop={12} accessibilityLabel="Notifications">
+      <Pressable onPress={openNotifications} hitSlop={12} accessibilityLabel="Notifications">
         <Ionicons name="notifications-outline" size={26} color={colors.text} />
-        {unreadCount > 0 ? <View style={styles.badge} /> : null}
+        {unreadCount > 0 ? (
+          <View style={styles.badge}>
+            <AppText variant="caption" style={styles.badgeText}>
+              {unreadCount > 9 ? '9+' : unreadCount}
+            </AppText>
+          </View>
+        ) : null}
       </Pressable>
     </View>
   );
@@ -118,12 +124,21 @@ const styles = StyleSheet.create({
   searchPlaceholder: { flex: 1 },
   badge: {
     position: 'absolute',
-    top: 2,
-    right: 2,
-    width: 8,
-    height: 8,
-    borderRadius: 4,
+    top: -2,
+    right: -4,
+    minWidth: 16,
+    height: 16,
+    borderRadius: 8,
     backgroundColor: palette.badge,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 3,
+  },
+  badgeText: {
+    color: palette.white,
+    fontSize: 9,
+    fontWeight: '700',
+    lineHeight: 11,
   },
   screenHeader: {
     flexDirection: 'row',

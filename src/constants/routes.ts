@@ -30,6 +30,7 @@ export const HOME_STACK_ROUTES = {
   WEATHER: 'Weather',
   WEATHER_ALERT_SETTINGS: 'WeatherAlertSettings',
   EMERGENCY_NEWS: 'EmergencyNews',
+  NEWS_DETAIL: 'NewsDetail',
 } as const;
 
 export const PREPAREDNESS_STACK_ROUTES = {
@@ -48,6 +49,8 @@ export const MAIN_STACK_ROUTES = {
   STATIC_INFO: 'StaticInfo',
   FAQ: 'Faq',
   DISASTER_SURVEY: 'DisasterSurvey',
+  CITIZEN_ASSISTANCE: 'CitizenAssistance',
+  NOTIFICATIONS: 'Notifications',
   SPLASH_PREVIEW: 'SplashPreview',
 } as const;
 

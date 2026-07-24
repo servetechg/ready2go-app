@@ -3,7 +3,6 @@ import * as Device from 'expo-device';
 import { Platform } from 'react-native';
 
 import { getProfileReminderDelaySeconds } from '@/utils/profileReminderDelay';
-import { DISASTER_NOTIFICATION_SCREEN } from '@/constants/disasterSurvey';
 import {
   clearStoredProfileReminder,
   loadStoredProfileReminder,
@@ -11,7 +10,6 @@ import {
 } from '@/utils/profileReminderStorage';
 import {
   canUseNotifications,
-  getNotificationLimitationReason,
 } from '@/utils/notification-capability';
 
 type NotificationsModule = typeof import('expo-notifications');
@@ -41,10 +39,6 @@ export function isNotificationsAvailable(): boolean {
   return canUseNotifications();
 }
 
-export function getNotificationsUnavailableReason(): string | null {
-  return getNotificationLimitationReason();
-}
-
 /** Set up foreground notification display (dev build / standalone only). */
 export async function initNotificationHandler(): Promise<void> {
   if (!canUseNotifications() || handlerInitialized) return;
@@ -67,6 +61,7 @@ export async function initNotificationHandler(): Promise<void> {
 export const PROFILE_REMINDER_ID = 'profile-incomplete-reminder';
 export const PROFILE_REMINDER_CHANNEL_ID = 'profile-reminders';
 export const DISASTER_SURVEY_CHANNEL_ID = 'disaster-alerts';
+export const INBOX_CHANNEL_ID = 'inbox-updates';
 
 export const notificationService = {
   async requestPermissionsAsync(): Promise<boolean> {
@@ -99,6 +94,14 @@ export const notificationService = {
         lightColor: '#C62828',
         sound: 'default',
         bypassDnd: true,
+      });
+      await Notifications.setNotificationChannelAsync(INBOX_CHANNEL_ID, {
+        name: 'Account updates',
+        description: 'Report status, surveys, and Ready2Go updates',
+        importance: Notifications.AndroidImportance.HIGH,
+        vibrationPattern: [0, 200, 200, 200],
+        lightColor: '#33375D',
+        sound: 'default',
       });
     }
 
@@ -267,75 +270,5 @@ export const notificationService = {
     } catch (error) {
       console.warn('Failed to cancel profile reminder:', error);
     }
-  },
-
-  async sendDisasterSurveyTestNotification(): Promise<string | null> {
-    if (!canUseNotifications()) return null;
-
-    const Notifications = await getNotifications();
-    if (!Notifications) return null;
-
-    try {
-      const hasPermission = await this.requestPermissionsAsync();
-      if (!hasPermission) {
-        return null;
-      }
-
-      const id = await Notifications.scheduleNotificationAsync({
-        content: {
-          title: 'DISASTER ALERT',
-          body: 'You are in a designated disaster zone. You may be eligible for disaster relief. Tap to complete your status assessment.',
-          sound: true,
-          priority: Notifications.AndroidNotificationPriority.MAX,
-          ...(Platform.OS === 'android' ? { channelId: DISASTER_SURVEY_CHANNEL_ID } : {}),
-          data: { screen: DISASTER_NOTIFICATION_SCREEN },
-        },
-        trigger: null,
-      });
-
-      return id;
-    } catch (error) {
-      console.warn('Failed to send disaster survey notification:', error);
-      return null;
-    }
-  },
-
-  async sendImmediateTestNotification(): Promise<string | null> {
-    if (!canUseNotifications()) return null;
-
-    const Notifications = await getNotifications();
-    if (!Notifications) return null;
-
-    try {
-      const hasPermission = await this.requestPermissionsAsync();
-      if (!hasPermission) {
-        return null;
-      }
-
-      const id = await Notifications.scheduleNotificationAsync({
-        content: {
-          title: 'Ready2Go Test Notification 📬',
-          body: 'This is a test notification. Complete your profile to ensure we can help you when needed.',
-          sound: true,
-          ...(Platform.OS === 'android' ? { channelId: 'default' } : {}),
-        },
-        trigger: null,
-      });
-
-      return id;
-    } catch (error) {
-      console.warn('Failed to send immediate notification:', error);
-      return null;
-    }
-  },
-
-  /** Debug helper — lists pending local notifications. */
-  async getScheduledReminderDebug(): Promise<string | null> {
-    const Notifications = await getNotifications();
-    if (!Notifications) return null;
-    const pending = await Notifications.getAllScheduledNotificationsAsync();
-    const reminder = pending.find((n) => n.identifier === PROFILE_REMINDER_ID);
-    if (!reminder) return 'No profile reminder scheduled';
-    return JSON.stringify(reminder.trigger);
   },
 };

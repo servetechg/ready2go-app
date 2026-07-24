@@ -1,4 +1,5 @@
 /** @type {import('expo/config').ExpoConfig} */
+// Expo CLI / EAS local builds load .env automatically before this file runs.
 const appJson = require('./app.json');
 
 const googleMapsApiKey =
@@ -84,9 +85,7 @@ module.exports = {
     ],
     extra: {
       ...appJson.expo.extra,
-      eas: {
-        projectId: 'fa398a3b-4d43-4415-8e4b-a4144bff2906',
-      },
+      eas: {projectId: 'fa398a3b-4d43-4415-8e4b-a4144bff2906'},
       googleMapsApiKey,
       profileReminderSeconds: profileReminderSeconds
         ? Number(profileReminderSeconds)

@@ -2,15 +2,17 @@ import { createAsyncThunk, createSelector, createSlice, PayloadAction } from '@r
 
 import { DEFAULT_WEATHER_ALERT_PREFERENCES } from '@/constants/dashboard';
 import { logoutUser, refreshSession } from '@/redux/slices/authSlice';
+import { markAlertReadRemote, markAllAlertsReadRemote } from '@/redux/slices/alertsSlice';
 import type { RootState } from '@/redux/store';
 import { isApiClientError } from '@/services/api/errors';
 import { getHome, type HomeQuery } from '@/services/dashboard.service';
 import { fetchEmergencyIncidents, fetchEmergencyMap } from '@/services/emergency.service';
+import { weatherService } from '@/services/weather.service';
 import type { DashboardHomeResponse, WeatherAlertPreference } from '@/types/dashboard';
 import type { DashboardMode, EmergencyDashboardData } from '@/types/emergency';
 import {
-    mapHomeNewsToEmergencyNewsItem,
-    mapPreparednessCategory,
+  mapHomeNewsToEmergencyNewsItem,
+  mapPreparednessCategory,
 } from '@/utils/dashboardMappers';
 import { resolveMapRegion } from '@/utils/mapRegion';
 
@@ -25,6 +27,9 @@ interface DashboardState {
   emergencyLoading: boolean;
   emergencyError: string | null;
   weatherAlertPreferences: WeatherAlertPreference[];
+  weatherPreferencesLoading: boolean;
+  weatherPreferencesSaving: boolean;
+  weatherPreferencesError: string | null;
   searchQuery: string;
 }
 
@@ -38,6 +43,9 @@ const initialState: DashboardState = {
   emergencyLoading: false,
   emergencyError: null,
   weatherAlertPreferences: DEFAULT_WEATHER_ALERT_PREFERENCES,
+  weatherPreferencesLoading: false,
+  weatherPreferencesSaving: false,
+  weatherPreferencesError: null,
   searchQuery: '',
 };
 
@@ -52,6 +60,7 @@ async function loadHomeWithToken(
   query?: HomeQuery,
 ): Promise<FetchHomeResult> {
   const home = await getHome(token, {
+    include: ['news'],
     newsLimit: 4,
     alertsLimit: 2,
     ...query,
@@ -113,6 +122,61 @@ function getErrorMessage(error: unknown): string {
   return 'Failed to load dashboard';
 }
 
+async function withAuthRetry<T>(
+  getState: () => RootState,
+  dispatch: (action: unknown) => unknown,
+  fn: (token: string) => Promise<T>,
+): Promise<T> {
+  let token = getState().auth.token;
+  if (!token) throw new Error('Not authenticated');
+
+  try {
+    return await fn(token);
+  } catch (error) {
+    if (isApiClientError(error) && error.status === 401) {
+      const refreshResult = await dispatch(refreshSession());
+      if (refreshSession.fulfilled.match(refreshResult)) {
+        return await fn(refreshResult.payload.token);
+      }
+    }
+    throw error;
+  }
+}
+
+export const fetchWeatherAlertPreferences = createAsyncThunk<
+  WeatherAlertPreference[],
+  void,
+  { state: RootState }
+>('dashboard/fetchWeatherAlertPreferences', async (_, { getState, dispatch, rejectWithValue }) => {
+  try {
+    return await withAuthRetry(getState, dispatch, (token) => weatherService.getPreferences(token));
+  } catch (error) {
+    return rejectWithValue(getErrorMessage(error) || 'Could not load weather alert preferences');
+  }
+});
+
+export const saveWeatherAlertPreference = createAsyncThunk<
+  WeatherAlertPreference[],
+  { id: string; enabled: boolean },
+  { state: RootState }
+>(
+  'dashboard/saveWeatherAlertPreference',
+  async ({ id, enabled }, { getState, dispatch, rejectWithValue }) => {
+    const current = getState().dashboard.weatherAlertPreferences;
+    const next = current.map((p) => (p.id === id ? { ...p, enabled } : p));
+    try {
+      return await withAuthRetry(getState, dispatch, (token) =>
+        weatherService.updatePreferences(
+          token,
+          next.map((p) => ({ id: p.id, enabled: p.enabled })),
+        ),
+      );
+    } catch (error) {
+      return rejectWithValue(getErrorMessage(error) || 'Could not save preference');
+    }
+  },
+);
+
 const dashboardSlice = createSlice({
   name: 'dashboard',
   initialState,
@@ -130,6 +194,9 @@ const dashboardSlice = createSlice({
     ) => {
       const pref = state.weatherAlertPreferences.find((p) => p.id === action.payload.id);
       if (pref) pref.enabled = action.payload.enabled;
+    },
+    setWeatherAlertPreferences: (state, action: PayloadAction<WeatherAlertPreference[]>) => {
+      state.weatherAlertPreferences = action.payload;
     },
     clearDashboard: () => initialState,
   },
@@ -158,6 +225,55 @@ const dashboardSlice = createSlice({
         state.homeError = message;
         state.emergencyError = message;
       })
+      .addCase(fetchWeatherAlertPreferences.pending, (state) => {
+        state.weatherPreferencesLoading = true;
+        state.weatherPreferencesError = null;
+      })
+      .addCase(fetchWeatherAlertPreferences.fulfilled, (state, action) => {
+        state.weatherPreferencesLoading = false;
+        state.weatherAlertPreferences = action.payload;
+      })
+      .addCase(fetchWeatherAlertPreferences.rejected, (state, action) => {
+        state.weatherPreferencesLoading = false;
+        state.weatherPreferencesError =
+          (action.payload as string) ?? 'Could not load weather alert preferences';
+      })
+      .addCase(saveWeatherAlertPreference.pending, (state, action) => {
+        state.weatherPreferencesSaving = true;
+        const { id, enabled } = action.meta.arg;
+        const pref = state.weatherAlertPreferences.find((p) => p.id === id);
+        if (pref) pref.enabled = enabled;
+      })
+      .addCase(saveWeatherAlertPreference.fulfilled, (state, action) => {
+        state.weatherPreferencesSaving = false;
+        state.weatherAlertPreferences = action.payload;
+      })
+      .addCase(saveWeatherAlertPreference.rejected, (state, action) => {
+        state.weatherPreferencesSaving = false;
+        state.weatherPreferencesError =
+          (action.payload as string) ?? 'Could not save preference';
+        // Revert optimistic update by reloading is handled by screen; flip local back if meta known
+        const { id, enabled } = action.meta.arg;
+        const pref = state.weatherAlertPreferences.find((p) => p.id === id);
+        if (pref) pref.enabled = !enabled;
+      })
+      .addCase(markAlertReadRemote.fulfilled, (state, action) => {
+        const alert = state.home?.recentAlerts.find((item) => item.id === action.payload.alertId);
+        if (alert) alert.read = true;
+        state.unreadAlertsCount = action.payload.unreadCount;
+        if (state.home) {
+          state.home.badges.unreadAlerts = action.payload.unreadCount;
+        }
+      })
+      .addCase(markAllAlertsReadRemote.fulfilled, (state, action) => {
+        state.home?.recentAlerts.forEach((item) => {
+          item.read = true;
+        });
+        state.unreadAlertsCount = action.payload;
+        if (state.home) {
+          state.home.badges.unreadAlerts = action.payload;
+        }
+      })
       .addCase(logoutUser.fulfilled, () => initialState)
       .addCase(logoutUser.rejected, () => initialState);
   },
@@ -167,6 +283,7 @@ export const {
   setSearchQuery,
   toggleWeatherAlertPreference,
   setWeatherAlertPreference,
+  setWeatherAlertPreferences,
   clearDashboard,
 } = dashboardSlice.actions;
 

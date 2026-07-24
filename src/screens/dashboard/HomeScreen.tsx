@@ -1,6 +1,6 @@
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
-import React, { useMemo, useRef } from 'react';
+import React, { useCallback, useMemo, useRef } from 'react';
 import { ActivityIndicator, Pressable, RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
 
 import { AlertCard } from '@/components/dashboard/AlertCard';
@@ -14,20 +14,24 @@ import { PreparednessCategoryCard } from '@/components/dashboard/PreparednessCat
 import { PreparednessEmptyMessage } from '@/components/dashboard/PreparednessEmptyMessage';
 import { WeatherSummaryCard } from '@/components/dashboard/WeatherSummaryCard';
 import { AppButton } from '@/components/ui/AppButton';
+import { AppCard } from '@/components/ui/AppCard';
 import { AppText } from '@/components/ui/AppText';
 import {
-    HOME_STACK_ROUTES,
-    PREPAREDNESS_STACK_ROUTES,
-    TAB_ROUTES,
+  HOME_STACK_ROUTES,
+  PREPAREDNESS_STACK_ROUTES,
+  TAB_ROUTES,
 } from '@/constants/routes';
 import { useAppTheme } from '@/hooks/useAppTheme';
+import { useAlertSourcePress } from '@/hooks/useAlertSourcePress';
 import { useHomeDashboard } from '@/hooks/useHomeDashboard';
 import { usePullToRefresh } from '@/hooks/usePullToRefresh';
 import { navigateToAlertsTab, navigateToTab } from '@/navigation/navigationHelpers';
+import { navigateToCitizenAssistance } from '@/navigation/navigationRef';
 import { useAppSelector } from '@/redux/hooks';
 import { selectPreparednessCategories } from '@/redux/slices/dashboardSlice';
 import { spacing } from '@/theme';
 import type { HomeStackParamList, MainTabParamList } from '@/types/navigation';
+import type { EmergencyNewsItem } from '@/types/emergency';
 import { mapHomeAlertToWeatherAlert, mapHomeNewsToEmergencyNewsItem } from '@/utils/dashboardMappers';
 import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import type { CompositeNavigationProp } from '@react-navigation/native';
@@ -46,6 +50,7 @@ export function HomeScreen() {
   const preparednessCategories = useAppSelector(selectPreparednessCategories);
   const { home, emergency, isCloudy, loading, error, reload } = useHomeDashboard();
   const { refreshControlProps } = usePullToRefresh(reload);
+  const handleAlertPress = useAlertSourcePress();
 
   const newsItems = useMemo(() => {
     const items = (home?.news ?? []).map(mapHomeNewsToEmergencyNewsItem);
@@ -107,6 +112,13 @@ export function HomeScreen() {
     navigateToTab(navigation, TAB_ROUTES.PROFILE);
   };
 
+  const openNewsDetail = useCallback(
+    (item: EmergencyNewsItem) => {
+      navigation.navigate(HOME_STACK_ROUTES.NEWS_DETAIL, { item });
+    },
+    [navigation],
+  );
+
   if (error && !home) {
     return (
       <DashboardLayout>
@@ -131,7 +143,17 @@ export function HomeScreen() {
         contentContainerStyle={styles.scroll}
         refreshControl={<RefreshControl {...refreshControlProps} />}>
         {isCloudy ? (
-          <DisruptionStatusBanner status={home?.status} onViewSituation={scrollToSituation} />
+          <>
+            <DisruptionStatusBanner status={home?.status} onViewSituation={scrollToSituation} />
+            <Pressable onPress={navigateToCitizenAssistance}>
+              <AppCard style={styles.assistanceCard}>
+                <AppText variant="label">Need help or want to check in?</AppText>
+                <AppText variant="bodySmall" color={colors.textSecondary}>
+                  Tap to mark safe or send a request to emergency coordinators
+                </AppText>
+              </AppCard>
+            </Pressable>
+          </>
         ) : (
           <BlueSkyStatusBanner status={home?.status} />
         )}
@@ -146,6 +168,7 @@ export function HomeScreen() {
               items={newsItems}
               maxVisible={4}
               onViewAll={() => navigation.navigate(HOME_STACK_ROUTES.EMERGENCY_NEWS)}
+              onItemPress={openNewsDetail}
             />
             {showMap && emergency ? (
               <View
@@ -190,7 +213,7 @@ export function HomeScreen() {
               </AppText>
             ) : (
               recentAlerts.map((alert) => (
-                <AlertCard key={alert.id} alert={alert} />
+                <AlertCard key={alert.id} alert={alert} onPress={handleAlertPress} />
               ))
             )}
           </>
@@ -232,6 +255,7 @@ export function HomeScreen() {
 
 const styles = StyleSheet.create({
   scroll: { paddingBottom: spacing.xl, paddingVertical: spacing.sm },
+  assistanceCard: { marginBottom: spacing.lg },
   loader: { marginVertical: spacing.lg },
   prepLoader: { marginBottom: spacing.lg },
   errorWrap: {

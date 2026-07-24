@@ -3,7 +3,7 @@ import { useCallback } from 'react';
 import { useAppDispatch, useAppSelector } from '@/redux/hooks';
 import { fetchHome, selectDashboardMode } from '@/redux/slices/dashboardSlice';
 
-/** Loads home dashboard data; used by Emergency News screen. */
+/** Loads home dashboard data (map, incidents, news preview). */
 export function useEmergencyDashboard() {
   const dispatch = useAppDispatch();
   const mode = useAppSelector(selectDashboardMode);

@@ -37,7 +37,7 @@
             "backgroundColor": "#1B4F8A"
           },
           "android": {
-            "image": "./assets/images/logo1.png",
+            "image": "./assets/images/splash-android.png",
             "imageWidth": 200,
             "resizeMode": "contain",
             "backgroundColor": "#1B4F8A"
@@ -48,7 +48,7 @@
       "expo-web-browser"
     ],
     "extra": {
-      "eas": {}
+      "eas": {"projectId": "fa398a3b-4d43-4415-8e4b-a4144bff2906"}
     }
   }
 }
