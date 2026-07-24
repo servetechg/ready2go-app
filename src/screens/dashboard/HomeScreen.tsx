@@ -139,9 +139,17 @@ export function HomeScreen() {
     <DashboardLayout>
       <ScrollView
         ref={scrollRef}
+        style={{ flex: 1, backgroundColor: colors.background }}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scroll}
-        refreshControl={<RefreshControl {...refreshControlProps} />}>
+        refreshControl={
+          <RefreshControl
+            {...refreshControlProps}
+            progressBackgroundColor={colors.background}
+            colors={[colors.primary]}
+            tintColor={colors.primary}
+          />
+        }>
         {isCloudy ? (
           <>
             <DisruptionStatusBanner status={home?.status} onViewSituation={scrollToSituation} />

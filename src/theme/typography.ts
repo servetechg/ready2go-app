@@ -67,6 +67,7 @@ export const typography: Record<string, TextStyle> = {
     fontSize: fontSize.md,
     lineHeight: fontSize.md,
     letterSpacing: 0.5,
+    textAlign: 'center',
   },
 };
 

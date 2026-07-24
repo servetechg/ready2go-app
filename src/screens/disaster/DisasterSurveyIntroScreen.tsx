@@ -8,9 +8,9 @@ import { BottomButtonBar } from '@/components/layout/BottomButtonBar';
 import { ScreenWrapper } from '@/components/layout/ScreenWrapper';
 import { AppText } from '@/components/ui/AppText';
 import { DISASTER_SURVEY_CATEGORIES } from '@/constants/disasterSurvey';
-import { DISASTER_SURVEY_ROUTES, MAIN_STACK_ROUTES } from '@/constants/routes';
+import { DISASTER_SURVEY_ROUTES } from '@/constants/routes';
 import { useAppTheme } from '@/hooks/useAppTheme';
-import { navigateToMainScreen } from '@/navigation/navigationHelpers';
+import { dismissToHomeTabs } from '@/navigation/navigationHelpers';
 import { useAppDispatch, useAppSelector } from '@/redux/hooks';
 import {
   clearDisasterSurvey,
@@ -40,7 +40,7 @@ export function DisasterSurveyIntroScreen() {
       if (cancelled) return;
       if (!active || active.status === 'submitted') {
         dispatch(clearDisasterSurvey());
-        navigateToMainScreen(navigation, MAIN_STACK_ROUTES.TABS);
+        dismissToHomeTabs(navigation);
         return;
       }
       dispatch(setDisasterSurveyInvitation(active));
