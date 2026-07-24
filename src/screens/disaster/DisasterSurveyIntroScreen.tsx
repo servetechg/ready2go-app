@@ -8,10 +8,14 @@ import { BottomButtonBar } from '@/components/layout/BottomButtonBar';
 import { ScreenWrapper } from '@/components/layout/ScreenWrapper';
 import { AppText } from '@/components/ui/AppText';
 import { DISASTER_SURVEY_CATEGORIES } from '@/constants/disasterSurvey';
-import { DISASTER_SURVEY_ROUTES } from '@/constants/routes';
+import { DISASTER_SURVEY_ROUTES, MAIN_STACK_ROUTES } from '@/constants/routes';
 import { useAppTheme } from '@/hooks/useAppTheme';
+import { navigateToMainScreen } from '@/navigation/navigationHelpers';
 import { useAppDispatch, useAppSelector } from '@/redux/hooks';
-import { setDisasterSurveyInvitation } from '@/redux/slices/disasterSurveySlice';
+import {
+  clearDisasterSurvey,
+  setDisasterSurveyInvitation,
+} from '@/redux/slices/disasterSurveySlice';
 import { disasterSurveyService } from '@/services/disasterSurvey.service';
 import { spacing } from '@/theme';
 import type { DisasterSurveyStackParamList } from '@/types/navigation';
@@ -29,14 +33,26 @@ export function DisasterSurveyIntroScreen() {
   const invitation = useAppSelector((s) => s.disasterSurvey.invitation);
 
   useEffect(() => {
-    if (!authToken || invitation) return;
+    if (!authToken) return;
+
+    let cancelled = false;
     void disasterSurveyService.getActive(authToken).then(({ invitation: active }) => {
+      if (cancelled) return;
+      if (!active || active.status === 'submitted') {
+        dispatch(clearDisasterSurvey());
+        navigateToMainScreen(navigation, MAIN_STACK_ROUTES.TABS);
+        return;
+      }
       dispatch(setDisasterSurveyInvitation(active));
     });
-  }, [authToken, dispatch, invitation]);
+
+    return () => {
+      cancelled = true;
+    };
+  }, [authToken, dispatch, navigation]);
 
   const startSurvey = async () => {
-    if (!invitation || !authToken) return;
+    if (!invitation || !authToken || invitation.status === 'submitted') return;
     try {
       await disasterSurveyService.markOpened(authToken, invitation.invitationId);
     } catch {
@@ -44,6 +60,10 @@ export function DisasterSurveyIntroScreen() {
     }
     navigation.navigate(DISASTER_SURVEY_ROUTES.IMMEDIATE_NEEDS);
   };
+
+  const canStart =
+    invitation != null &&
+    (invitation.status === 'pending' || invitation.status === 'opened');
 
   return (
     <View style={styles.wrapper}>
@@ -73,7 +93,7 @@ export function DisasterSurveyIntroScreen() {
       <BottomButtonBar
         primaryTitle="START SURVEY"
         onPrimaryPress={() => {
-          if (invitation) void startSurvey();
+          if (canStart) void startSurvey();
         }}
       />
     </View>

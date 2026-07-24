@@ -10,7 +10,7 @@ import { AppText } from '@/components/ui/AppText';
 import { HOME_STACK_ROUTES, MAIN_STACK_ROUTES, TAB_ROUTES } from '@/constants/routes';
 import { useActiveDisasterSurvey } from '@/hooks/useActiveDisasterSurvey';
 import { useAppTheme } from '@/hooks/useAppTheme';
-import { navigateToDisasterSurveyIntro } from '@/navigation/navigationRef';
+import { navigateToDisasterSurveyIfActive } from '@/navigation/navigationRef';
 import { useAppSelector } from '@/redux/hooks';
 import { spacing } from '@/theme';
 import type { MainStackParamList } from '@/types/navigation';
@@ -37,7 +37,7 @@ export function SettingsScreen() {
       </View>
       <ScrollView contentContainerStyle={styles.content}>
         {hasOpenSurvey && invitation ? (
-          <Pressable onPress={navigateToDisasterSurveyIntro}>
+          <Pressable onPress={() => void navigateToDisasterSurveyIfActive()}>
             <AppCard style={[styles.card, styles.surveyCard]}>
               <AppText variant="label">Disaster relief survey</AppText>
               <AppText variant="bodySmall" color={colors.textSecondary}>

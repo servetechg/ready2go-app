@@ -17,7 +17,10 @@ import { AppText } from '@/components/ui/AppText';
 import { MAIN_STACK_ROUTES } from '@/constants/routes';
 import { useAppTheme } from '@/hooks/useAppTheme';
 import { usePullToRefresh } from '@/hooks/usePullToRefresh';
-import { navigateToCitizenAssistance } from '@/navigation/navigationRef';
+import {
+  navigateToCitizenAssistance,
+  navigateToDisasterSurveyIfActive,
+} from '@/navigation/navigationRef';
 import { useAppDispatch, useAppSelector } from '@/redux/hooks';
 import {
   fetchInboxNotifications,
@@ -135,6 +138,10 @@ export function NotificationsScreen() {
       }
       if (item.type === 'citizen_report_resolved') {
         navigateToCitizenAssistance();
+        return;
+      }
+      if (item.type === 'disaster_survey') {
+        void navigateToDisasterSurveyIfActive();
       }
     },
     [dispatch],
