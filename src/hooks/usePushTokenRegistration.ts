@@ -5,6 +5,7 @@ import { useAppSelector } from '@/redux/hooks';
 import { toBoolean } from '@/utils/coerce';
 import {
   isNotificationsAvailable,
+  markExpoPushTokenRegistered,
   notificationService,
 } from '@/services/notification.service';
 import { profileService } from '@/services/profile.service';
@@ -43,12 +44,14 @@ export function usePushTokenRegistration() {
 
         await profileService.registerPushToken(token, pushToken);
         lastRegistered.current = pushToken;
+        await markExpoPushTokenRegistered(true);
         if (__DEV__) {
           console.log(`[push] token registered (${reason})`);
         }
       } catch (err) {
         // Allow a later retry (e.g. after permission grant / app resume).
         lastRegistered.current = null;
+        await markExpoPushTokenRegistered(false);
         console.warn('[push] token registration failed:', err);
       } finally {
         inFlight.current = false;

@@ -1,5 +1,6 @@
 import { createAsyncThunk, createSlice, PayloadAction } from '@reduxjs/toolkit';
 
+import { flushPersistedState } from '@/redux/persistFlush';
 import { isApiClientError } from '@/services/api/errors';
 import { authService } from '@/services/auth.service';
 import { profileService } from '@/services/profile.service';
@@ -39,10 +40,25 @@ function applyAuthResponse(state: AuthState, response: AuthResponse) {
   if (response.refreshToken) {
     state.refreshToken = response.refreshToken;
   }
-  state.isAuthenticated = true;
+  state.isAuthenticated = Boolean(response.token);
   state.pendingAuth = null;
   state.otpEmail = null;
   state.error = null;
+}
+
+type RefreshReject = { message: string; fatal: boolean };
+type FetchUserReject = { message: string; fatal: boolean };
+
+/** Single in-flight refresh so parallel 401 handlers don't race. */
+let inflightRefresh: Promise<AuthResponse> | null = null;
+
+function refreshWithLock(refreshToken: string): Promise<AuthResponse> {
+  if (!inflightRefresh) {
+    inflightRefresh = authService.refresh(refreshToken).finally(() => {
+      inflightRefresh = null;
+    });
+  }
+  return inflightRefresh;
 }
 
 export const loginUser = createAsyncThunk<
@@ -53,6 +69,10 @@ export const loginUser = createAsyncThunk<
   try {
     const response = await authService.login(credentials);
     await dispatch(fetchCurrentUser(response.token));
+    // Flush after this thunk's fulfilled reducer writes tokens to state.
+    setTimeout(() => {
+      void flushPersistedState();
+    }, 0);
     return response;
   } catch (error) {
     if (isApiClientError(error) && error.code === 'EMAIL_NOT_VERIFIED') {
@@ -94,6 +114,9 @@ export const verifyOtp = createAsyncThunk(
 
       const auth = result as AuthResponse;
       await dispatch(fetchCurrentUser(auth.token));
+      setTimeout(() => {
+        void flushPersistedState();
+      }, 0);
       return { kind: 'auth' as const, data: auth };
     } catch (error) {
       return rejectWithValue(getErrorMessage(error, 'Verification failed'));
@@ -173,34 +196,93 @@ export const logoutUser = createAsyncThunk('auth/logout', async (_, { getState }
       // Clear local session even if API fails
     }
   }
+  await flushPersistedState();
 });
 
-export const fetchCurrentUser = createAsyncThunk(
-  'auth/fetchCurrentUser',
-  async (accessToken: string | undefined, { getState, rejectWithValue }) => {
-    try {
-      const token =
-        accessToken ?? (getState() as { auth: AuthState }).auth.token ?? undefined;
-      if (!token) return rejectWithValue('No token');
-      return await profileService.getMe(token);
-    } catch (error) {
-      return rejectWithValue(getErrorMessage(error, 'Could not load profile'));
-    }
-  },
-);
+/**
+ * Refresh access token. Serialized so parallel 401 retries share one request.
+ * Only `fatal: true` (invalid refresh) clears the local session.
+ */
+export const refreshSession = createAsyncThunk<
+  AuthResponse,
+  void,
+  { rejectValue: RefreshReject }
+>('auth/refresh', async (_, { getState, rejectWithValue }) => {
+  const { refreshToken } = (getState() as { auth: AuthState }).auth;
+  if (!refreshToken) {
+    return rejectWithValue({ message: 'No refresh token', fatal: true });
+  }
 
-export const refreshSession = createAsyncThunk(
-  'auth/refresh',
-  async (_, { getState, rejectWithValue }) => {
-    try {
-      const { refreshToken } = (getState() as { auth: AuthState }).auth;
-      if (!refreshToken) return rejectWithValue('No refresh token');
-      return await authService.refresh(refreshToken);
-    } catch (error) {
-      return rejectWithValue(getErrorMessage(error, 'Session expired'));
+  try {
+    const result = await refreshWithLock(refreshToken);
+    setTimeout(() => {
+      void flushPersistedState();
+    }, 0);
+    return result;
+  } catch (error) {
+    const unauthorized = isApiClientError(error) && error.status === 401;
+    return rejectWithValue({
+      message: getErrorMessage(error, 'Session expired'),
+      fatal: unauthorized,
+    });
+  }
+});
+
+/**
+ * Loads `/users/me`. On expired access token, refreshes first.
+ * Network errors keep the local session (stay logged in until manual logout).
+ */
+export const fetchCurrentUser = createAsyncThunk<
+  Awaited<ReturnType<typeof profileService.getMe>>,
+  string | undefined,
+  { rejectValue: FetchUserReject }
+>('auth/fetchCurrentUser', async (accessToken, { getState, dispatch, rejectWithValue }) => {
+  const tryRefreshThenMe = async () => {
+    const refreshResult = await dispatch(refreshSession());
+    if (!refreshSession.fulfilled.match(refreshResult)) {
+      const fatal = refreshResult.payload?.fatal === true;
+      return rejectWithValue({
+        message: refreshResult.payload?.message ?? 'Session expired',
+        fatal,
+      });
     }
-  },
-);
+    const nextToken = refreshResult.payload.token;
+    try {
+      return await profileService.getMe(nextToken);
+    } catch (retryError) {
+      const unauthorized = isApiClientError(retryError) && retryError.status === 401;
+      return rejectWithValue({
+        message: getErrorMessage(retryError, 'Could not load profile'),
+        fatal: unauthorized,
+      });
+    }
+  };
+
+  const token =
+    accessToken ?? (getState() as { auth: AuthState }).auth.token ?? undefined;
+
+  if (!token) {
+    const { refreshToken } = (getState() as { auth: AuthState }).auth;
+    if (refreshToken) {
+      return tryRefreshThenMe();
+    }
+    return rejectWithValue({ message: 'No token', fatal: true });
+  }
+
+  try {
+    return await profileService.getMe(token);
+  } catch (error) {
+    const unauthorized = isApiClientError(error) && error.status === 401;
+    if (unauthorized) {
+      return tryRefreshThenMe();
+    }
+
+    return rejectWithValue({
+      message: getErrorMessage(error, 'Could not load profile'),
+      fatal: false,
+    });
+  }
+});
 
 const authSlice = createSlice({
   name: 'auth',
@@ -323,19 +405,25 @@ const authSlice = createSlice({
         state.user = action.payload.user;
         state.isAuthenticated = true;
       })
-      .addCase(fetchCurrentUser.rejected, (state) => {
-        state.user = null;
-        state.token = null;
-        state.refreshToken = null;
-        state.isAuthenticated = false;
+      .addCase(fetchCurrentUser.rejected, (_state, action) => {
+        // Only wipe when refresh token is definitively invalid.
+        if (action.payload?.fatal) {
+          return initialState;
+        }
       })
       .addCase(refreshSession.fulfilled, (state, action) => {
         state.token = action.payload.token;
         if (action.payload.refreshToken) {
           state.refreshToken = action.payload.refreshToken;
         }
+        state.isAuthenticated = true;
       })
-      .addCase(refreshSession.rejected, () => initialState);
+      .addCase(refreshSession.rejected, (_state, action) => {
+        // Network/server errors must NOT log the user out.
+        if (action.payload?.fatal) {
+          return initialState;
+        }
+      });
   },
 });
 

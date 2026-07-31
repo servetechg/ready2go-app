@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "38375382812",
+    "project_id": "ready2go-app",
+    "storage_bucket": "ready2go-app.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:38375382812:android:73518419c5d3d665b924d9",
+        "android_client_info": {
+          "package_name": "com.ready2go.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyB5C_A5Usnz62Q6wHnC54HDGDwdMcsKIbc"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

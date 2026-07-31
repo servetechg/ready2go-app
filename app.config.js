@@ -1,5 +1,7 @@
 /** @type {import('expo/config').ExpoConfig} */
 // Expo CLI / EAS local builds load .env automatically before this file runs.
+const fs = require('fs');
+const path = require('path');
 const appJson = require('./app.json');
 
 const googleMapsApiKey =
@@ -8,6 +10,9 @@ const googleMapsApiKey =
   '';
 
 const profileReminderSeconds = process.env.EXPO_PUBLIC_PROFILE_REMINDER_SECONDS ?? '';
+const googleServicesFile = fs.existsSync(path.join(__dirname, 'google-services.json'))
+  ? './google-services.json'
+  : undefined;
 
 if (process.env.EAS_BUILD === 'true' && !googleMapsApiKey) {
   throw new Error(
@@ -20,6 +25,7 @@ module.exports = {
     ...appJson.expo,
     android: {
       ...appJson.expo.android,
+      ...(googleServicesFile ? { googleServicesFile } : {}),
       permissions: [
         ...(appJson.expo.android?.permissions ?? []),
         'android.permission.INTERNET',

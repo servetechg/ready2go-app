@@ -22,6 +22,7 @@ import notificationsReducer from './slices/notificationsSlice';
 import preparednessReducer from './slices/preparednessSlice';
 import registrationReducer from './slices/registrationSlice';
 import uiReducer from './slices/uiSlice';
+import { bindPersistor } from './persistFlush';
 import { authTransform, registrationTransform } from './transforms';
 
 const authPersistConfig = {
@@ -83,6 +84,7 @@ export const store = configureStore({
 });
 
 export const persistor = persistStore(store);
+bindPersistor(persistor);
 
 export type RootState = ReturnType<typeof store.getState>;
 export type AppDispatch = typeof store.dispatch;
