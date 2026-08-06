@@ -44,7 +44,9 @@ export function SettingsScreen() {
                 {invitation.campaign.title}
               </AppText>
               <AppText variant="bodySmall" color={colors.primary} style={styles.surveyCta}>
-                Tap to complete your status assessment
+                {invitation.status === 'needs_info'
+                  ? 'Tap to add missing comments, pictures, or videos'
+                  : 'Tap to complete your status assessment'}
               </AppText>
             </AppCard>
           </Pressable>

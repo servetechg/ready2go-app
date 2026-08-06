@@ -30,7 +30,10 @@ export function useActiveDisasterSurvey(token: string | null) {
   }, [refresh]);
 
   const hasOpenSurvey =
-    invitation != null && (invitation.status === 'pending' || invitation.status === 'opened');
+    invitation != null &&
+    (invitation.status === 'pending' ||
+      invitation.status === 'opened' ||
+      invitation.status === 'needs_info');
 
   return { invitation, hasOpenSurvey, loading, refresh };
 }
