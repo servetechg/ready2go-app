@@ -54,8 +54,11 @@ module.exports = {
         'expo-image-picker',
         {
           photosPermission:
-            'Allow Ready2Go to access your photos to set your profile picture.',
-          cameraPermission: 'Allow Ready2Go to use the camera for your profile picture.',
+            'Allow Ready2Go to access your photos and videos for your profile and disaster survey.',
+          cameraPermission:
+            'Allow Ready2Go to use the camera for your profile picture and disaster survey evidence.',
+          microphonePermission:
+            'Allow Ready2Go to use the microphone when recording incident videos for disaster surveys.',
         },
       ],
       [
