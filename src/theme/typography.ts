@@ -38,7 +38,7 @@ export const typography: Record<string, TextStyle> = {
     lineHeight: fontSize.xxl * lineHeight.tight,
   },
   h3: {
-    fontFamily: fontFamily.semiBold,
+    fontFamily: fontFamily.bold,
     fontSize: fontSize.xl,
     lineHeight: fontSize.xl * lineHeight.tight,
   },

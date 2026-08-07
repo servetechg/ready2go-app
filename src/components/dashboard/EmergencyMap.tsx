@@ -8,16 +8,18 @@ import {
   View,
   type ViewStyle,
 } from 'react-native';
-import MapView, { Polygon, UrlTile, type Region } from 'react-native-maps';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { MapIncidentDetailCard } from '@/components/dashboard/MapIncidentDetailCard';
-import { MapIncidentHeatmapLayer } from '@/components/dashboard/MapIncidentHeatmapLayer';
-import { MapLayerMarker } from '@/components/dashboard/MapLayerMarker';
 import { MapLayersPanel } from '@/components/dashboard/MapLayersPanel';
+import {
+  OsmMapView,
+  type MapRegion as Region,
+  type OsmMapHandle,
+} from '@/components/dashboard/OsmMapView';
 import { AppText } from '@/components/ui/AppText';
 import { DEFAULT_GIS_LAYER_STATE } from '@/constants/mapLayers';
-import { OSM_ATTRIBUTION, OSM_TILE_MAX_ZOOM, OSM_TILE_URL } from '@/constants/openStreetMap';
+import { OSM_ATTRIBUTION } from '@/constants/openStreetMap';
 import { useAppTheme } from '@/hooks/useAppTheme';
 import { borderRadius, palette, shadows, spacing } from '@/theme';
 import type { GisMapLayerId, MapMarkerPoint, MapPolygonOverlay } from '@/types/emergency';
@@ -28,7 +30,6 @@ import {
   filterOverlaysByLayers,
   filterPointMarkersForMap,
   normalizeMapMarkers,
-  overlayColors,
 } from '@/utils/mapLayers';
 
 interface EmergencyMapProps {
@@ -105,7 +106,7 @@ interface MapCanvasProps {
   incidentMarkers: MapMarkerPoint[];
   heatmapPoints: Array<{ latitude: number; longitude: number; weight: number }>;
   overlays: MapPolygonOverlay[];
-  mapRef: React.RefObject<MapView | null>;
+  mapRef: React.RefObject<OsmMapHandle | null>;
   mapStyle: ViewStyle;
   onRegionChangeComplete: (next: Region) => void;
   onIncidentTap: (incident: MapMarkerPoint | null) => void;
@@ -123,12 +124,12 @@ function MapCanvas({
   onIncidentTap,
 }: MapCanvasProps) {
   const handleMapPress = useCallback(
-    (event: { nativeEvent: { coordinate: { latitude: number; longitude: number } } }) => {
+    (coordinate: { latitude: number; longitude: number }) => {
       if (incidentMarkers.length === 0) {
         onIncidentTap(null);
         return;
       }
-      const { latitude, longitude } = event.nativeEvent.coordinate;
+      const { latitude, longitude } = coordinate;
       const threshold = heatmapTapThresholdDegrees(region.latitudeDelta, region.longitudeDelta);
       const nearest = findNearestMapMarker(incidentMarkers, latitude, longitude, threshold);
       onIncidentTap(nearest);
@@ -137,44 +138,17 @@ function MapCanvas({
   );
 
   return (
-    <MapView
+    <OsmMapView
       ref={mapRef}
       style={mapStyle}
-      mapType="none"
       initialRegion={region}
+      pointMarkers={pointMarkers}
+      heatmapPoints={heatmapPoints}
+      overlays={overlays}
+      showsUserLocation={true}
       onRegionChangeComplete={onRegionChangeComplete}
       onPress={handleMapPress}
-      showsUserLocation={true}
-      showsCompass={true}
-      showsMyLocationButton={false}
-      toolbarEnabled={false}
-      rotateEnabled={false}>
-      <UrlTile
-        urlTemplate={OSM_TILE_URL}
-        maximumZ={OSM_TILE_MAX_ZOOM}
-        flipY={false}
-        tileSize={256}
-        zIndex={-1}
-        shouldReplaceMapContent={Platform.OS === 'ios'}
-      />
-      {overlays.map((overlay) => {
-        const colors = overlayColors(overlay.layer);
-        return (
-          <Polygon
-            key={overlay.id}
-            coordinates={overlay.coordinates}
-            fillColor={overlay.fillColor ?? colors.fill}
-            strokeColor={overlay.strokeColor ?? colors.stroke}
-            strokeWidth={2}
-            zIndex={2}
-          />
-        );
-      })}
-      {heatmapPoints.length > 0 ? <MapIncidentHeatmapLayer points={heatmapPoints} /> : null}
-      {pointMarkers.map((marker) => (
-        <MapLayerMarker key={marker.id} marker={marker} />
-      ))}
-    </MapView>
+    />
   );
 }
 
@@ -186,8 +160,8 @@ export function EmergencyMap({
 }: EmergencyMapProps) {
   const { colors } = useAppTheme();
   const insets = useSafeAreaInsets();
-  const mapRef = useRef<MapView>(null);
-  const fullscreenMapRef = useRef<MapView>(null);
+  const mapRef = useRef<OsmMapHandle>(null);
+  const fullscreenMapRef = useRef<OsmMapHandle>(null);
   const [mapRegion, setMapRegion] = useState<Region>(initialRegion);
   const [fullscreen, setFullscreen] = useState(false);
   const [layersOpen, setLayersOpen] = useState(false);
@@ -223,7 +197,7 @@ export function EmergencyMap({
   }, []);
 
   const applyZoom = useCallback(
-    (factor: number, ref: React.RefObject<MapView | null>) => {
+    (factor: number, ref: React.RefObject<OsmMapHandle | null>) => {
       const next: Region = {
         ...mapRegion,
         latitudeDelta: Math.min(Math.max(mapRegion.latitudeDelta * factor, 0.002), 2),
@@ -236,7 +210,7 @@ export function EmergencyMap({
   );
 
   const handleControl = useCallback(
-    (action: MapControlAction, ref: React.RefObject<MapView | null>) => {
+    (action: MapControlAction, ref: React.RefObject<OsmMapHandle | null>) => {
       switch (action) {
         case 'zoomIn':
           applyZoom(0.5, ref);
@@ -266,7 +240,7 @@ export function EmergencyMap({
   );
 
   const renderMapSection = (
-    ref: React.RefObject<MapView | null>,
+    ref: React.RefObject<OsmMapHandle | null>,
     mapStyle: ViewStyle,
     isFullscreen = false,
   ) => (
@@ -315,10 +289,10 @@ export function EmergencyMap({
   );
 
   const isAreaMap = variant === 'area';
-  const mapTitle = isAreaMap ? 'Area map' : 'Situation map';
+  const mapTitle = isAreaMap ? 'Area Map' : 'Situation Map';
   const mapSubtitle = isAreaMap
-    ? 'OpenStreetMap · Tap heat areas for incident details. Layer pins show hospitals, shelters, and resources.'
-    : 'OpenStreetMap · Tap heat areas for incident info. Toggle layers for flood zones, hospitals, and more.';
+    ? 'OpenStreetMap Â· Tap heat areas for incident details. Layer pins show hospitals, shelters, and resources.'
+    : 'OpenStreetMap Â· Tap heat areas for incident info. Toggle layers for flood zones, hospitals, and more.';
   const fullscreenTitle = mapTitle;
 
   if (Platform.OS === 'web') {
@@ -333,7 +307,7 @@ export function EmergencyMap({
 
   return (
     <View>
-      <AppText variant="h3" style={styles.title}>
+      <AppText variant="h3" color={colors.primary} style={styles.title}>
         {mapTitle}
       </AppText>
       <AppText variant="bodySmall" color={colors.textSecondary} style={styles.subtitle}>
@@ -369,7 +343,7 @@ export function EmergencyMap({
 }
 
 const styles = StyleSheet.create({
-  title: { marginBottom: spacing.xs },
+  title: { marginTop: spacing.md, marginBottom: spacing.xs },
   subtitle: { marginBottom: spacing.md },
   webFallback: { paddingVertical: spacing.md },
   mapWrap: {

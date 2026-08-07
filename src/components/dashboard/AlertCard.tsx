@@ -5,7 +5,7 @@ import { Pressable, StyleSheet, View } from 'react-native';
 import { AppText } from '@/components/ui/AppText';
 import { useAppTheme } from '@/hooks/useAppTheme';
 import { borderRadius, fontFamily, palette, spacing } from '@/theme';
-import type { WeatherAlert } from '@/types/dashboard';
+import type { AlertSeverity, WeatherAlert } from '@/types/dashboard';
 import { openAlertSourceUrl } from '@/utils/openAlertSource';
 
 interface AlertCardProps {
@@ -13,15 +13,22 @@ interface AlertCardProps {
   onPress?: (alert: WeatherAlert) => void;
 }
 
+const SEVERITY_COLORS: Record<
+  AlertSeverity,
+  { backgroundColor: string; color: string }
+> = {
+  LOW: { backgroundColor: palette.accent, color: palette.primary },
+  MODERATE: {
+    backgroundColor: palette.moderateBadge,
+    color: palette.moderateBadgeText,
+  },
+  HIGH: { backgroundColor: palette.errorLight, color: palette.error },
+  EXTREME: { backgroundColor: palette.error, color: palette.white },
+};
+
 export function AlertCard({ alert, onPress }: AlertCardProps) {
   const { colors } = useAppTheme();
-
-  const severityStyle =
-    alert.severity === 'MODERATE'
-      ? styles.moderateBadge
-      : alert.severity === 'HIGH' || alert.severity === 'EXTREME'
-        ? styles.highBadge
-        : styles.lowBadge;
+  const severityColors = SEVERITY_COLORS[alert.severity];
 
   const handlePress = useCallback(() => {
     if (onPress) {
@@ -39,12 +46,14 @@ export function AlertCard({ alert, onPress }: AlertCardProps) {
     <>
       <View style={styles.topRow}>
         <View style={styles.badges}>
-          <View style={[styles.severityBadge, severityStyle]}>
-            <AppText variant="caption" style={styles.severityText}>
+          <View style={[styles.severityBadge, { backgroundColor: severityColors.backgroundColor }]}>
+            <AppText
+              variant="caption"
+              style={[styles.severityText, { color: severityColors.color }]}>
               {alert.severity}
             </AppText>
           </View>
-          <Ionicons name="rainy" size={18} color={palette.moderateBadgeText} />
+          <Ionicons name="rainy" size={18} color={severityColors.color} />
           <View style={[styles.sourceBadge, { borderColor: colors.secondary }]}>
             <AppText variant="caption" color={colors.secondary}>
               SOURCE: {alert.source}
@@ -167,12 +176,8 @@ const styles = StyleSheet.create({
     paddingVertical: 2,
     borderRadius: borderRadius.full,
   },
-  moderateBadge: { backgroundColor: palette.moderateBadge },
-  highBadge: { backgroundColor: palette.errorLight },
-  lowBadge: { backgroundColor: palette.accent },
   severityText: {
     fontFamily: fontFamily.bold,
-    color: palette.moderateBadgeText,
     textTransform: 'uppercase',
   },
   sourceBadge: {

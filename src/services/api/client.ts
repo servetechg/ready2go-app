@@ -1,6 +1,7 @@
 import { ENV } from '@/constants/env';
 import { ApiClientError } from '@/services/api/errors';
 import type { ApiErrorBody } from '@/types/api';
+import { asTokenString } from '@/utils/authSessionStorage';
 
 type HttpMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
 
@@ -22,8 +23,9 @@ export async function apiRequest<T>(
     'Content-Type': 'application/json',
   };
 
-  if (token && !skipAuth) {
-    headers.Authorization = `Bearer ${token}`;
+  const bearer = asTokenString(token);
+  if (bearer && !skipAuth) {
+    headers.Authorization = `Bearer ${bearer}`;
   }
 
   const response = await fetch(`${ENV.API_BASE_URL}${endpoint}`, {
@@ -52,9 +54,13 @@ export async function apiFormRequest<T>(
   token: string,
   method: 'POST' | 'PUT' = 'POST',
 ): Promise<T> {
+  const bearer = asTokenString(token);
+  if (!bearer) {
+    throw new ApiClientError(401, { message: 'Missing access token' });
+  }
   const response = await fetch(`${ENV.API_BASE_URL}${endpoint}`, {
     method,
-    headers: { Authorization: `Bearer ${token}` },
+    headers: { Authorization: `Bearer ${bearer}` },
     body: formData,
   });
 

@@ -53,8 +53,25 @@ export const US_STATE_NAMES: Record<string, string> = {
   DC: 'District of Columbia',
 };
 
-export function resolveStateLabel(stateCode?: string | null): string {
+/**
+ * Smart state label resolver.
+ * Protects against users selecting/saving 'AR' when typing 'Arizona'.
+ */
+export function resolveStateLabel(stateCode?: string | null, addressText?: string | null): string {
   if (!stateCode) return 'United States';
   const upper = stateCode.trim().toUpperCase();
+  const text = (addressText || '').toLowerCase();
+
+  if (upper === 'AZ' || upper === 'ARIZONA' || text.includes('arizona')) {
+    return 'Arizona';
+  }
+
+  if (upper === 'AR') {
+    if (text.includes('arizona')) {
+      return 'Arizona';
+    }
+    return 'Arkansas';
+  }
+
   return US_STATE_NAMES[upper] ?? stateCode;
 }

@@ -1,7 +1,8 @@
 import { apiRequest } from '@/services/api/client';
-import type { EmergencyNewsResponse, IncidentLogEntry } from '@/types/emergency';
-import { mapHomeNewsToEmergencyNewsItem } from '@/utils/dashboardMappers';
+import { fetchPersonalizedNews } from '@/services/personalizedNews.service';
 import type { DashboardHomeNewsItem } from '@/types/dashboard';
+import type { EmergencyNewsItem, EmergencyNewsResponse, IncidentLogEntry } from '@/types/emergency';
+import { mapHomeNewsToEmergencyNewsItem } from '@/utils/dashboardMappers';
 import { adaptEmergencyMapResponse } from '@/utils/emergencyMapAdapter';
 import { normalizeMapMarkers } from '@/utils/mapLayers';
 
@@ -15,25 +16,52 @@ export async function fetchEmergencyNews(
   token: string,
   query: EmergencyNewsQuery = {},
 ): Promise<EmergencyNewsResponse> {
-  const params = new URLSearchParams({
-    page: String(query.page ?? 1),
-    limit: String(query.limit ?? 20),
-  });
-  if (query.category?.trim()) params.set('category', query.category.trim());
+  try {
+    const personalized = await fetchPersonalizedNews(token, query.page ? String(query.page) : null);
 
-  const response = await apiRequest<{
-    items: DashboardHomeNewsItem[];
-    page: number;
-    limit: number;
-    total: number;
-    hasMore: boolean;
-    stateCode?: string | null;
-  }>(`/emergency/news?${params}`, { token });
+    const mappedItems: EmergencyNewsItem[] = (personalized.results || []).map((art) => ({
+      id: art.article_id || art.link,
+      title: art.title,
+      body: art.description || art.content || art.title,
+      timestamp: art.pubDate,
+      source: 'news',
+      severity: 'info',
+      category: personalized.mappedStateName ? `${personalized.mappedStateName.toUpperCase()} NEWS` : 'REGIONAL',
+      location: personalized.mappedStateName || personalized.userStateCode || 'US',
+      icon: 'newspaper-outline',
+      url: art.link,
+      imageUrl: art.image_url || undefined,
+      publisher: art.source_name,
+      sourceName: art.source_name,
+    }));
 
-  return {
-    ...response,
-    items: (response.items ?? []).map(mapHomeNewsToEmergencyNewsItem),
-  };
+    return {
+      items: mappedItems,
+      page: query.page ?? 1,
+      limit: query.limit ?? 20,
+      total: personalized.totalResults ?? mappedItems.length,
+      hasMore: Boolean(personalized.nextPage),
+      stateCode: personalized.mappedStateName || personalized.userStateCode || null,
+    };
+  } catch {
+    const params = new URLSearchParams({
+      page: String(query.page ?? 1),
+      limit: String(query.limit ?? 20),
+    });
+    const fallbackResponse = await apiRequest<{
+      items: DashboardHomeNewsItem[];
+      page: number;
+      limit: number;
+      total: number;
+      hasMore: boolean;
+      stateCode?: string | null;
+    }>(`/emergency/news?${params}`, { token });
+
+    return {
+      ...fallbackResponse,
+      items: (fallbackResponse.items ?? []).map(mapHomeNewsToEmergencyNewsItem),
+    };
+  }
 }
 
 export type EmergencyMapResponse = ReturnType<typeof adaptEmergencyMapResponse> & {

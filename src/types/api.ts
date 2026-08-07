@@ -1,5 +1,5 @@
-import type { AddressData, AlertLocation, YesNoStepData } from '@/types/registration';
 import type { ProfileDocumentRef } from '@/types/profileDocument';
+import type { AddressData, AlertLocation, YesNoStepData } from '@/types/registration';
 
 /** API error body from `/api/v1` */
 export interface ApiErrorBody {

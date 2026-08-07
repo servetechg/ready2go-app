@@ -17,12 +17,61 @@ import type {
   SignupApiPayload,
   VerifyOtpPayload,
 } from '@/types/auth';
+import { asTokenString } from '@/utils/authSessionStorage';
 
-function normalizeAuthResponse(raw: ApiAuthResponse): AuthResponse {
+function asRecord(value: unknown): Record<string, unknown> | null {
+  return value !== null && typeof value === 'object' && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : null;
+}
+
+/**
+ * Pull a JWT string out of flat or nested API fields.
+ * Backend may send `accessToken` as a string OR `{ token: "..." }`.
+ */
+function pickToken(
+  sources: Array<Record<string, unknown> | null | undefined>,
+  keys: string[],
+): string | undefined {
+  for (const source of sources) {
+    if (!source) continue;
+    for (const key of keys) {
+      const found = asTokenString(source[key]);
+      if (found) return found;
+    }
+  }
+  return undefined;
+}
+
+/** Accepts flat, nested `data`, nested `tokens`, or object-wrapped token fields. */
+function normalizeAuthResponse(raw: ApiAuthResponse & Record<string, unknown>): AuthResponse {
+  const root = asRecord(raw) ?? {};
+  const data = asRecord(root.data) ?? root;
+  const tokens = asRecord(data.tokens);
+
+  const access =
+    pickToken([tokens, data, root], ['accessToken', 'access_token', 'token']) || '';
+  const refresh = pickToken([tokens, data, root], ['refreshToken', 'refresh_token']);
+
+  const user =
+    (asRecord(data.user) as AuthResponse['user'] | null) ||
+    (asRecord(root.user) as AuthResponse['user'] | null) ||
+    raw.user;
+
+  if (__DEV__) {
+    console.log('[auth] normalize keys', {
+      hasAccess: Boolean(access),
+      hasRefresh: Boolean(refresh),
+      accessType: typeof (root.accessToken ?? data.accessToken),
+      refreshType: typeof (root.refreshToken ?? data.refreshToken),
+      topKeys: Object.keys(root),
+    });
+  }
+
   return {
-    user: raw.user,
-    token: raw.accessToken,
-    refreshToken: raw.refreshToken,
+    user,
+    token: access,
+    refreshToken: refresh,
   };
 }
 
@@ -97,14 +146,19 @@ export const authService = {
   },
 
   async refresh(refreshToken: string): Promise<AuthResponse> {
-    const raw = await apiRequest<ApiRefreshResponse>('/auth/refresh', {
+    const raw = await apiRequest<ApiRefreshResponse & Record<string, unknown>>('/auth/refresh', {
       method: 'POST',
       body: { refreshToken },
     });
+    const normalized = normalizeAuthResponse({
+      ...(raw as ApiAuthResponse & Record<string, unknown>),
+      user: null as never,
+    });
+    const nextRefresh = normalized.refreshToken || asTokenString(refreshToken) || undefined;
     return {
       user: null as never,
-      token: raw.accessToken,
-      refreshToken: raw.refreshToken,
+      token: normalized.token,
+      refreshToken: nextRefresh,
     };
   },
 

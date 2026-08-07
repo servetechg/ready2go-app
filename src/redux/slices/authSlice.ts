@@ -1,8 +1,10 @@
 import { createAsyncThunk, createSlice, PayloadAction } from '@reduxjs/toolkit';
+import type { PersistPartial } from 'redux-persist/es/persistReducer';
 
 import { flushPersistedState } from '@/redux/persistFlush';
-import { isApiClientError } from '@/services/api/errors';
+import { isApiClientError, isInvalidRefreshError, isUnauthorizedError } from '@/services/api/errors';
 import { authService } from '@/services/auth.service';
+import { clearPersonalizedNewsCache } from '@/services/personalizedNews.service';
 import { profileService } from '@/services/profile.service';
 import type { PasswordResetOtpResponse } from '@/types/api';
 import type {
@@ -18,6 +20,11 @@ import type {
   User,
   VerifyOtpPayload,
 } from '@/types/auth';
+import {
+  asTokenString,
+  clearAuthTokens,
+  saveSession,
+} from '@/utils/authSessionStorage';
 import { getErrorMessage } from '@/utils/error';
 
 const initialState: AuthState = {
@@ -25,6 +32,7 @@ const initialState: AuthState = {
   token: null,
   refreshToken: null,
   isAuthenticated: false,
+  sessionReady: false,
   isLoading: false,
   error: null,
   pendingAuth: null,
@@ -34,16 +42,38 @@ const initialState: AuthState = {
   passwordResetVerified: false,
 };
 
-function applyAuthResponse(state: AuthState, response: AuthResponse) {
-  state.user = response.user;
-  state.token = response.token;
-  if (response.refreshToken) {
-    state.refreshToken = response.refreshToken;
+type AuthPersistState = AuthState & PersistPartial;
+
+/** Must keep `_persist` or redux-persist crashes / stops writing. */
+function clearedAuthState(state: AuthPersistState): AuthPersistState {
+  void clearAuthTokens();
+  return { ...initialState, _persist: state._persist };
+}
+
+function applyAuthResponse(state: AuthState, response: AuthResponse | null | undefined) {
+  if (!response || typeof response !== 'object') return;
+  const access = asTokenString(response.token);
+  const refresh = asTokenString(response.refreshToken);
+  // Never wipe a hydrated user when refresh/login payloads omit user.
+  if (response.user) {
+    state.user = response.user;
   }
-  state.isAuthenticated = Boolean(response.token);
+  state.token = access;
+  if (refresh) {
+    state.refreshToken = refresh;
+  }
+  state.isAuthenticated = Boolean(access || refresh || state.refreshToken);
   state.pendingAuth = null;
   state.otpEmail = null;
   state.error = null;
+  void saveSession({ token: state.token, refreshToken: state.refreshToken, user: state.user });
+}
+
+/** Flush after the current action's reducers have applied (e.g. login fulfilled). */
+function schedulePersistFlush() {
+  setTimeout(() => {
+    void flushPersistedState();
+  }, 0);
 }
 
 type RefreshReject = { message: string; fatal: boolean };
@@ -68,11 +98,27 @@ export const loginUser = createAsyncThunk<
 >('auth/login', async (credentials, { dispatch, rejectWithValue }) => {
   try {
     const response = await authService.login(credentials);
-    await dispatch(fetchCurrentUser(response.token));
-    // Flush after this thunk's fulfilled reducer writes tokens to state.
-    setTimeout(() => {
-      void flushPersistedState();
-    }, 0);
+    if (__DEV__ && !response.refreshToken) {
+      console.warn(
+        '[auth] Login response has no refreshToken — session will not survive app restart.',
+      );
+    }
+    // Write tokens into state immediately so we can await a durable disk flush.
+    dispatch(
+      setCredentials({
+        user: response.user,
+        token: response.token,
+        refreshToken: response.refreshToken,
+      }),
+    );
+    await saveSession({
+      token: response.token,
+      refreshToken: response.refreshToken ?? null,
+      user: response.user,
+    });
+    await flushPersistedState();
+    // Profile sync; do not block login persistence on /me failures.
+    void dispatch(fetchCurrentUser(response.token));
     return response;
   } catch (error) {
     if (isApiClientError(error) && error.code === 'EMAIL_NOT_VERIFIED') {
@@ -113,10 +159,15 @@ export const verifyOtp = createAsyncThunk(
       }
 
       const auth = result as AuthResponse;
-      await dispatch(fetchCurrentUser(auth.token));
-      setTimeout(() => {
-        void flushPersistedState();
-      }, 0);
+      dispatch(
+        setCredentials({
+          user: auth.user,
+          token: auth.token,
+          refreshToken: auth.refreshToken,
+        }),
+      );
+      await flushPersistedState();
+      void dispatch(fetchCurrentUser(auth.token));
       return { kind: 'auth' as const, data: auth };
     } catch (error) {
       return rejectWithValue(getErrorMessage(error, 'Verification failed'));
@@ -182,7 +233,10 @@ export const changePassword = createAsyncThunk(
   },
 );
 
-export const logoutUser = createAsyncThunk('auth/logout', async (_, { getState }) => {
+/**
+ * API logout best-effort, then clear local session and flush empty auth to disk.
+ */
+export const logoutUser = createAsyncThunk('auth/logout', async (_, { getState, dispatch }) => {
   const { token, refreshToken } = (getState() as { auth: AuthState }).auth;
   if (token) {
     try {
@@ -196,7 +250,14 @@ export const logoutUser = createAsyncThunk('auth/logout', async (_, { getState }
       // Clear local session even if API fails
     }
   }
-  await flushPersistedState();
+  clearPersonalizedNewsCache();
+  dispatch(logout());
+  await clearAuthTokens();
+  try {
+    await flushPersistedState();
+  } catch {
+    // Local session already cleared; disk flush is best-effort
+  }
 });
 
 /**
@@ -208,22 +269,64 @@ export const refreshSession = createAsyncThunk<
   void,
   { rejectValue: RefreshReject }
 >('auth/refresh', async (_, { getState, rejectWithValue }) => {
-  const { refreshToken } = (getState() as { auth: AuthState }).auth;
+  const refreshToken = asTokenString(
+    (getState() as { auth: AuthState | null }).auth?.refreshToken,
+  );
   if (!refreshToken) {
-    return rejectWithValue({ message: 'No refresh token', fatal: true });
+    // No refresh token — not always fatal if access token still exists.
+    const access = asTokenString(
+      (getState() as { auth: AuthState | null }).auth?.token,
+    );
+    if (!access) {
+      await clearAuthTokens();
+    }
+    return rejectWithValue({
+      message: 'No refresh token',
+      fatal: !access,
+    });
   }
 
   try {
     const result = await refreshWithLock(refreshToken);
-    setTimeout(() => {
-      void flushPersistedState();
-    }, 0);
-    return result;
+    const access = asTokenString(result?.token);
+    if (!access) {
+      const existing = asTokenString(
+        (getState() as { auth: AuthState | null }).auth?.token,
+      );
+      if (!existing) {
+        await clearAuthTokens();
+      }
+      return rejectWithValue({
+        message: 'Refresh returned empty token',
+        fatal: !existing,
+      });
+    }
+    await saveSession({
+      token: access,
+      refreshToken: asTokenString(result.refreshToken) ?? refreshToken,
+      user: (getState() as { auth: AuthState }).auth.user,
+    });
+    schedulePersistFlush();
+    return {
+      ...result,
+      token: access,
+      refreshToken: asTokenString(result.refreshToken) ?? refreshToken,
+    };
   } catch (error) {
-    const unauthorized = isApiClientError(error) && error.status === 401;
+    // Only treat confirmed refresh failures as fatal. Generic "expired token"
+    // via isUnauthorizedError was wiping sessions on every cold start.
+    const fatal =
+      isInvalidRefreshError(error) ||
+      (isApiClientError(error) && error.status === 401);
+    const access = asTokenString(
+      (getState() as { auth: AuthState | null }).auth?.token,
+    );
+    if (fatal && !access) {
+      await clearAuthTokens();
+    }
     return rejectWithValue({
       message: getErrorMessage(error, 'Session expired'),
-      fatal: unauthorized,
+      fatal,
     });
   }
 });
@@ -246,11 +349,14 @@ export const fetchCurrentUser = createAsyncThunk<
         fatal,
       });
     }
-    const nextToken = refreshResult.payload.token;
+    const nextToken = asTokenString(refreshResult.payload?.token);
+    if (!nextToken) {
+      return rejectWithValue({ message: 'Refresh returned empty token', fatal: true });
+    }
     try {
       return await profileService.getMe(nextToken);
     } catch (retryError) {
-      const unauthorized = isApiClientError(retryError) && retryError.status === 401;
+      const unauthorized = isUnauthorizedError(retryError);
       return rejectWithValue({
         message: getErrorMessage(retryError, 'Could not load profile'),
         fatal: unauthorized,
@@ -258,22 +364,32 @@ export const fetchCurrentUser = createAsyncThunk<
     }
   };
 
-  const token =
-    accessToken ?? (getState() as { auth: AuthState }).auth.token ?? undefined;
+  const token = asTokenString(
+    accessToken ?? (getState() as { auth: AuthState | null }).auth?.token,
+  );
 
   if (!token) {
-    const { refreshToken } = (getState() as { auth: AuthState }).auth;
+    const refreshToken = asTokenString(
+      (getState() as { auth: AuthState | null }).auth?.refreshToken,
+    );
     if (refreshToken) {
       return tryRefreshThenMe();
     }
+    await clearAuthTokens();
     return rejectWithValue({ message: 'No token', fatal: true });
   }
 
   try {
     return await profileService.getMe(token);
   } catch (error) {
-    const unauthorized = isApiClientError(error) && error.status === 401;
-    if (unauthorized) {
+    if (isUnauthorizedError(error)) {
+      const refreshToken = asTokenString(
+        (getState() as { auth: AuthState | null }).auth?.refreshToken,
+      );
+      if (!refreshToken) {
+        await clearAuthTokens();
+        return rejectWithValue({ message: 'Session expired', fatal: true });
+      }
       return tryRefreshThenMe();
     }
 
@@ -292,13 +408,24 @@ const authSlice = createSlice({
       state,
       action: PayloadAction<{ user: User; token: string; refreshToken?: string }>,
     ) => {
-      state.user = action.payload.user;
-      state.token = action.payload.token;
-      if (action.payload.refreshToken) {
-        state.refreshToken = action.payload.refreshToken;
+      if (!action.payload) return;
+      const access = asTokenString(action.payload.token);
+      const refresh = asTokenString(action.payload.refreshToken);
+      if (action.payload.user) {
+        state.user = action.payload.user;
       }
-      state.isAuthenticated = true;
+      state.token = access;
+      if (refresh) {
+        state.refreshToken = refresh;
+      }
+      state.isAuthenticated = Boolean(access || refresh || state.refreshToken);
+      state.sessionReady = true;
       state.error = null;
+      void saveSession({
+        token: state.token,
+        refreshToken: state.refreshToken,
+        user: state.user,
+      });
     },
     setOtpEmail: (state, action: PayloadAction<string>) => {
       state.otpEmail = action.payload;
@@ -306,7 +433,31 @@ const authSlice = createSlice({
     setUser: (state, action: PayloadAction<User>) => {
       state.user = action.payload;
     },
-    logout: () => initialState,
+    logout: (state) => clearedAuthState(state as AuthPersistState),
+    setSessionReady: (state, action: PayloadAction<boolean>) => {
+      state.sessionReady = action.payload;
+    },
+    hydrateTokens: (
+      state,
+      action: PayloadAction<{
+        token?: string | null;
+        refreshToken?: string | null;
+        /** When true, overwrite even with null (clears dirty object tokens). */
+        replace?: boolean;
+      }>,
+    ) => {
+      const access = asTokenString(action.payload.token);
+      const refresh = asTokenString(action.payload.refreshToken);
+      if (action.payload.replace) {
+        if ('token' in action.payload) state.token = access;
+        if ('refreshToken' in action.payload) state.refreshToken = refresh;
+      } else {
+        if (access) state.token = access;
+        if (refresh) state.refreshToken = refresh;
+      }
+      state.isAuthenticated = Boolean(state.token || state.refreshToken);
+      void saveSession({ token: state.token, refreshToken: state.refreshToken, user: state.user });
+    },
     clearPendingAuth: (state) => {
       state.pendingAuth = null;
       state.otpEmail = null;
@@ -340,6 +491,7 @@ const authSlice = createSlice({
       .addCase(loginUser.fulfilled, (state, action) => {
         state.isLoading = false;
         applyAuthResponse(state, action.payload);
+        state.sessionReady = true;
       })
       .addCase(loginUser.rejected, (state, action) => {
         state.isLoading = false;
@@ -356,8 +508,9 @@ const authSlice = createSlice({
         state.isLoading = false;
         state.pendingAuth = action.payload;
         state.otpEmail = action.payload.user.email;
-        if (action.payload.refreshToken) {
-          state.refreshToken = action.payload.refreshToken;
+        const refresh = asTokenString(action.payload.refreshToken);
+        if (refresh) {
+          state.refreshToken = refresh;
         }
         state.error = null;
       })
@@ -399,29 +552,44 @@ const authSlice = createSlice({
         state.isLoading = false;
       })
       .addCase(changePassword.rejected, handleRejected)
-      .addCase(logoutUser.fulfilled, () => initialState)
-      .addCase(logoutUser.rejected, () => initialState)
+      // Local clear already happened via dispatch(logout()) inside the thunk.
+      .addCase(logoutUser.fulfilled, (state) => {
+        state.isLoading = false;
+      })
+      .addCase(logoutUser.rejected, (state) => clearedAuthState(state as AuthPersistState))
       .addCase(fetchCurrentUser.fulfilled, (state, action) => {
         state.user = action.payload.user;
-        state.isAuthenticated = true;
+        state.token = asTokenString(state.token);
+        state.refreshToken = asTokenString(state.refreshToken);
+        state.isAuthenticated = Boolean(state.token || state.refreshToken);
       })
-      .addCase(fetchCurrentUser.rejected, (_state, action) => {
-        // Only wipe when refresh token is definitively invalid.
-        if (action.payload?.fatal) {
-          return initialState;
+      .addCase(fetchCurrentUser.rejected, (state, action) => {
+        // Do not clear the local session on /me failures.
+        // Only explicit logout (or dead refresh with zero tokens) should Sign In.
+        if (action.payload?.message) {
+          state.error = action.payload.message;
         }
       })
       .addCase(refreshSession.fulfilled, (state, action) => {
-        state.token = action.payload.token;
-        if (action.payload.refreshToken) {
-          state.refreshToken = action.payload.refreshToken;
+        if (!action.payload) return;
+        const access = asTokenString(action.payload.token);
+        const refresh = asTokenString(action.payload.refreshToken);
+        state.token = access;
+        if (refresh) {
+          state.refreshToken = refresh;
         }
-        state.isAuthenticated = true;
+        // Keep existing user — refresh payload has user: null.
+        state.isAuthenticated = Boolean(access || refresh || state.refreshToken);
+        void saveSession({ token: state.token, refreshToken: state.refreshToken, user: state.user });
       })
-      .addCase(refreshSession.rejected, (_state, action) => {
-        // Network/server errors must NOT log the user out.
+      .addCase(refreshSession.rejected, (state, action) => {
         if (action.payload?.fatal) {
-          return initialState;
+          const access = asTokenString(state.token);
+          if (!access) {
+            return clearedAuthState(state as AuthPersistState);
+          }
+          // Keep both tokens in memory; API may recover on next attempt.
+          state.isAuthenticated = true;
         }
       });
   },
@@ -432,6 +600,8 @@ export const {
   setOtpEmail,
   setUser,
   logout,
+  setSessionReady,
+  hydrateTokens,
   clearAuthError,
   clearPendingAuth,
   clearPasswordReset,

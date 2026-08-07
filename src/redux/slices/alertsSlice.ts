@@ -1,6 +1,6 @@
 import { createAsyncThunk, createSlice, PayloadAction } from '@reduxjs/toolkit';
 
-import { logoutUser, refreshSession } from '@/redux/slices/authSlice';
+import { logout, logoutUser, refreshSession } from '@/redux/slices/authSlice';
 import type { RootState } from '@/redux/store';
 import * as alertsService from '@/services/alerts.service';
 import { isApiClientError } from '@/services/api/errors';
@@ -212,7 +212,8 @@ const alertsSlice = createSlice({
         state.unreadCount = action.payload;
       })
       .addCase(logoutUser.fulfilled, () => initialState)
-      .addCase(logoutUser.rejected, () => initialState);
+      .addCase(logoutUser.rejected, () => initialState)
+      .addCase(logout, () => initialState);
   },
 });
 

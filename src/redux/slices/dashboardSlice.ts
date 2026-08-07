@@ -1,10 +1,11 @@
 import { createAsyncThunk, createSelector, createSlice, PayloadAction } from '@reduxjs/toolkit';
 
 import { DEFAULT_WEATHER_ALERT_PREFERENCES } from '@/constants/dashboard';
-import { logoutUser, refreshSession } from '@/redux/slices/authSlice';
+import { logout, logoutUser, refreshSession } from '@/redux/slices/authSlice';
 import { markAlertReadRemote, markAllAlertsReadRemote } from '@/redux/slices/alertsSlice';
 import type { RootState } from '@/redux/store';
-import { isApiClientError } from '@/services/api/errors';
+import { isApiClientError, isUnauthorizedError } from '@/services/api/errors';
+import { asTokenString } from '@/utils/authSessionStorage';
 import { getHome, type HomeQuery } from '@/services/dashboard.service';
 import { fetchEmergencyIncidents, fetchEmergencyMap } from '@/services/emergency.service';
 import { weatherService } from '@/services/weather.service';
@@ -93,24 +94,37 @@ export const fetchHome = createAsyncThunk<
   HomeQuery | undefined,
   { state: RootState }
 >('dashboard/fetchHome', async (query, { getState, dispatch, rejectWithValue }) => {
-  const run = async (token: string) => loadHomeWithToken(token, getState, query);
+  const run = async (accessToken: string) => loadHomeWithToken(accessToken, getState, query);
 
-  let token = getState().auth.token;
+  let token = asTokenString(getState().auth?.token);
+  if (!token) {
+    const refreshToken = asTokenString(getState().auth?.refreshToken);
+    if (refreshToken) {
+      const refreshResult = await dispatch(refreshSession());
+      if (refreshSession.fulfilled.match(refreshResult)) {
+        token = asTokenString(refreshResult.payload?.token);
+      }
+    }
+  }
+
   if (!token) return rejectWithValue('Not authenticated');
 
   try {
     return await run(token);
   } catch (error) {
-    if (isApiClientError(error) && error.status === 401) {
+    if (isUnauthorizedError(error)) {
       const refreshResult = await dispatch(refreshSession());
       if (refreshSession.fulfilled.match(refreshResult)) {
-        token = refreshResult.payload.token;
         try {
-          return await run(token);
+          const next = asTokenString(refreshResult.payload?.token);
+          if (!next) return rejectWithValue(getErrorMessage(error));
+          return await run(next);
         } catch (retryError) {
           return rejectWithValue(getErrorMessage(retryError));
         }
       }
+      // Refresh failed fatally — session cleared by auth slice; surface message.
+      return rejectWithValue(getErrorMessage(error));
     }
     return rejectWithValue(getErrorMessage(error));
   }
@@ -124,19 +138,27 @@ function getErrorMessage(error: unknown): string {
 
 async function withAuthRetry<T>(
   getState: () => RootState,
-  dispatch: (action: unknown) => unknown,
+  dispatch: (action: unknown) => Promise<unknown> | unknown,
   fn: (token: string) => Promise<T>,
 ): Promise<T> {
-  let token = getState().auth.token;
+  let token = asTokenString(getState().auth?.token);
+  if (!token && asTokenString(getState().auth?.refreshToken)) {
+    const refreshResult = await dispatch(refreshSession() as never);
+    if (refreshSession.fulfilled.match(refreshResult as never)) {
+      token = asTokenString((refreshResult as { payload?: { token?: string } | null }).payload?.token);
+    }
+  }
   if (!token) throw new Error('Not authenticated');
 
   try {
     return await fn(token);
   } catch (error) {
-    if (isApiClientError(error) && error.status === 401) {
-      const refreshResult = await dispatch(refreshSession());
-      if (refreshSession.fulfilled.match(refreshResult)) {
-        return await fn(refreshResult.payload.token);
+    if (isUnauthorizedError(error)) {
+      const refreshResult = await dispatch(refreshSession() as never);
+      if (refreshSession.fulfilled.match(refreshResult as never)) {
+        const next = asTokenString((refreshResult as { payload?: { token?: string } | null }).payload?.token);
+        if (!next) throw new Error('Not authenticated');
+        return await fn(next);
       }
     }
     throw error;
@@ -275,7 +297,8 @@ const dashboardSlice = createSlice({
         }
       })
       .addCase(logoutUser.fulfilled, () => initialState)
-      .addCase(logoutUser.rejected, () => initialState);
+      .addCase(logoutUser.rejected, () => initialState)
+      .addCase(logout, () => initialState);
   },
 });
 

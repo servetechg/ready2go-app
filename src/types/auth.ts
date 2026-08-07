@@ -14,6 +14,8 @@ export interface AuthState {
   token: string | null;
   refreshToken: string | null;
   isAuthenticated: boolean;
+  /** False until cold-start session sync finishes (not persisted). */
+  sessionReady: boolean;
   isLoading: boolean;
   error: string | null;
   pendingAuth: AuthResponse | null;

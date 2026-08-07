@@ -8,6 +8,7 @@ import {
   PURGE,
   REGISTER,
   REHYDRATE,
+  type Persistor,
 } from 'redux-persist';
 
 import { STORAGE_KEYS } from '@/constants/storage';
@@ -83,8 +84,23 @@ export const store = configureStore({
     }),
 });
 
-export const persistor = persistStore(store);
-bindPersistor(persistor);
+let persistorInstance: Persistor | null = null;
+
+/**
+ * Start redux-persist rehydration only after storage migration finishes.
+ * Call once from App bootstrap before mounting PersistGate.
+ */
+export function initPersistor(): Persistor {
+  if (!persistorInstance) {
+    persistorInstance = persistStore(store);
+    bindPersistor(persistorInstance);
+  }
+  return persistorInstance;
+}
+
+export function getPersistor(): Persistor | null {
+  return persistorInstance;
+}
 
 export type RootState = ReturnType<typeof store.getState>;
 export type AppDispatch = typeof store.dispatch;

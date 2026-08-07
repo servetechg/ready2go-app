@@ -3,8 +3,8 @@ import { useCallback, useRef } from 'react';
 
 import { useAppDispatch, useAppSelector } from '@/redux/hooks';
 import {
-  fetchEmergencyNewsFeed,
-  fetchMoreEmergencyNews,
+    fetchEmergencyNewsFeed,
+    fetchMoreEmergencyNews,
 } from '@/redux/slices/emergencyNewsSlice';
 
 const STALE_MS = 2 * 60_000;

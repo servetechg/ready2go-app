@@ -16,6 +16,7 @@ export function MainDrawerNavigator() {
       screenOptions={{
         headerShown: false,
         drawerType: 'front',
+        swipeEnabled: false,
         overlayColor: 'rgba(0,0,0,0.5)',
         drawerStyle: {
           width: '88%',

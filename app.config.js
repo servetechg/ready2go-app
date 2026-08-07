@@ -4,21 +4,18 @@ const fs = require('fs');
 const path = require('path');
 const appJson = require('./app.json');
 
-const googleMapsApiKey =
+// Only the registration address search (Places web service) uses this; the dashboard map
+// runs on OpenStreetMap tiles and needs no key.
+const googleMapsApiKey = (
   process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY ??
   process.env.GOOGLE_MAPS_API_KEY ??
-  '';
+  ''
+).trim();
 
 const profileReminderSeconds = process.env.EXPO_PUBLIC_PROFILE_REMINDER_SECONDS ?? '';
 const googleServicesFile = fs.existsSync(path.join(__dirname, 'google-services.json'))
   ? './google-services.json'
   : undefined;
-
-if (process.env.EAS_BUILD === 'true' && !googleMapsApiKey) {
-  throw new Error(
-    'EAS build requires EXPO_PUBLIC_GOOGLE_MAPS_API_KEY or GOOGLE_MAPS_API_KEY. Add it in expo.dev → Project → Environment variables.',
-  );
-}
 
 module.exports = {
   expo: {
@@ -79,14 +76,18 @@ module.exports = {
         'expo-build-properties',
         {
           android: {
-            // Smaller APK: 64-bit phones only + strip unused code/resources
-            buildArchs: ['arm64-v8a'],
+            // An APK missing a device's ABI crashes on launch (SoLoader cannot find
+            // libreactnative.so), so ship every architecture a phone or emulator may report.
+            buildArchs: ['armeabi-v7a', 'arm64-v8a', 'x86', 'x86_64'],
             enableMinifyInReleaseBuilds: false,
             enableShrinkResourcesInReleaseBuilds: false,
             extraProguardRules: `
               -keep class com.google.android.gms.** { *; }
               -keep interface com.google.android.gms.** { *; }
               -dontwarn com.google.android.gms.**
+              -keep class com.rnmaps.maps.** { *; }
+              -keep interface com.rnmaps.maps.** { *; }
+              -dontwarn com.rnmaps.maps.**
             `,
           },
         },

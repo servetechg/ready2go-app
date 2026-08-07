@@ -7,7 +7,7 @@ Set for **preview** before `eas build --platform android --profile preview`:
 | Variable | Purpose |
 |----------|---------|
 | `EXPO_PUBLIC_API_BASE_URL` | `https://earthquickalert.vercel.app/api/v1` (not localhost) |
-| `EXPO_PUBLIC_GOOGLE_MAPS_API_KEY` | Mobile Google key |
+| `EXPO_PUBLIC_GOOGLE_MAPS_API_KEY` | Google Places/Geocoding key — registration address search only |
 | `GOOGLE_MAPS_API_KEY` | Same key — native Android manifest |
 | `EXPO_PUBLIC_APP_ENV` | `production` |
 | `EXPO_PUBLIC_PROFILE_REMINDER_SECONDS` | `60` for quick push testing |
@@ -16,28 +16,38 @@ Rebuild after changing any variable.
 
 ---
 
-## Blank map fix
+## Dashboard map (OpenStreetMap, no API key)
 
-Maps use **Google Maps** only. Configure SHA-1 so tiles load on release APKs:
+The Home / dashboard map used to render through `react-native-maps`, which sits on top of the
+**Google Maps SDK for Android** even when the tiles come from OpenStreetMap. Expo Go supplies
+its own Google key, so the map looked fine in development and turned into a blank grey surface
+in every standalone APK, where the project's own `com.google.android.geo.API_KEY` was used.
 
-1. Get EAS signing SHA-1:
+It now runs on Leaflet inside a `react-native-webview` (`src/components/dashboard/OsmMapView.tsx`),
+so there is **no Google dependency and nothing to configure**:
 
-   ```powershell
-   cd c:\projects\ready2go-app
-   eas credentials -p android
-   ```
+- Tiles: CARTO's OpenStreetMap raster CDN (`src/constants/openStreetMap.ts`).
+- Leaflet's JS/CSS and the Ionicons marker glyphs are vendored into
+  `src/vendor/leafletBundle.json` and `src/vendor/mapPinIcons.json` and inlined into the page,
+  so the WebView never fetches a script at runtime. Regenerate them after upgrading Leaflet or
+  Ionicons with `node scripts/build-leaflet-bundle.js` and `node scripts/build-map-icons.js`.
+- `node scripts/preview-osm-map.js` serves the exact same page with sample markers on
+  `http://localhost:8099` — pair it with `adb reverse tcp:8099 tcp:8099` to open it in an
+  emulator browser.
 
-   Select **preview** profile → copy **SHA-1**.
+The Google key is still read for the **registration address search** (Places / Geocoding web
+services in `src/services/places.service.ts`). Those are plain HTTPS calls and are unrelated to
+map rendering; leaving the key blank only disables address autocomplete.
 
-2. [Google Cloud Console](https://console.cloud.google.com/) → Credentials → your **mobile** API key:
+### If the map is blank
 
-   - Application restriction: **Android apps**
-   - Package: `com.ready2go.app`
-   - SHA-1: from step 1
+The only remaining causes are network-level:
 
-3. Enable: **Maps SDK for Android**, Places API, Geocoding API, billing enabled.
+```powershell
+adb logcat -s "chromium:V" "ReactNativeJS:V"
+```
 
-4. Rebuild APK.
+Look for tile requests failing — the device must reach `basemaps.cartocdn.com`.
 
 ---
 
