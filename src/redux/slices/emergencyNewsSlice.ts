@@ -1,11 +1,11 @@
 import { createAsyncThunk, createSlice, PayloadAction } from '@reduxjs/toolkit';
 
-import { logoutUser, refreshSession } from '@/redux/slices/authSlice';
+import { logout, logoutUser, refreshSession } from '@/redux/slices/authSlice';
 import type { RootState } from '@/redux/store';
 import { isApiClientError } from '@/services/api/errors';
 import {
-  fetchEmergencyNews,
-  type EmergencyNewsQuery,
+    fetchEmergencyNews,
+    type EmergencyNewsQuery,
 } from '@/services/emergency.service';
 import type { EmergencyNewsItem } from '@/types/emergency';
 import { getErrorMessage } from '@/utils/error';
@@ -150,7 +150,8 @@ const emergencyNewsSlice = createSlice({
         state.loadingMore = false;
       })
       .addCase(logoutUser.fulfilled, () => initialState)
-      .addCase(logoutUser.rejected, () => initialState);
+      .addCase(logoutUser.rejected, () => initialState)
+      .addCase(logout, () => initialState);
   },
 });
 

@@ -25,7 +25,7 @@ function Sync-ProjectToShortPath {
     $SourceRoot,
     $TargetRoot,
     "/MIR",
-    "/XD", "node_modules", "android", ".git",
+    "/XD", "node_modules", ".git",
     "/NFL", "/NDL", "/NJH", "/NJS", "/nc", "/ns", "/np"
   )
   $null = & robocopy @robocopyArgs
@@ -100,10 +100,14 @@ function Reset-AndroidNativeProject {
 
 $sourceRoot = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
 $buildRoot = $sourceRoot
+
+# CMake/Ninja still hit the 260-char MAX_PATH limit even when Windows long paths are enabled.
 $pathTooLong = $sourceRoot.Length -gt 45 -or $sourceRoot -match "OneDrive"
 
-if ($pathTooLong -and -not (Test-WindowsLongPathsEnabled)) {
+if ($pathTooLong) {
   $buildRoot = "C:\ready2go"
+  Write-Host "Project path is long ($($sourceRoot.Length) chars)."
+  Write-Host "Building from short path $buildRoot to avoid CMake/Ninja MAX_PATH failures."
   if ($sourceRoot -ne $buildRoot) {
     Sync-ProjectToShortPath -SourceRoot $sourceRoot -TargetRoot $buildRoot
     Set-Location $buildRoot
@@ -112,11 +116,8 @@ if ($pathTooLong -and -not (Test-WindowsLongPathsEnabled)) {
       npm install
       if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
     }
-    if (-not (Test-Path (Join-Path $buildRoot "android"))) {
-      Reset-AndroidNativeProject -Root $buildRoot
-    } else {
-      Clean-AndroidBuildArtifacts -Root $buildRoot
-    }
+    # Always regenerate native project on short path so object paths stay short.
+    Reset-AndroidNativeProject -Root $buildRoot
   }
 }
 
@@ -129,26 +130,74 @@ if (-not $env:ANDROID_HOME) {
   }
 }
 
-if (-not $env:JAVA_HOME) {
-  $javaCandidates = @(
-    "C:\Program Files\Android\Android Studio\jbr",
-    "C:\Program Files\Eclipse Adoptium\jdk-21*",
-    "C:\Program Files\Eclipse Adoptium\jdk-17*",
-    "C:\Program Files\Java\jdk-21*",
-    "C:\Program Files\Java\jdk-17*"
-  )
-  foreach ($pattern in $javaCandidates) {
-    $match = Get-Item $pattern -ErrorAction SilentlyContinue | Select-Object -First 1
-    if ($match -and (Test-Path (Join-Path $match.FullName "bin\java.exe"))) {
-      $env:JAVA_HOME = $match.FullName
-      break
+function Get-JavaMajorVersion {
+  param([string]$JavaHome)
+  $javaExe = Join-Path $JavaHome "bin\java.exe"
+  if (-not (Test-Path $javaExe)) { return $null }
+  # java -version writes to stderr; with ErrorActionPreference=Stop that throws.
+  $prevEap = $ErrorActionPreference
+  $ErrorActionPreference = "Continue"
+  try {
+    $out = & $javaExe -version 2>&1 | ForEach-Object { "$_" } | Out-String
+    if ($out -match 'version "(\d+)') {
+      return [int]$Matches[1]
     }
+  } catch {
+    return $null
+  } finally {
+    $ErrorActionPreference = $prevEap
   }
+  return $null
 }
 
-if (-not $env:JAVA_HOME) {
-  Write-Error "JAVA_HOME is not set. Install JDK 17 or 21 (Android Studio includes one), or set JAVA_HOME manually."
+function Find-CompatibleJavaHome {
+  $candidates = @()
+  # Prefer known Temurin/Adoptium installs over a stale JAVA_HOME (often Studio JBR 25).
+  $candidates += @(
+    "C:\Program Files\Eclipse Adoptium\jdk-17*",
+    "C:\Program Files\Eclipse Adoptium\jdk-21*",
+    "C:\Program Files\Microsoft\jdk-17*",
+    "C:\Program Files\Microsoft\jdk-21*",
+    "C:\Program Files\Java\jdk-17*",
+    "C:\Program Files\Java\jdk-21*"
+  )
+  if ($env:JAVA_HOME) { $candidates += $env:JAVA_HOME }
+  $candidates += "C:\Program Files\Android\Android Studio\jbr"
+
+  $resolved = @()
+  foreach ($pattern in $candidates) {
+    $found = @(Get-Item $pattern -ErrorAction SilentlyContinue)
+    foreach ($item in $found) {
+      if (Test-Path (Join-Path $item.FullName "bin\java.exe")) {
+        $resolved += $item.FullName
+      }
+    }
+  }
+
+  foreach ($jdkHome in ($resolved | Select-Object -Unique)) {
+    $major = Get-JavaMajorVersion -JavaHome $jdkHome
+    Write-Host "Checked JDK: $jdkHome (major=$major)"
+    # React Native / AGP need JDK 17 or 21 — JDK 25 breaks plugin resolution.
+    if ($major -eq 17 -or $major -eq 21) {
+      return $jdkHome
+    }
+  }
+  return $null
 }
+
+$compatibleJava = Find-CompatibleJavaHome
+if (-not $compatibleJava) {
+  Write-Error @"
+No compatible JDK found (need 17 or 21).
+Android Studio's bundled JBR is Java 25, which breaks this Gradle build.
+Install Temurin/Adoptium JDK 17, then re-run:
+  winget install EclipseAdoptium.Temurin.17.JDK
+"@
+}
+if ($env:JAVA_HOME -and $env:JAVA_HOME -ne $compatibleJava) {
+  Write-Host "Ignoring incompatible JAVA_HOME=$env:JAVA_HOME"
+}
+$env:JAVA_HOME = $compatibleJava
 
 if (-not $env:GRADLE_USER_HOME) {
   $env:GRADLE_USER_HOME = "C:\gradle"
@@ -174,11 +223,23 @@ Write-Host ""
 Write-Host "Building release APK (Expo loads .env automatically)..."
 Write-Host ""
 
-Clean-AndroidBuildArtifacts -Root $buildRoot
+# Ensure native android/ exists (expo run:android requires a device/emulator;
+# assembleRelease builds an APK without one).
+$androidDir = Join-Path $buildRoot "android"
+$gradlew = Join-Path $androidDir "gradlew.bat"
+if (-not (Test-Path $gradlew)) {
+  Reset-AndroidNativeProject -Root $buildRoot
+} else {
+  Clean-AndroidBuildArtifacts -Root $buildRoot
+}
 
-npx expo run:android --variant release --no-install --no-bundler
-if ($LASTEXITCODE -ne 0) {
-  exit $LASTEXITCODE
+Write-Host "Assembling release APK via Gradle (no device required)..."
+Push-Location $androidDir
+& .\gradlew.bat assembleRelease
+$gradleCode = $LASTEXITCODE
+Pop-Location
+if ($gradleCode -ne 0) {
+  exit $gradleCode
 }
 
 $apk = Join-Path $buildRoot "android\app\build\outputs\apk\release\app-release.apk"

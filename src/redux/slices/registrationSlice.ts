@@ -1,6 +1,6 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
 
-import { fetchCurrentUser } from '@/redux/slices/authSlice';
+import { fetchCurrentUser, logout, logoutUser } from '@/redux/slices/authSlice';
 import type { ProfilePayload } from '@/types/api';
 import type { AddressData, AlertLocation, RegistrationState, YesNoStepData } from '@/types/registration';
 import type { ProfileDocumentValue } from '@/types/profileDocument';
@@ -129,16 +129,20 @@ const registrationSlice = createSlice({
     },
   },
   extraReducers: (builder) => {
-    builder.addCase(fetchCurrentUser.fulfilled, (state, action) => {
-      const { user, profile } = action.payload;
-      const normalized = normalizeProfilePayload(profile);
-      if (normalized) {
-        applyProfilePayload(state, normalized);
-      }
-      if (toBoolean(user.profileComplete)) {
-        markRegistrationComplete(state);
-      }
-    });
+    builder
+      .addCase(fetchCurrentUser.fulfilled, (state, action) => {
+        const { user, profile } = action.payload;
+        const normalized = normalizeProfilePayload(profile);
+        if (normalized) {
+          applyProfilePayload(state, normalized);
+        }
+        if (toBoolean(user.profileComplete)) {
+          markRegistrationComplete(state);
+        }
+      })
+      .addCase(logoutUser.fulfilled, () => initialRegistrationState())
+      .addCase(logoutUser.rejected, () => initialRegistrationState())
+      .addCase(logout, () => initialRegistrationState());
   },
 });
 
