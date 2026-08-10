@@ -154,8 +154,8 @@ export function AddressPickerScreen({
       : null,
   );
 
-  const apiKey = ENV.GOOGLE_MAPS_API_KEY;
-  const hasApiKey = isGoogleMapsKeyConfigured(apiKey);
+  const apiKey = ENV.GEOAPIFY_API_KEY || ENV.GOOGLE_MAPS_API_KEY;
+  const hasApiKey = Boolean(apiKey);
 
   useEffect(() => {
     if (typeof value.latitude === 'number' && typeof value.longitude === 'number') {
@@ -255,7 +255,11 @@ export function AddressPickerScreen({
           showError('Could not resolve address for this pin.');
         }
       } catch (error) {
-        showError(getErrorMessage(error, 'Could not resolve address'));
+        onChange({
+          latitude: coordinate.latitude,
+          longitude: coordinate.longitude,
+          useCurrentLocation: false,
+        });
       } finally {
         setGeocoding(false);
       }
@@ -280,7 +284,7 @@ export function AddressPickerScreen({
       focusMapOn(latitude, longitude);
       if (!apiKey) {
         onChange({ latitude, longitude, useCurrentLocation: true });
-        showInfo('Location set. Add GOOGLE_MAPS_API_KEY to auto-fill the address.');
+        showInfo('Location set. Add EXPO_PUBLIC_GEOAPIFY_API_KEY to auto-fill the address.');
         return;
       }
       setGeocoding(true);
@@ -314,8 +318,7 @@ export function AddressPickerScreen({
         <View style={[styles.missingKey, { borderColor: colors.border, backgroundColor: colors.surface }]}>
           <Ionicons name="map-outline" size={28} color={colors.textMuted} />
           <AppText variant="bodySmall" color={colors.textSecondary} center={true}>
-            Add EXPO_PUBLIC_GOOGLE_MAPS_API_KEY to .env (use a mobile-compatible key, not website-only).
-            Then run: npx expo start -c
+            Add EXPO_PUBLIC_GEOAPIFY_API_KEY to .env, then run: npx expo start -c
           </AppText>
         </View>
         <ManualAddressFields value={value} onChange={onChange} errors={errors} />

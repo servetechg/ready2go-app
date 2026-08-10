@@ -227,7 +227,7 @@ export function HomeScreen() {
             title="News Feed"
             scrollable={false}
             maxItems={3}
-            showImages={false}
+            showImages={true}
             showSectionHeader={true}
             onViewAll={() => navigation.navigate(HOME_STACK_ROUTES.EMERGENCY_NEWS)}
           />
