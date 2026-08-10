@@ -6,6 +6,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AlertCard } from '@/components/dashboard/AlertCard';
 import { BlueSkyStatusBanner } from '@/components/dashboard/BlueSkyStatusBanner';
+import { CitizenAssistantHomeCard } from '@/components/dashboard/CitizenAssistantHomeCard';
 import { DashboardLayout } from '@/components/dashboard/DashboardLayout';
 import { DisruptionStatusBanner } from '@/components/dashboard/DisruptionStatusBanner';
 import { EmergencyMap } from '@/components/dashboard/EmergencyMap';
@@ -15,7 +16,6 @@ import { PreparednessCategoryCard } from '@/components/dashboard/PreparednessCat
 import { PreparednessEmptyMessage } from '@/components/dashboard/PreparednessEmptyMessage';
 import { WeatherSummaryCard } from '@/components/dashboard/WeatherSummaryCard';
 import { AppButton } from '@/components/ui/AppButton';
-import { AppCard } from '@/components/ui/AppCard';
 import { AppText } from '@/components/ui/AppText';
 import {
     HOME_STACK_ROUTES,
@@ -156,20 +156,17 @@ export function HomeScreen() {
           />
         }>
         {isCloudy ? (
-          <>
-            <DisruptionStatusBanner status={home?.status} onViewSituation={scrollToSituation} />
-            <Pressable onPress={navigateToCitizenAssistance}>
-              <AppCard style={styles.assistanceCard}>
-                <AppText variant="label">Need help or want to check in?</AppText>
-                <AppText variant="bodySmall" color={colors.textSecondary}>
-                  Tap to mark safe or send a request to emergency coordinators
-                </AppText>
-              </AppCard>
-            </Pressable>
-          </>
+          <DisruptionStatusBanner status={home?.status} onViewSituation={scrollToSituation} />
         ) : (
           <BlueSkyStatusBanner status={home?.status} />
         )}
+
+        <View style={styles.sectionHeader}>
+          <AppText variant="h3" color={colors.primary}>
+            Citizen Assistant
+          </AppText>
+        </View>
+        <CitizenAssistantHomeCard onPress={navigateToCitizenAssistance} />
 
         {loading && !home ? (
           <ActivityIndicator style={styles.loader} color={colors.primary} />
@@ -265,7 +262,6 @@ export function HomeScreen() {
 
 const styles = StyleSheet.create({
   scroll: { paddingVertical: spacing.sm },
-  assistanceCard: { marginBottom: spacing.lg },
   loader: { marginVertical: spacing.lg },
   prepLoader: { marginBottom: spacing.lg },
   errorWrap: {

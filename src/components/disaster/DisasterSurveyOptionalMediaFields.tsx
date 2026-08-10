@@ -27,7 +27,17 @@ type Props = {
   /** When true, hide already-satisfied sections during a needs_info supplement. */
   showPictures?: boolean;
   showVideos?: boolean;
+  picturesLabel?: string;
+  videosLabel?: string;
+  maxPictures?: number;
+  maxVideos?: number;
+  pictureMaxBytes?: number;
+  videoMaxBytes?: number;
 };
+
+function mbLabel(bytes: number): string {
+  return `${Math.round(bytes / (1024 * 1024))}`;
+}
 
 function toAsset(
   asset: ImagePicker.ImagePickerAsset,
@@ -62,13 +72,19 @@ export function DisasterSurveyOptionalMediaFields({
   onChangeVideos,
   showPictures = true,
   showVideos = true,
+  picturesLabel = 'Incident pictures (optional)',
+  videosLabel = 'Incident videos (optional)',
+  maxPictures = DISASTER_SURVEY_MAX_PICTURES,
+  maxVideos = DISASTER_SURVEY_MAX_VIDEOS,
+  pictureMaxBytes = DISASTER_SURVEY_PICTURE_MAX_BYTES,
+  videoMaxBytes = DISASTER_SURVEY_VIDEO_MAX_BYTES,
 }: Props) {
   const { colors } = useAppTheme();
   const { showError } = useToast();
 
   const pickPictures = async () => {
-    if (pictures.length >= DISASTER_SURVEY_MAX_PICTURES) {
-      showError(`You can add up to ${DISASTER_SURVEY_MAX_PICTURES} pictures`);
+    if (pictures.length >= maxPictures) {
+      showError(`You can add up to ${maxPictures} pictures`);
       return;
     }
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -76,7 +92,7 @@ export function DisasterSurveyOptionalMediaFields({
       showError('Photo library permission is required');
       return;
     }
-    const remaining = DISASTER_SURVEY_MAX_PICTURES - pictures.length;
+    const remaining = maxPictures - pictures.length;
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ['images'],
       allowsMultipleSelection: true,
@@ -92,20 +108,24 @@ export function DisasterSurveyOptionalMediaFields({
         showError('Use JPEG, PNG, or WebP pictures');
         continue;
       }
-      if (item.fileSize && item.fileSize > DISASTER_SURVEY_PICTURE_MAX_BYTES) {
-        showError('Each picture must be 10 MB or smaller');
+      if (item.fileSize && item.fileSize > pictureMaxBytes) {
+        showError(`Each picture must be ${mbLabel(pictureMaxBytes)} MB or smaller`);
         continue;
       }
       accepted.push(item);
     }
     if (accepted.length) {
-      onChangePictures([...pictures, ...accepted].slice(0, DISASTER_SURVEY_MAX_PICTURES));
+      onChangePictures([...pictures, ...accepted].slice(0, maxPictures));
     }
   };
 
   const pickVideo = async () => {
-    if (videos.length >= DISASTER_SURVEY_MAX_VIDEOS) {
-      showError('You can add only 1 video');
+    if (videos.length >= maxVideos) {
+      showError(
+        maxVideos === 1
+          ? 'You can add only 1 video'
+          : `You can add up to ${maxVideos} videos`,
+      );
       return;
     }
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -126,22 +146,27 @@ export function DisasterSurveyOptionalMediaFields({
       showError('Use MP4, MOV, or WebM videos');
       return;
     }
-    if (item.fileSize && item.fileSize > DISASTER_SURVEY_VIDEO_MAX_BYTES) {
-      showError('Video must be 100 MB or smaller');
+    if (item.fileSize && item.fileSize > videoMaxBytes) {
+      showError(`Each video must be ${mbLabel(videoMaxBytes)} MB or smaller`);
       return;
     }
-    onChangeVideos([...videos, item].slice(0, DISASTER_SURVEY_MAX_VIDEOS));
+    onChangeVideos([...videos, item].slice(0, maxVideos));
   };
+
+  const videoHint =
+    maxVideos === 1
+      ? `1 video · up to ${mbLabel(videoMaxBytes)} MB`
+      : `Up to ${maxVideos} videos · ${mbLabel(videoMaxBytes)} MB each`;
 
   return (
     <View style={styles.wrap}>
       {showPictures ? (
         <View style={styles.section}>
           <AppText variant="label" color={colors.textSecondary}>
-            Incident pictures (optional)
+            {picturesLabel}
           </AppText>
           <AppText variant="bodySmall" color={colors.textSecondary} style={styles.hint}>
-            Up to {DISASTER_SURVEY_MAX_PICTURES} photos · 10 MB each
+            Up to {maxPictures} photos · {mbLabel(pictureMaxBytes)} MB each
           </AppText>
           <View style={styles.row}>
             {pictures.map((pic) => (
@@ -156,7 +181,7 @@ export function DisasterSurveyOptionalMediaFields({
                 </Pressable>
               </View>
             ))}
-            {pictures.length < DISASTER_SURVEY_MAX_PICTURES ? (
+            {pictures.length < maxPictures ? (
               <Pressable
                 style={[styles.addTile, { borderColor: colors.border, backgroundColor: colors.surface }]}
                 onPress={() => void pickPictures()}
@@ -174,10 +199,10 @@ export function DisasterSurveyOptionalMediaFields({
       {showVideos ? (
         <View style={styles.section}>
           <AppText variant="label" color={colors.textSecondary}>
-            Incident videos (optional)
+            {videosLabel}
           </AppText>
           <AppText variant="bodySmall" color={colors.textSecondary} style={styles.hint}>
-            1 video · up to 100 MB
+            {videoHint}
           </AppText>
           <View style={styles.videoList}>
             {videos.map((vid) => (
@@ -197,7 +222,7 @@ export function DisasterSurveyOptionalMediaFields({
                 </Pressable>
               </View>
             ))}
-            {videos.length < DISASTER_SURVEY_MAX_VIDEOS ? (
+            {videos.length < maxVideos ? (
               <Pressable
                 style={[styles.addVideoBtn, { borderColor: colors.border, backgroundColor: colors.surface }]}
                 onPress={() => void pickVideo()}
