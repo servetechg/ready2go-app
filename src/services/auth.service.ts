@@ -77,11 +77,23 @@ function normalizeAuthResponse(raw: ApiAuthResponse & Record<string, unknown>): 
 
 export const authService = {
   async signup(payload: SignupApiPayload): Promise<AuthResponse> {
-    const raw = await apiRequest<ApiAuthResponse>('/auth/signup', {
-      method: 'POST',
-      body: payload,
-    });
-    return normalizeAuthResponse(raw);
+    const raw = await apiRequest<ApiAuthResponse & { user?: AuthResponse['user']; message?: string }>(
+      '/auth/signup',
+      {
+        method: 'POST',
+        body: payload,
+      },
+    );
+    const normalized = normalizeAuthResponse(raw);
+    // Signup no longer returns live tokens — only the unverified user for OTP.
+    if (!normalized.user) {
+      throw new Error('Signup succeeded but user payload was missing');
+    }
+    return {
+      user: normalized.user,
+      token: normalized.token || '',
+      refreshToken: normalized.refreshToken,
+    };
   },
 
   async login(credentials: LoginCredentials): Promise<AuthResponse> {

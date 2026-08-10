@@ -461,6 +461,13 @@ const authSlice = createSlice({
     clearPendingAuth: (state) => {
       state.pendingAuth = null;
       state.otpEmail = null;
+      // Unwind any accidental live session left from a prior signup bug.
+      if (!state.user) {
+        state.token = null;
+        state.refreshToken = null;
+        state.isAuthenticated = false;
+        void saveSession({ token: null, refreshToken: null, user: null });
+      }
     },
     clearPasswordReset: (state) => {
       state.pendingPasswordResetEmail = null;
@@ -506,13 +513,17 @@ const authSlice = createSlice({
       .addCase(signupUser.pending, handlePending)
       .addCase(signupUser.fulfilled, (state, action) => {
         state.isLoading = false;
+        // Keep tokens only in pendingAuth until OTP succeeds. Writing refreshToken
+        // into the live session made RootNavigator treat the user as logged-in
+        // (hasSession && !user → Main) and skipped OTP + onboarding.
         state.pendingAuth = action.payload;
         state.otpEmail = action.payload.user.email;
-        const refresh = asTokenString(action.payload.refreshToken);
-        if (refresh) {
-          state.refreshToken = refresh;
-        }
+        state.user = null;
+        state.token = null;
+        state.refreshToken = null;
+        state.isAuthenticated = false;
         state.error = null;
+        void saveSession({ token: null, refreshToken: null, user: null });
       })
       .addCase(signupUser.rejected, handleRejected)
       .addCase(verifyOtp.pending, handlePending)
