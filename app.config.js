@@ -1,25 +1,28 @@
 /** @type {import('expo/config').ExpoConfig} */
 // Expo CLI / EAS local builds load .env automatically before this file runs.
+const fs = require('fs');
+const path = require('path');
 const appJson = require('./app.json');
 
-const googleMapsApiKey =
+// Only the registration address search (Places web service) uses this; the dashboard map
+// runs on OpenStreetMap tiles and needs no key.
+const googleMapsApiKey = (
   process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY ??
   process.env.GOOGLE_MAPS_API_KEY ??
-  '';
+  ''
+).trim();
 
 const profileReminderSeconds = process.env.EXPO_PUBLIC_PROFILE_REMINDER_SECONDS ?? '';
-
-if (process.env.EAS_BUILD === 'true' && !googleMapsApiKey) {
-  throw new Error(
-    'EAS build requires EXPO_PUBLIC_GOOGLE_MAPS_API_KEY or GOOGLE_MAPS_API_KEY. Add it in expo.dev → Project → Environment variables.',
-  );
-}
+const googleServicesFile = fs.existsSync(path.join(__dirname, 'google-services.json'))
+  ? './google-services.json'
+  : undefined;
 
 module.exports = {
   expo: {
     ...appJson.expo,
     android: {
       ...appJson.expo.android,
+      ...(googleServicesFile ? { googleServicesFile } : {}),
       permissions: [
         ...(appJson.expo.android?.permissions ?? []),
         'android.permission.INTERNET',
@@ -48,8 +51,11 @@ module.exports = {
         'expo-image-picker',
         {
           photosPermission:
-            'Allow Ready2Go to access your photos to set your profile picture.',
-          cameraPermission: 'Allow Ready2Go to use the camera for your profile picture.',
+            'Allow Ready2Go to access your photos and videos for your profile and disaster survey.',
+          cameraPermission:
+            'Allow Ready2Go to use the camera for your profile picture and disaster survey evidence.',
+          microphonePermission:
+            'Allow Ready2Go to use the microphone when recording incident videos for disaster surveys.',
         },
       ],
       [
@@ -70,14 +76,19 @@ module.exports = {
         'expo-build-properties',
         {
           android: {
-            // Smaller APK: 64-bit phones only + strip unused code/resources
-            buildArchs: ['arm64-v8a'],
+            // An APK missing a device's ABI crashes on launch (SoLoader cannot find
+            // libreactnative.so). These three cover every real phone plus the x86_64
+            // emulator; 32-bit x86 is emulator-only legacy and just slows the build.
+            buildArchs: ['armeabi-v7a', 'arm64-v8a', 'x86_64'],
             enableMinifyInReleaseBuilds: false,
             enableShrinkResourcesInReleaseBuilds: false,
             extraProguardRules: `
               -keep class com.google.android.gms.** { *; }
               -keep interface com.google.android.gms.** { *; }
               -dontwarn com.google.android.gms.**
+              -keep class com.rnmaps.maps.** { *; }
+              -keep interface com.rnmaps.maps.** { *; }
+              -dontwarn com.rnmaps.maps.**
             `,
           },
         },

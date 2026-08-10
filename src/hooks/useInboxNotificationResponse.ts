@@ -6,11 +6,24 @@ import {
   navigateToDisasterSurveyIfActive,
   navigateToNotifications,
 } from '@/navigation/navigationRef';
+import { markSurveyNotificationPresented } from '@/services/notification.service';
 import { canUseNotifications } from '@/utils/notification-capability';
 
 function screenFromData(data: Record<string, unknown> | undefined): string | undefined {
   const screen = data?.screen;
   return typeof screen === 'string' ? screen : undefined;
+}
+
+function presentationKeysFromData(data: Record<string, unknown> | undefined): string[] {
+  if (!data) return [];
+  const keys: string[] = [];
+  if (typeof data.invitationId === 'string' && data.invitationId.trim()) {
+    keys.push(`inv:${data.invitationId.trim()}`);
+  }
+  if (typeof data.inboxNotificationId === 'string' && data.inboxNotificationId.trim()) {
+    keys.push(data.inboxNotificationId.trim());
+  }
+  return keys;
 }
 
 function handleNotificationNavigation(data: Record<string, unknown> | undefined): void {
@@ -33,7 +46,8 @@ export function useInboxNotificationResponse(): void {
   useEffect(() => {
     if (!canUseNotifications()) return;
 
-    let subscription: { remove: () => void } | undefined;
+    let responseSub: { remove: () => void } | undefined;
+    let receivedSub: { remove: () => void } | undefined;
     let cancelled = false;
 
     void (async () => {
@@ -45,16 +59,31 @@ export function useInboxNotificationResponse(): void {
         last?.notification.request.content.data as Record<string, unknown>,
       );
 
-      subscription = Notifications.addNotificationResponseReceivedListener((response) => {
-        handleNotificationNavigation(
-          response.notification.request.content.data as Record<string, unknown>,
-        );
+      // Remote Expo push already showed — remember it so inbox mirror won't re-alert.
+      receivedSub = Notifications.addNotificationReceivedListener((notification) => {
+        const data = notification.request.content.data as Record<string, unknown> | undefined;
+        const keys = presentationKeysFromData(data);
+        if (keys.length > 0) {
+          void markSurveyNotificationPresented(keys);
+        }
+      });
+
+      responseSub = Notifications.addNotificationResponseReceivedListener((response) => {
+        const data = response.notification.request.content.data as
+          | Record<string, unknown>
+          | undefined;
+        const keys = presentationKeysFromData(data);
+        if (keys.length > 0) {
+          void markSurveyNotificationPresented(keys);
+        }
+        handleNotificationNavigation(data);
       });
     })();
 
     return () => {
       cancelled = true;
-      subscription?.remove();
+      responseSub?.remove();
+      receivedSub?.remove();
     };
   }, []);
 }

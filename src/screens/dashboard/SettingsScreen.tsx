@@ -44,7 +44,9 @@ export function SettingsScreen() {
                 {invitation.campaign.title}
               </AppText>
               <AppText variant="bodySmall" color={colors.primary} style={styles.surveyCta}>
-                Tap to complete your status assessment
+                {invitation.status === 'needs_info'
+                  ? 'Tap to add missing comments, pictures, or videos'
+                  : 'Tap to complete your status assessment'}
               </AppText>
             </AppCard>
           </Pressable>
@@ -52,9 +54,9 @@ export function SettingsScreen() {
 
         <Pressable onPress={() => navigation.navigate(MAIN_STACK_ROUTES.CITIZEN_ASSISTANCE)}>
           <AppCard style={styles.card}>
-            <AppText variant="label">Citizen assistance</AppText>
+            <AppText variant="label">Citizen Assistant</AppText>
             <AppText variant="bodySmall" color={colors.textSecondary}>
-              Mark safe, request help, or report a need to coordinators
+              Mark safe, request help, or report a need with photos or video
             </AppText>
           </AppCard>
         </Pressable>

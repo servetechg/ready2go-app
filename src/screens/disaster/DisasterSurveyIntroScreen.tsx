@@ -8,9 +8,9 @@ import { BottomButtonBar } from '@/components/layout/BottomButtonBar';
 import { ScreenWrapper } from '@/components/layout/ScreenWrapper';
 import { AppText } from '@/components/ui/AppText';
 import { DISASTER_SURVEY_CATEGORIES } from '@/constants/disasterSurvey';
-import { DISASTER_SURVEY_ROUTES, MAIN_STACK_ROUTES } from '@/constants/routes';
+import { DISASTER_SURVEY_ROUTES } from '@/constants/routes';
 import { useAppTheme } from '@/hooks/useAppTheme';
-import { navigateToMainScreen } from '@/navigation/navigationHelpers';
+import { dismissToHomeTabs } from '@/navigation/navigationHelpers';
 import { useAppDispatch, useAppSelector } from '@/redux/hooks';
 import {
   clearDisasterSurvey,
@@ -40,7 +40,7 @@ export function DisasterSurveyIntroScreen() {
       if (cancelled) return;
       if (!active || active.status === 'submitted') {
         dispatch(clearDisasterSurvey());
-        navigateToMainScreen(navigation, MAIN_STACK_ROUTES.TABS);
+        dismissToHomeTabs(navigation);
         return;
       }
       dispatch(setDisasterSurveyInvitation(active));
@@ -53,17 +53,21 @@ export function DisasterSurveyIntroScreen() {
 
   const startSurvey = async () => {
     if (!invitation || !authToken || invitation.status === 'submitted') return;
-    try {
-      await disasterSurveyService.markOpened(authToken, invitation.invitationId);
-    } catch {
-      // Non-blocking — user can still complete the form
+    if (invitation.status === 'pending') {
+      try {
+        await disasterSurveyService.markOpened(authToken, invitation.invitationId);
+      } catch {
+        // Non-blocking — user can still complete the form
+      }
     }
     navigation.navigate(DISASTER_SURVEY_ROUTES.IMMEDIATE_NEEDS);
   };
 
   const canStart =
     invitation != null &&
-    (invitation.status === 'pending' || invitation.status === 'opened');
+    (invitation.status === 'pending' ||
+      invitation.status === 'opened' ||
+      invitation.status === 'needs_info');
 
   return (
     <View style={styles.wrapper}>
@@ -73,9 +77,11 @@ export function DisasterSurveyIntroScreen() {
         </AppText>
 
         <AppText variant="body" color={colors.textSecondary} center style={styles.intro}>
-          {invitation?.campaign.title
-            ? invitation.campaign.title
-            : 'Please take a few moments to let us know your current status and immediate needs.'}
+          {invitation?.status === 'needs_info'
+            ? 'Responders need a few more optional details (comments, pictures, or videos) for your submitted survey.'
+            : invitation?.campaign.title
+              ? invitation.campaign.title
+              : 'Please take a few moments to let us know your current status and immediate needs.'}
         </AppText>
 
         <View style={styles.list}>
@@ -91,7 +97,7 @@ export function DisasterSurveyIntroScreen() {
       </ScreenWrapper>
 
       <BottomButtonBar
-        primaryTitle="START SURVEY"
+        primaryTitle={invitation?.status === 'needs_info' ? 'ADD DETAILS' : 'START SURVEY'}
         onPrimaryPress={() => {
           if (canStart) void startSurvey();
         }}

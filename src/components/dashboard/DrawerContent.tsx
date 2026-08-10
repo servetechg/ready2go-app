@@ -111,6 +111,13 @@ export function DrawerContent(props: DrawerContentComponentProps) {
     } as never);
   };
 
+  const goCitizenAssistant = () => {
+    navigation.closeDrawer();
+    navigation.navigate(DRAWER_ROUTES.MAIN, {
+      screen: MAIN_STACK_ROUTES.CITIZEN_ASSISTANCE,
+    } as never);
+  };
+
   const openInfo = (title: string, body: string) => {
     navigation.closeDrawer();
     navigation.navigate(DRAWER_ROUTES.MAIN, {
@@ -128,6 +135,11 @@ export function DrawerContent(props: DrawerContentComponentProps) {
   const menuItems: MenuItem[] = [
     { label: 'Home', icon: 'home', onPress: goHome },
     { label: 'Alerts', icon: 'warning-outline', onPress: goAlerts },
+    {
+      label: 'Citizen Assistant',
+      icon: 'hand-left-outline',
+      onPress: goCitizenAssistant,
+    },
     { label: 'Preparedness Guide', icon: 'briefcase-outline', onPress: goPreparedness },
     { label: 'Profile', icon: 'person-outline', onPress: goProfile },
     {

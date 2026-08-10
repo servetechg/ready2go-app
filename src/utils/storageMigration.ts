@@ -2,17 +2,18 @@ import { STORAGE_KEYS } from '@/constants/storage';
 import { safePersistStorage } from '@/utils/persistStorage';
 
 const MIGRATION_KEY = 'ready2go_storage_version';
-const CURRENT_VERSION = '6';
+/** v8: clear corrupt token backup keys; still never wipe redux auth persist. */
+const CURRENT_VERSION = '8';
 
+/** Registration + corrupt token backups. Auth redux-persist keys must survive. */
 const KEYS_TO_CLEAR = [
-  `persist:${STORAGE_KEYS.AUTH}`,
   `persist:${STORAGE_KEYS.REGISTRATION}`,
-  STORAGE_KEYS.AUTH,
   STORAGE_KEYS.REGISTRATION,
-  MIGRATION_KEY,
+  'ready2go_access_token_v1',
+  'ready2go_refresh_token_v1',
 ];
 
-/** Clears corrupted persist blobs that cause native boolean cast crashes */
+/** Clears corrupted registration / token-backup blobs; preserves auth session. */
 export async function runStorageMigration(): Promise<void> {
   try {
     const version = await safePersistStorage.getItem(MIGRATION_KEY);

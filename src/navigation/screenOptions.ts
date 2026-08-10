@@ -3,5 +3,6 @@ export const stackScreenOptions = {
   headerShown: false,
   gestureEnabled: true,
   animationEnabled: true,
-  detachPreviousScreen: false,
+  // Detach previous screen so pull-to-refresh / overscroll cannot reveal screens behind.
+  detachPreviousScreen: true,
 } as const;

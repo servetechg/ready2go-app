@@ -1,28 +1,29 @@
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
-import React, { useCallback, useMemo, useRef } from 'react';
+import React, { useMemo, useRef } from 'react';
 import { ActivityIndicator, Pressable, RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AlertCard } from '@/components/dashboard/AlertCard';
-import { BlueSkyNewsFeed } from '@/components/dashboard/BlueSkyNewsFeed';
 import { BlueSkyStatusBanner } from '@/components/dashboard/BlueSkyStatusBanner';
+import { CitizenAssistantHomeCard } from '@/components/dashboard/CitizenAssistantHomeCard';
 import { DashboardLayout } from '@/components/dashboard/DashboardLayout';
 import { DisruptionStatusBanner } from '@/components/dashboard/DisruptionStatusBanner';
 import { EmergencyMap } from '@/components/dashboard/EmergencyMap';
 import { IncidentLog } from '@/components/dashboard/IncidentLog';
+import { PersonalizedNewsFeed } from '@/components/dashboard/PersonalizedNewsFeed';
 import { PreparednessCategoryCard } from '@/components/dashboard/PreparednessCategoryCard';
 import { PreparednessEmptyMessage } from '@/components/dashboard/PreparednessEmptyMessage';
 import { WeatherSummaryCard } from '@/components/dashboard/WeatherSummaryCard';
 import { AppButton } from '@/components/ui/AppButton';
-import { AppCard } from '@/components/ui/AppCard';
 import { AppText } from '@/components/ui/AppText';
 import {
-  HOME_STACK_ROUTES,
-  PREPAREDNESS_STACK_ROUTES,
-  TAB_ROUTES,
+    HOME_STACK_ROUTES,
+    PREPAREDNESS_STACK_ROUTES,
+    TAB_ROUTES,
 } from '@/constants/routes';
-import { useAppTheme } from '@/hooks/useAppTheme';
 import { useAlertSourcePress } from '@/hooks/useAlertSourcePress';
+import { useAppTheme } from '@/hooks/useAppTheme';
 import { useHomeDashboard } from '@/hooks/useHomeDashboard';
 import { usePullToRefresh } from '@/hooks/usePullToRefresh';
 import { navigateToAlertsTab, navigateToTab } from '@/navigation/navigationHelpers';
@@ -31,8 +32,7 @@ import { useAppSelector } from '@/redux/hooks';
 import { selectPreparednessCategories } from '@/redux/slices/dashboardSlice';
 import { spacing } from '@/theme';
 import type { HomeStackParamList, MainTabParamList } from '@/types/navigation';
-import type { EmergencyNewsItem } from '@/types/emergency';
-import { mapHomeAlertToWeatherAlert, mapHomeNewsToEmergencyNewsItem } from '@/utils/dashboardMappers';
+import { mapHomeAlertToWeatherAlert } from '@/utils/dashboardMappers';
 import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import type { CompositeNavigationProp } from '@react-navigation/native';
 
@@ -44,43 +44,41 @@ type HomeNav = CompositeNavigationProp<
 export function HomeScreen() {
   const navigation = useNavigation<HomeNav>();
   const { colors } = useAppTheme();
+  const insets = useSafeAreaInsets();
   const scrollRef = useRef<ScrollView>(null);
   const mapSectionY = useRef(0);
   const searchQuery = useAppSelector((s) => s.dashboard.searchQuery);
   const preparednessCategories = useAppSelector(selectPreparednessCategories);
+  const alertItems = useAppSelector((s) => s.alerts.items ?? []);
+  const slicePreparedness = useAppSelector((s) => s.preparedness.categories);
+  const preparednessLoading = useAppSelector((s) => s.preparedness.loading);
   const { home, emergency, isCloudy, loading, error, reload } = useHomeDashboard();
   const { refreshControlProps } = usePullToRefresh(reload);
   const handleAlertPress = useAlertSourcePress();
 
-  const newsItems = useMemo(() => {
-    const items = (home?.news ?? []).map(mapHomeNewsToEmergencyNewsItem);
-    const q = searchQuery.trim().toLowerCase();
-    if (!q) return items;
-    return items.filter(
-      (item) =>
-        item.title.toLowerCase().includes(q) ||
-        item.body.toLowerCase().includes(q) ||
-        (item.location?.toLowerCase().includes(q) ?? false),
-    );
-  }, [home?.news, searchQuery]);
-
   const recentAlerts = useMemo(() => {
-    const alerts = (home?.recentAlerts ?? []).map(mapHomeAlertToWeatherAlert);
+    const fromHome = (home?.recentAlerts ?? []).map(mapHomeAlertToWeatherAlert);
+    const fromAlertsTab = alertItems.map(mapHomeAlertToWeatherAlert);
+    // Prefer home payload; fall back to alerts API so Home can show 2 when they exist.
+    const merged = fromHome.length > 0 ? fromHome : fromAlertsTab;
     const q = searchQuery.trim().toLowerCase();
-    if (!q) return alerts;
-    return alerts.filter(
-      (alert) =>
-        alert.title.toLowerCase().includes(q) ||
-        alert.location.toLowerCase().includes(q) ||
-        alert.severity.toLowerCase().includes(q),
-    );
-  }, [home?.recentAlerts, searchQuery]);
+    const filtered = !q
+      ? merged
+      : merged.filter(
+          (alert) =>
+            alert.title.toLowerCase().includes(q) ||
+            alert.location.toLowerCase().includes(q) ||
+            alert.severity.toLowerCase().includes(q),
+        );
+    return filtered.slice(0, 2);
+  }, [home?.recentAlerts, alertItems, searchQuery]);
 
   const hasSearch = Boolean(searchQuery.trim());
 
   const filteredCategories = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
-    const source = preparednessCategories;
+    const source =
+      preparednessCategories.length > 0 ? preparednessCategories : slicePreparedness;
     const matched = !q
       ? source
       : source.filter(
@@ -89,12 +87,16 @@ export function HomeScreen() {
             c.subtitle.toLowerCase().includes(q),
         );
     return matched.slice(0, 2);
-  }, [preparednessCategories, searchQuery]);
+  }, [preparednessCategories, slicePreparedness, searchQuery]);
 
-  const showPreparednessEmpty = home && !loading && filteredCategories.length === 0;
+  const showPreparednessEmpty =
+    !loading && !preparednessLoading && filteredCategories.length === 0;
 
   const showMap = Boolean(home && emergency);
   const showIncidentLog = isCloudy && (emergency?.incidentLog?.length ?? 0) > 0;
+
+  // Floating tab bar overlays content — keep last preparedness card fully visible.
+  const scrollBottomPad = 72 + Math.max(insets.bottom, spacing.xs) + spacing.lg;
 
   const openCategory = (categoryId: string, title: string) => {
     const tabNav = navigation.getParent();
@@ -112,13 +114,6 @@ export function HomeScreen() {
     navigateToTab(navigation, TAB_ROUTES.PROFILE);
   };
 
-  const openNewsDetail = useCallback(
-    (item: EmergencyNewsItem) => {
-      navigation.navigate(HOME_STACK_ROUTES.NEWS_DETAIL, { item });
-    },
-    [navigation],
-  );
-
   if (error && !home) {
     return (
       <DashboardLayout>
@@ -135,41 +130,68 @@ export function HomeScreen() {
     );
   }
 
+  if (loading && !home) {
+    return (
+      <DashboardLayout>
+        <View style={styles.errorWrap}>
+          <ActivityIndicator size="large" color={colors.primary} />
+        </View>
+      </DashboardLayout>
+    );
+  }
+
   return (
     <DashboardLayout>
       <ScrollView
         ref={scrollRef}
+        style={{ flex: 1, backgroundColor: colors.background }}
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.scroll}
-        refreshControl={<RefreshControl {...refreshControlProps} />}>
+        contentContainerStyle={[styles.scroll, { paddingBottom: scrollBottomPad }]}
+        refreshControl={
+          <RefreshControl
+            {...refreshControlProps}
+            progressBackgroundColor={colors.background}
+            colors={[colors.primary]}
+            tintColor={colors.primary}
+          />
+        }>
         {isCloudy ? (
-          <>
-            <DisruptionStatusBanner status={home?.status} onViewSituation={scrollToSituation} />
-            <Pressable onPress={navigateToCitizenAssistance}>
-              <AppCard style={styles.assistanceCard}>
-                <AppText variant="label">Need help or want to check in?</AppText>
-                <AppText variant="bodySmall" color={colors.textSecondary}>
-                  Tap to mark safe or send a request to emergency coordinators
-                </AppText>
-              </AppCard>
-            </Pressable>
-          </>
+          <DisruptionStatusBanner status={home?.status} onViewSituation={scrollToSituation} />
         ) : (
           <BlueSkyStatusBanner status={home?.status} />
         )}
+
+        <View style={styles.sectionHeader}>
+          <AppText variant="h3" color={colors.primary}>
+            Citizen Assistant
+          </AppText>
+        </View>
+        <CitizenAssistantHomeCard onPress={navigateToCitizenAssistance} />
 
         {loading && !home ? (
           <ActivityIndicator style={styles.loader} color={colors.primary} />
         ) : null}
 
+        <View style={styles.sectionHeader}>
+          <AppText variant="h3" color={colors.primary}>Active Alerts</AppText>
+          <Pressable onPress={() => navigateToAlertsTab(navigation)}>
+            <AppText variant="label" color={colors.primary}>
+              View all
+            </AppText>
+          </Pressable>
+        </View>
+        {recentAlerts.length === 0 ? (
+          <AppText variant="body" color={colors.textSecondary} style={styles.emptyAlerts}>
+            No active alerts in your registered zones.
+          </AppText>
+        ) : (
+          recentAlerts.map((alert) => (
+            <AlertCard key={alert.id} alert={alert} onPress={handleAlertPress} />
+          ))
+        )}
+
         {home ? (
           <>
-            <BlueSkyNewsFeed
-              items={newsItems}
-              maxVisible={4}
-              onViewAll={() => navigation.navigate(HOME_STACK_ROUTES.EMERGENCY_NEWS)}
-              onItemPress={openNewsDetail}
-            />
             {showMap && emergency ? (
               <View
                 style={styles.emergencyBlock}
@@ -197,35 +219,29 @@ export function HomeScreen() {
           onCompleteProfilePress={openProfile}
         />
 
-        {isCloudy ? (
-          <>
-            <View style={styles.sectionHeader}>
-              <AppText variant="h3">Active Alerts</AppText>
-              <Pressable onPress={() => navigateToAlertsTab(navigation)}>
-                <AppText variant="label" color={colors.primary}>
-                  View all
-                </AppText>
-              </Pressable>
-            </View>
-            {recentAlerts.length === 0 ? (
-              <AppText variant="body" color={colors.textSecondary} style={styles.emptyAlerts}>
-                No active alerts in your registered zones.
-              </AppText>
-            ) : (
-              recentAlerts.map((alert) => (
-                <AlertCard key={alert.id} alert={alert} onPress={handleAlertPress} />
-              ))
-            )}
-          </>
+        {home ? (
+          <PersonalizedNewsFeed
+            title="News Feed"
+            scrollable={false}
+            maxItems={3}
+            showImages={false}
+            showSectionHeader={true}
+            onViewAll={() => navigation.navigate(HOME_STACK_ROUTES.EMERGENCY_NEWS)}
+          />
         ) : null}
 
         <View style={styles.sectionHeader}>
-          <AppText variant="h3">Preparedness Guide</AppText>
+          <AppText variant="h3" color={colors.primary}>Preparedness Guide</AppText>
+          <Pressable onPress={() => navigation.getParent()?.navigate(TAB_ROUTES.PREPAREDNESS)}>
+            <AppText variant="label" color={colors.primary}>
+              View all
+            </AppText>
+          </Pressable>
         </View>
         <AppText variant="bodySmall" color={colors.textSecondary} style={styles.subtitle}>
           Local preparedness tasks for your registered address. This view is read-only.
         </AppText>
-        {loading && home && filteredCategories.length === 0 ? (
+        {(loading || preparednessLoading) && filteredCategories.length === 0 ? (
           <ActivityIndicator color={colors.primary} style={styles.prepLoader} />
         ) : null}
         {showPreparednessEmpty ? <PreparednessEmptyMessage hasSearch={hasSearch} /> : null}
@@ -239,23 +255,13 @@ export function HomeScreen() {
             />
           ))}
         </View>
-        {preparednessCategories.length > 2 ? (
-          <Pressable
-            style={styles.seeAll}
-            onPress={() => navigation.getParent()?.navigate(TAB_ROUTES.PREPAREDNESS)}>
-            <AppText variant="label" color={colors.primary}>
-              See all
-            </AppText>
-          </Pressable>
-        ) : null}
       </ScrollView>
     </DashboardLayout>
   );
 }
 
 const styles = StyleSheet.create({
-  scroll: { paddingBottom: spacing.xl, paddingVertical: spacing.sm },
-  assistanceCard: { marginBottom: spacing.lg },
+  scroll: { paddingVertical: spacing.sm },
   loader: { marginVertical: spacing.lg },
   prepLoader: { marginBottom: spacing.lg },
   errorWrap: {
@@ -265,7 +271,7 @@ const styles = StyleSheet.create({
     gap: spacing.lg,
   },
   errorBody: { marginBottom: spacing.sm },
-  emergencyBlock: { gap: spacing.xl, marginBottom: spacing.lg },
+  emergencyBlock: { marginTop: spacing.md, gap: spacing.xl, marginBottom: spacing.lg },
   sectionHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -277,10 +283,5 @@ const styles = StyleSheet.create({
   emptyAlerts: { marginBottom: spacing.lg },
   grid: {
     gap: spacing.sm,
-  },
-  seeAll: {
-    alignSelf: 'flex-start',
-    marginTop: spacing.md,
-    paddingVertical: spacing.sm,
   },
 });

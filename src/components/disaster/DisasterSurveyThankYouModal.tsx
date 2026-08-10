@@ -118,7 +118,7 @@ export function DisasterSurveyThankYouModal({
             style={[styles.button, { backgroundColor: colors.primary }]}
             accessibilityRole="button"
           >
-            <AppText variant="button" color={colors.textInverse}>
+            <AppText variant="button" color={colors.textInverse} center style={styles.buttonLabel}>
               BACK TO HOME
             </AppText>
           </Pressable>
@@ -165,6 +165,13 @@ const styles = StyleSheet.create({
     alignSelf: 'stretch',
     borderRadius: borderRadius.md,
     paddingVertical: spacing.md,
+    paddingHorizontal: spacing.xl,
     alignItems: 'center',
+    justifyContent: 'center',
+  },
+  buttonLabel: {
+    width: '100%',
+    textAlign: 'center',
+    textTransform: 'uppercase',
   },
 });

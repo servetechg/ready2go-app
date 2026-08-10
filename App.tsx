@@ -7,6 +7,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { Provider } from 'react-redux';
 import { PersistGate } from 'redux-persist/integration/react';
+import type { Persistor } from 'redux-persist';
 
 import { AppSplashScreen } from '@/components/splash/AppSplashScreen';
 import { SplashReadyView } from '@/components/splash/SplashReadyView';
@@ -18,11 +19,13 @@ import { useProfileReminder } from '@/hooks/useProfileReminder';
 import { usePushTokenRegistration } from '@/hooks/usePushTokenRegistration';
 import { RootNavigator } from '@/navigation';
 import { navigationRef } from '@/navigation/navigationRef';
-import { persistor, store } from '@/redux/store';
+import { hydrateTokens, setCredentials } from '@/redux/slices/authSlice';
+import { initPersistor, store } from '@/redux/store';
 import { initNotificationHandler } from '@/services/notification.service';
 import { palette } from '@/theme';
 import { fontFamily } from '@/theme/fonts';
 import Toast from 'react-native-toast-message';
+import { loadSession } from '@/utils/authSessionStorage';
 import { runStorageMigration } from '@/utils/storageMigration';
 
 SplashScreen.preventAutoHideAsync().catch(() => {});
@@ -44,6 +47,41 @@ const navTheme = {
     heavy: { fontFamily: fontFamily.bold, fontWeight: '700' as const },
   },
 };
+
+async function restoreSessionFromDisk(): Promise<void> {
+  const stored = await loadSession();
+  if (!stored) return;
+
+  const state = store.getState().auth;
+  const hasReduxToken = Boolean(state?.token || state?.refreshToken);
+  if (hasReduxToken) return;
+
+  if (stored.user && stored.token) {
+    store.dispatch(
+      setCredentials({
+        user: stored.user,
+        token: stored.token,
+        refreshToken: stored.refreshToken ?? undefined,
+      }),
+    );
+  } else if (stored.token || stored.refreshToken) {
+    store.dispatch(
+      hydrateTokens({
+        token: stored.token || null,
+        refreshToken: stored.refreshToken,
+        replace: true,
+      }),
+    );
+  }
+
+  if (__DEV__) {
+    console.log('[app] restored session from disk', {
+      hasAccess: Boolean(stored.token),
+      hasRefresh: Boolean(stored.refreshToken),
+      hasUser: Boolean(stored.user),
+    });
+  }
+}
 
 function AppNavigation() {
   useEffect(() => {
@@ -70,15 +108,15 @@ function AppNavigation() {
 }
 
 function AppContent({
-  bootstrapped,
   fontsLoaded,
+  persistor,
 }: {
-  bootstrapped: boolean;
   fontsLoaded: boolean;
+  persistor: Persistor | null;
 }) {
   const showWebSplash = Platform.OS === 'web';
 
-  if (!bootstrapped || !fontsLoaded) {
+  if (!fontsLoaded || !persistor) {
     return showWebSplash ? (
       <SafeAreaProvider>
         <AppSplashScreen />
@@ -95,7 +133,8 @@ function AppContent({
           </SafeAreaProvider>
         ) : null
       }
-      persistor={persistor}>
+      persistor={persistor}
+      onBeforeLift={() => restoreSessionFromDisk()}>
       <SplashReadyView>
         <AppNavigation />
       </SplashReadyView>
@@ -104,19 +143,31 @@ function AppContent({
 }
 
 export default function App() {
-  const [bootstrapped, setBootstrapped] = useState(false);
+  const [persistor, setPersistor] = useState<Persistor | null>(null);
   const { fontsLoaded } = useAppFonts();
 
   useEffect(() => {
     if (!fontsLoaded) {
       return;
     }
-    runStorageMigration().finally(() => setBootstrapped(true));
+    let cancelled = false;
+    (async () => {
+      await runStorageMigration();
+      if (cancelled) return;
+      setPersistor(initPersistor());
+    })().catch(() => {
+      if (!cancelled) {
+        setPersistor(initPersistor());
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
   }, [fontsLoaded]);
 
   return (
     <Provider store={store}>
-      <AppContent bootstrapped={bootstrapped} fontsLoaded={fontsLoaded} />
+      <AppContent fontsLoaded={fontsLoaded} persistor={persistor} />
     </Provider>
   );
 }

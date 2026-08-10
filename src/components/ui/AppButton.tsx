@@ -1,6 +1,7 @@
 import React from 'react';
 import {
   ActivityIndicator,
+  Platform,
   Pressable,
   PressableProps,
   StyleSheet,
@@ -68,7 +69,7 @@ export function AppButton({
       {isLoading ? (
         <ActivityIndicator color={textColor} />
       ) : (
-        <AppText variant="button" color={textColor} style={styles.uppercase}>
+        <AppText variant="button" color={textColor} center style={styles.label}>
           {title}
         </AppText>
       )}
@@ -104,9 +105,20 @@ const styles = StyleSheet.create({
     borderRadius: borderRadius.md,
     alignItems: 'center',
     justifyContent: 'center',
+    overflow: 'hidden',
   },
   fullWidth: { width: '100%' },
   pressed: { opacity: 0.85 },
   disabled: { opacity: 0.5 },
-  uppercase: { textTransform: 'uppercase' },
+  label: {
+    width: '100%',
+    textAlign: 'center',
+    textTransform: 'uppercase',
+    ...(Platform.OS === 'android'
+      ? {
+          includeFontPadding: false,
+          textAlignVertical: 'center' as const,
+        }
+      : null),
+  },
 });

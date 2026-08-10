@@ -42,7 +42,12 @@ export function MainStackNavigator() {
       <Stack.Screen
         name={MAIN_STACK_ROUTES.DISASTER_SURVEY}
         component={DisasterSurveyStackNavigator}
-        options={{ headerShown: false, presentation: 'modal' }}
+        options={{
+          headerShown: false,
+          presentation: 'card',
+          gestureEnabled: false,
+          detachPreviousScreen: true,
+        }}
       />
       <Stack.Screen
         name={MAIN_STACK_ROUTES.CITIZEN_ASSISTANCE}
