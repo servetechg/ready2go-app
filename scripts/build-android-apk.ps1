@@ -40,6 +40,30 @@ function Sync-ProjectToShortPath {
   }
 }
 
+# Releases file handles a previous run left on android/ and node_modules build output.
+# Invoked by absolute path and never from inside the folder that is about to be deleted,
+# and treated as best effort: a daemon that cannot be reached is not a build failure.
+function Stop-GradleDaemon {
+  param([string]$Root)
+
+  $gradlew = Join-Path $Root "android\gradlew.bat"
+  if (-not (Test-Path $gradlew)) {
+    return
+  }
+
+  Write-Host "Stopping Gradle daemon..."
+  $prevEap = $ErrorActionPreference
+  $ErrorActionPreference = "Continue"
+  try {
+    & $gradlew "--project-dir" (Join-Path $Root "android") "--stop" 2>&1 | Out-String | Write-Host
+  } catch {
+    Write-Host "Gradle daemon stop skipped: $($_.Exception.Message)"
+  } finally {
+    $ErrorActionPreference = $prevEap
+  }
+  Start-Sleep -Seconds 2
+}
+
 function Clean-AndroidBuildArtifacts {
   param([string]$Root)
 
@@ -48,13 +72,7 @@ function Clean-AndroidBuildArtifacts {
     return
   }
 
-  $gradlew = Join-Path $androidDir "gradlew.bat"
-  if (Test-Path $gradlew) {
-    Write-Host "Stopping Gradle daemon..."
-    Push-Location $androidDir
-    & .\gradlew.bat --stop 2>$null
-    Pop-Location
-  }
+  Stop-GradleDaemon -Root $Root
 
   $dirsToRemove = @(
     (Join-Path $androidDir "app\build"),
@@ -74,18 +92,24 @@ function Reset-AndroidNativeProject {
   param([string]$Root)
 
   $androidDir = Join-Path $Root "android"
-  $gradlew = Join-Path $androidDir "gradlew.bat"
-  if (Test-Path $gradlew) {
-    Write-Host "Stopping Gradle daemon..."
-    Push-Location $androidDir
-    & .\gradlew.bat --stop 2>$null
-    Pop-Location
-  }
+  Stop-GradleDaemon -Root $Root
 
   if (Test-Path $androidDir) {
     Write-Host "Removing stale android folder..."
     Remove-Item $androidDir -Recurse -Force -ErrorAction SilentlyContinue
     Start-Sleep -Seconds 2
+  }
+
+  # CMake caches absolute paths from the previous run, so a stale .cxx makes ninja fail
+  # with "Filename longer than 260 characters" or an undeletable libc++_shared.so.
+  $nodeModules = Join-Path $Root "node_modules"
+  if (Test-Path $nodeModules) {
+    Write-Host "Removing stale native CMake output in node_modules..."
+    Get-ChildItem $nodeModules -Recurse -Directory -Filter ".cxx" -ErrorAction SilentlyContinue |
+      ForEach-Object { Remove-Item $_.FullName -Recurse -Force -ErrorAction SilentlyContinue }
+    Get-ChildItem $nodeModules -Recurse -Directory -Filter "cxx" -ErrorAction SilentlyContinue |
+      Where-Object { $_.FullName -like "*\android\build\intermediates\cxx" } |
+      ForEach-Object { Remove-Item $_.FullName -Recurse -Force -ErrorAction SilentlyContinue }
   }
 
   Write-Host "Generating fresh android project (expo prebuild)..."

@@ -15,6 +15,7 @@ import {
   loadSession,
   saveSession,
 } from '@/utils/authSessionStorage';
+import { guardFreshInstall } from '@/utils/freshInstallGuard';
 
 /**
  * Restore session from disk once, then softly validate.
@@ -50,7 +51,13 @@ export function useSessionBootstrap() {
 
         if (!didRestore.current) {
           didRestore.current = true;
-          const stored = await loadSession();
+
+          // Detect fresh install and clear any stale session data
+          // that Android auto-backup may have restored.
+          const wasFreshInstall = await guardFreshInstall();
+          if (!alive) return;
+
+          const stored = wasFreshInstall ? null : await loadSession();
           if (!alive) return;
 
           if (stored && (stored.token || stored.refreshToken)) {

@@ -4,6 +4,7 @@ import { StackNavigationProp } from '@react-navigation/stack';
 import React, { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 
+import { DisasterSurveyOptionalMediaFields } from '@/components/disaster/DisasterSurveyOptionalMediaFields';
 import { AppHeader } from '@/components/layout/AppHeader';
 import { BottomButtonBar } from '@/components/layout/BottomButtonBar';
 import { ScreenWrapper } from '@/components/layout/ScreenWrapper';
@@ -18,7 +19,14 @@ import { MAIN_STACK_ROUTES } from '@/constants/routes';
 import { useAppTheme } from '@/hooks/useAppTheme';
 import { useToast } from '@/hooks/useToast';
 import { useAppSelector } from '@/redux/hooks';
-import { citizenActivityService } from '@/services/citizenActivity.service';
+import {
+  CITIZEN_ACTIVITY_MAX_PICTURES,
+  CITIZEN_ACTIVITY_MAX_VIDEOS,
+  CITIZEN_ACTIVITY_PICTURE_MAX_BYTES,
+  CITIZEN_ACTIVITY_VIDEO_MAX_BYTES,
+  citizenActivityService,
+} from '@/services/citizenActivity.service';
+import type { LocalMediaAsset } from '@/services/disasterSurvey.service';
 import { borderRadius, spacing } from '@/theme';
 import type { MainStackParamList } from '@/types/navigation';
 
@@ -34,7 +42,17 @@ export function CitizenAssistanceScreen() {
   const [selectedCategory, setSelectedCategory] = useState<CitizenReportCategoryId | null>(null);
   const [description, setDescription] = useState('');
   const [details, setDetails] = useState('');
+  const [pictures, setPictures] = useState<LocalMediaAsset[]>([]);
+  const [videos, setVideos] = useState<LocalMediaAsset[]>([]);
   const [submitting, setSubmitting] = useState(false);
+
+  const resetReportForm = () => {
+    setSelectedCategory(null);
+    setDescription('');
+    setDetails('');
+    setPictures([]);
+    setVideos([]);
+  };
 
   const handleSafeCheckIn = async (isSafe: boolean) => {
     if (!authToken) {
@@ -44,13 +62,29 @@ export function CitizenAssistanceScreen() {
     setSubmitting(true);
     try {
       await citizenActivityService.submitSafeCheckIn(authToken, { isSafe });
-      showSuccess(isSafe ? 'You are marked safe. Responders have been notified.' : 'Help request sent. Stay safe — help is on the way.');
+      showSuccess(
+        isSafe
+          ? 'You are marked safe. Responders have been notified.'
+          : 'Help request sent. Stay safe — help is on the way.',
+      );
       navigation.goBack();
     } catch (e) {
       showError(e instanceof Error ? e.message : 'Could not update safety status.');
     } finally {
       setSubmitting(false);
     }
+  };
+
+  const uploadAllMedia = async (token: string) => {
+    const uploadedPictures = [];
+    for (const pic of pictures) {
+      uploadedPictures.push(await citizenActivityService.uploadMedia(token, 'picture', pic));
+    }
+    const uploadedVideos = [];
+    for (const vid of videos) {
+      uploadedVideos.push(await citizenActivityService.uploadMedia(token, 'video', vid));
+    }
+    return { uploadedPictures, uploadedVideos };
   };
 
   const handleSubmitReport = async () => {
@@ -80,12 +114,16 @@ export function CitizenAssistanceScreen() {
         lng = pos.coords.longitude;
       }
 
+      const { uploadedPictures, uploadedVideos } = await uploadAllMedia(authToken);
+
       await citizenActivityService.submitReport(authToken, {
         category: selectedCategory,
         description: description.trim(),
         details: details.trim() || undefined,
         lat,
         lng,
+        pictures: uploadedPictures.length ? uploadedPictures : undefined,
+        videos: uploadedVideos.length ? uploadedVideos : undefined,
       });
       showSuccess('Your report was sent to emergency coordinators.');
       navigation.goBack();
@@ -104,17 +142,19 @@ export function CitizenAssistanceScreen() {
           onBack={() => {
             if (mode === 'report') {
               setMode('menu');
+              resetReportForm();
               return;
             }
             navigation.goBack();
           }}
-          title={mode === 'menu' ? 'Citizen assistance' : 'Report a need'}
+          title={mode === 'menu' ? 'Citizen Assistant' : 'Report a need'}
         />
 
         {mode === 'menu' ? (
           <ScrollView contentContainerStyle={styles.scroll}>
             <AppText variant="bodySmall" color={colors.textSecondary} style={styles.lead}>
-              Let coordinators know you are safe or request help during an active disruption.
+              Let coordinators know you are safe or request help. When reporting, you can attach
+              photos or a short video.
             </AppText>
 
             <View style={styles.safeRow}>
@@ -143,7 +183,8 @@ export function CitizenAssistanceScreen() {
                 onPress={() => {
                   setSelectedCategory(option.id);
                   setMode('report');
-                }}>
+                }}
+              >
                 <AppCard style={styles.optionCard}>
                   <AppText variant="label">{option.label}</AppText>
                   <AppText variant="bodySmall" color={colors.textSecondary}>
@@ -173,6 +214,18 @@ export function CitizenAssistanceScreen() {
               placeholderTextColor={colors.textMuted}
               multiline
               style={[styles.input, { borderColor: colors.border, color: colors.text }]}
+            />
+            <DisasterSurveyOptionalMediaFields
+              pictures={pictures}
+              videos={videos}
+              onChangePictures={setPictures}
+              onChangeVideos={setVideos}
+              picturesLabel="Pictures (optional)"
+              videosLabel="Videos (optional)"
+              maxPictures={CITIZEN_ACTIVITY_MAX_PICTURES}
+              maxVideos={CITIZEN_ACTIVITY_MAX_VIDEOS}
+              pictureMaxBytes={CITIZEN_ACTIVITY_PICTURE_MAX_BYTES}
+              videoMaxBytes={CITIZEN_ACTIVITY_VIDEO_MAX_BYTES}
             />
           </ScrollView>
         )}
