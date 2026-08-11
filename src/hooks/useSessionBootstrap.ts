@@ -57,7 +57,12 @@ export function useSessionBootstrap() {
             access = asTokenString(stored.token) ?? access;
             refresh = asTokenString(stored.refreshToken) ?? refresh;
 
-            if (stored.user && access) {
+            const verified =
+              stored.user &&
+              (stored.user.emailVerified === true ||
+                String(stored.user.emailVerified).toLowerCase() === 'true');
+
+            if (stored.user && access && verified) {
               dispatch(
                 setCredentials({
                   user: stored.user,
@@ -65,14 +70,20 @@ export function useSessionBootstrap() {
                   refreshToken: refresh ?? undefined,
                 }),
               );
-            } else {
-              dispatch(
-                hydrateTokens({
-                  token: access,
-                  refreshToken: refresh,
-                  replace: true,
-                }),
-              );
+            } else if (access || refresh) {
+              // Skip hydrating unverified / orphan sessions — Login should show.
+              if (!verified && stored.user) {
+                access = null;
+                refresh = null;
+              } else if (!stored.user) {
+                dispatch(
+                  hydrateTokens({
+                    token: access,
+                    refreshToken: refresh,
+                    replace: true,
+                  }),
+                );
+              }
             }
 
             if (__DEV__) {
@@ -80,6 +91,7 @@ export function useSessionBootstrap() {
                 hasAccess: Boolean(access),
                 hasRefresh: Boolean(refresh),
                 hasUser: Boolean(stored.user),
+                verified: Boolean(verified),
               });
             }
           }

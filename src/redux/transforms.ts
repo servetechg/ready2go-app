@@ -33,6 +33,14 @@ export const authTransform = createTransform(
     }
     const token = asTokenString(inbound.token);
     const refreshToken = asTokenString(inbound.refreshToken);
+    const user =
+      inbound.user && typeof inbound.user === 'object'
+        ? (inbound.user as { emailVerified?: unknown })
+        : null;
+    // Never persist an unverified user — closing the app must return to Login.
+    if (user && user.emailVerified !== true && user.emailVerified !== 'true') {
+      return emptyAuthPersist;
+    }
     return {
       ...inbound,
       token,
@@ -52,6 +60,13 @@ export const authTransform = createTransform(
     }
     const token = asTokenString(outbound.token);
     const refreshToken = asTokenString(outbound.refreshToken);
+    const user =
+      outbound.user && typeof outbound.user === 'object'
+        ? (outbound.user as { emailVerified?: unknown })
+        : null;
+    if (user && user.emailVerified !== true && user.emailVerified !== 'true') {
+      return emptyAuthPersist;
+    }
     return {
       ...outbound,
       token,
