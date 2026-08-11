@@ -76,6 +76,8 @@ module.exports = {
         'expo-build-properties',
         {
           android: {
+            // Prevent Android auto-backup from restoring auth data after reinstall.
+            allowBackup: false,
             // An APK missing a device's ABI crashes on launch (SoLoader cannot find
             // libreactnative.so). These three cover every real phone plus the x86_64
             // emulator; 32-bit x86 is emulator-only legacy and just slows the build.

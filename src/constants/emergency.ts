@@ -19,6 +19,8 @@ export const MOCK_BLUE_SKY_NEWS: EmergencyNewsItem[] = [
     severity: 'info',
     category: 'ADMIN',
     icon: 'megaphone-outline',
+    url: 'https://www.ready.gov/plan',
+    imageUrl: 'https://images.unsplash.com/photo-1584036561566-baf8f5f1b144?q=80&w=800&auto=format&fit=crop',
   },
   {
     id: 'news-2',
@@ -30,6 +32,8 @@ export const MOCK_BLUE_SKY_NEWS: EmergencyNewsItem[] = [
     category: 'PREPAREDNESS',
     location: 'LAKE COUNTY, IL — YOUR REGISTERED AREA',
     icon: 'shield-checkmark-outline',
+    url: 'https://www.weather.gov/safety/',
+    imageUrl: 'https://images.unsplash.com/photo-1534088568595-a066f410bcda?q=80&w=800&auto=format&fit=crop',
   },
   {
     id: 'news-3',
@@ -41,6 +45,8 @@ export const MOCK_BLUE_SKY_NEWS: EmergencyNewsItem[] = [
     category: 'ADVISORY',
     location: 'GULF COAST REGION — MONITORED ZONE',
     icon: 'globe-outline',
+    url: 'https://www.nhc.noaa.gov/',
+    imageUrl: 'https://images.unsplash.com/photo-1527482797697-8795b05a13fe?q=80&w=800&auto=format&fit=crop',
   },
   {
     id: 'news-4',
@@ -51,6 +57,8 @@ export const MOCK_BLUE_SKY_NEWS: EmergencyNewsItem[] = [
     severity: 'info',
     category: 'ADVISORY',
     icon: 'newspaper-outline',
+    url: 'https://www.fema.gov/disaster',
+    imageUrl: 'https://images.unsplash.com/photo-1515694346937-94d85e41e6f0?q=80&w=800&auto=format&fit=crop',
   },
   {
     id: 'news-5',
@@ -62,6 +70,8 @@ export const MOCK_BLUE_SKY_NEWS: EmergencyNewsItem[] = [
     category: 'REGIONAL',
     location: 'NORTHEASTERN ILLINOIS',
     icon: 'medkit-outline',
+    url: 'https://www.redcross.org/get-help/disaster-relief-and-recovery-services/find-an-open-shelter.html',
+    imageUrl: 'https://images.unsplash.com/photo-1544620347-c4fd4a3d5957?q=80&w=800&auto=format&fit=crop',
   },
   {
     id: 'news-6',
@@ -72,6 +82,8 @@ export const MOCK_BLUE_SKY_NEWS: EmergencyNewsItem[] = [
     severity: 'info',
     category: 'ADMIN',
     icon: 'alert-circle-outline',
+    url: 'https://www.fcc.gov/emergency-alert-system',
+    imageUrl: 'https://images.unsplash.com/photo-1574786198875-49f5d09fe2d5?q=80&w=800&auto=format&fit=crop',
   },
 ];
 

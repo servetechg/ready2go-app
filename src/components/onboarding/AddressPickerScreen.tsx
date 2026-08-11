@@ -13,11 +13,13 @@ import {
   View,
   type ViewStyle,
 } from 'react-native';
-import MapView, { Marker, PROVIDER_GOOGLE, type Region } from 'react-native-maps';
+import { Gesture, GestureDetector } from 'react-native-gesture-handler';
+import { WebView, type WebViewMessageEvent } from 'react-native-webview';
 
 import { AppInput } from '@/components/form/AppInput';
 import { AppSelect } from '@/components/form/AppSelect';
 import { AppText } from '@/components/ui/AppText';
+import { buildAddressMapHtml } from '@/components/onboarding/addressMapHtml';
 import { ENV } from '@/constants/env';
 import { US_STATES } from '@/constants/registration';
 import { useAppTheme } from '@/hooks/useAppTheme';
@@ -33,6 +35,8 @@ import {
   type ParsedAddress,
   type PlaceSuggestion,
 } from '@/utils/googlePlaces';
+
+const ADDRESS_MAP_HTML = buildAddressMapHtml();
 
 export type AddressPickerValue = {
   streetAddress: string;
@@ -138,7 +142,8 @@ export function AddressPickerScreen({
 }: AddressPickerScreenProps) {
   const { colors } = useAppTheme();
   const { showError, showInfo } = useToast();
-  const mapRef = useRef<MapView>(null);
+  const webRef = useRef<WebView>(null);
+  const mapReadyRef = useRef(false);
   const searchRef = useRef<TextInput>(null);
 
   const [searchText, setSearchText] = useState('');
@@ -154,8 +159,8 @@ export function AddressPickerScreen({
       : null,
   );
 
-  const apiKey = ENV.GOOGLE_MAPS_API_KEY;
-  const hasApiKey = isGoogleMapsKeyConfigured(apiKey);
+  const apiKey = ENV.GEOAPIFY_API_KEY || ENV.GOOGLE_MAPS_API_KEY;
+  const hasApiKey = Boolean(apiKey);
 
   useEffect(() => {
     if (typeof value.latitude === 'number' && typeof value.longitude === 'number') {
@@ -184,9 +189,14 @@ export function AddressPickerScreen({
     return () => clearTimeout(timer);
   }, [searchText]);
 
-  const focusMapOn = useCallback((latitude: number, longitude: number) => {
-    mapRef.current?.animateToRegion({ latitude, longitude, ...SELECTED_MAP_DELTA }, 350);
+  const runJs = useCallback((script: string) => {
+    webRef.current?.injectJavaScript(`${script};true;`);
   }, []);
+
+  const focusMapOn = useCallback((latitude: number, longitude: number) => {
+    runJs(`window.__setView(${JSON.stringify({ latitude, longitude, ...SELECTED_MAP_DELTA })}, 350)`);
+    runJs(`window.__setMarker(${latitude}, ${longitude})`);
+  }, [runJs]);
 
   const applyParsedAddress = useCallback(
     (parsed: ParsedAddress, useCurrentLocation: boolean, label?: string) => {
@@ -255,7 +265,11 @@ export function AddressPickerScreen({
           showError('Could not resolve address for this pin.');
         }
       } catch (error) {
-        showError(getErrorMessage(error, 'Could not resolve address'));
+        onChange({
+          latitude: coordinate.latitude,
+          longitude: coordinate.longitude,
+          useCurrentLocation: false,
+        });
       } finally {
         setGeocoding(false);
       }
@@ -280,7 +294,7 @@ export function AddressPickerScreen({
       focusMapOn(latitude, longitude);
       if (!apiKey) {
         onChange({ latitude, longitude, useCurrentLocation: true });
-        showInfo('Location set. Add GOOGLE_MAPS_API_KEY to auto-fill the address.');
+        showInfo('Location set. Add EXPO_PUBLIC_GEOAPIFY_API_KEY to auto-fill the address.');
         return;
       }
       setGeocoding(true);
@@ -299,10 +313,47 @@ export function AddressPickerScreen({
     }
   }, [apiKey, applyParsedAddress, focusMapOn, onChange, showError, showInfo]);
 
-  const initialRegion = useMemo<Region>(
+  const initialRegion = useMemo(
     () => (pin ? { ...pin, ...SELECTED_MAP_DELTA } : { ...DEFAULT_MAP_CENTER }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [],
+  );
+
+  const nativeGesture = useMemo(
+    () => Gesture.Native().shouldActivateOnStart(true).disallowInterruption(true),
+    [],
+  );
+
+  const handleWebViewMessage = useCallback(
+    (event: WebViewMessageEvent) => {
+      let message: {
+        type?: string;
+        coordinate?: { latitude: number; longitude: number };
+        message?: string;
+      };
+      try {
+        message = JSON.parse(event.nativeEvent.data);
+      } catch {
+        return;
+      }
+      switch (message.type) {
+        case 'ready':
+          mapReadyRef.current = true;
+          if (pin) {
+            runJs(`window.__setMarker(${pin.latitude}, ${pin.longitude})`);
+          }
+          break;
+        case 'markerDragEnd':
+          if (message.coordinate) {
+            void handleMarkerDragEnd(message.coordinate);
+          }
+          break;
+        case 'error':
+          if (__DEV__) console.warn(`[AddressMap] ${message.message}`);
+          break;
+      }
+    },
+    [handleMarkerDragEnd, pin, runJs],
   );
 
   const showDropdown =
@@ -314,8 +365,7 @@ export function AddressPickerScreen({
         <View style={[styles.missingKey, { borderColor: colors.border, backgroundColor: colors.surface }]}>
           <Ionicons name="map-outline" size={28} color={colors.textMuted} />
           <AppText variant="bodySmall" color={colors.textSecondary} center={true}>
-            Add EXPO_PUBLIC_GOOGLE_MAPS_API_KEY to .env (use a mobile-compatible key, not website-only).
-            Then run: npx expo start -c
+            Add EXPO_PUBLIC_GEOAPIFY_API_KEY to .env, then run: npx expo start -c
           </AppText>
         </View>
         <ManualAddressFields value={value} onChange={onChange} errors={errors} />
@@ -415,23 +465,33 @@ export function AddressPickerScreen({
         ) : null}
 
         <View style={styles.mapShell}>
-          <MapView
-            ref={mapRef}
-            style={styles.map}
-            provider={PROVIDER_GOOGLE}
-            initialRegion={initialRegion}
-            scrollEnabled
-            zoomEnabled
-            rotateEnabled={false}
-            pitchEnabled={false}>
-            {pin ? (
-              <Marker
-                coordinate={pin}
-                draggable
-                onDragEnd={(e) => void handleMarkerDragEnd(e.nativeEvent.coordinate)}
-              />
-            ) : null}
-          </MapView>
+          <GestureDetector gesture={nativeGesture}>
+            <WebView
+              ref={webRef}
+              style={styles.map}
+              source={{ html: ADDRESS_MAP_HTML, baseUrl: 'https://localhost' }}
+              injectedJavaScriptBeforeContentLoaded={`window.__INITIAL__ = ${JSON.stringify({
+                region: initialRegion,
+                marker: pin,
+              })};true;`}
+              onMessage={handleWebViewMessage}
+              originWhitelist={['*']}
+              javaScriptEnabled={true}
+              domStorageEnabled={true}
+              scrollEnabled={false}
+              overScrollMode="never"
+              bounces={false}
+              nestedScrollEnabled={true}
+              setBuiltInZoomControls={false}
+              androidLayerType="hardware"
+              showsHorizontalScrollIndicator={false}
+              showsVerticalScrollIndicator={false}
+              allowsBackForwardNavigationGestures={false}
+              onError={({ nativeEvent }) => {
+                if (__DEV__) console.warn('[AddressMap] load failed', nativeEvent);
+              }}
+            />
+          </GestureDetector>
           {(locating || geocoding) && (
             <View style={styles.mapOverlay}>
               <ActivityIndicator color={palette.white} />

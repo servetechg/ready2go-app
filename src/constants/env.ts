@@ -14,6 +14,13 @@ function resolveGoogleMapsApiKey(): string {
   );
 }
 
+function resolveGeoapifyApiKey(): string {
+  return (
+    process.env.EXPO_PUBLIC_GEOAPIFY_API_KEY?.trim() ||
+    '9abe9caf7f5943d189e9ef564c5cdec7'
+  );
+}
+
 function parsePositiveInt(raw: string | number | undefined, fallback: number): number {
   if (raw === undefined || raw === null || raw === '') return fallback;
   const n = typeof raw === 'number' ? raw : Number(String(raw).trim());
@@ -35,5 +42,7 @@ export const ENV = {
   APP_ENV: process.env.EXPO_PUBLIC_APP_ENV ?? 'development',
   IS_DEV: (process.env.EXPO_PUBLIC_APP_ENV ?? 'development') === 'development',
   GOOGLE_MAPS_API_KEY: resolveGoogleMapsApiKey(),
+  GEOAPIFY_API_KEY: resolveGeoapifyApiKey(),
   PROFILE_REMINDER_SECONDS,
 } as const;
+

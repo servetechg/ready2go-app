@@ -22,6 +22,113 @@ export type ParsedAddress = {
   longitude: number;
 };
 
+export type GeoapifyProperties = {
+  place_id?: string;
+  name?: string;
+  formatted?: string;
+  address_line1?: string;
+  address_line2?: string;
+  housenumber?: string;
+  street?: string;
+  city?: string;
+  town?: string;
+  village?: string;
+  municipality?: string;
+  county?: string;
+  state?: string;
+  state_code?: string;
+  postcode?: string;
+  country?: string;
+  country_code?: string;
+  lat?: number;
+  lon?: number;
+};
+
+export type GeoapifyFeature = {
+  type: string;
+  properties: GeoapifyProperties;
+  geometry: {
+    type: string;
+    coordinates: [number, number];
+  };
+};
+
+export type GeoapifyResponse = {
+  type: string;
+  features?: GeoapifyFeature[];
+  message?: string;
+};
+
+const geoapifyCache = new Map<string, GeoapifyProperties>();
+
+export function getCachedGeoapifyProperties(placeId: string): GeoapifyProperties | undefined {
+  return geoapifyCache.get(placeId);
+}
+
+export function parseGeoapifyFeatureProperties(props: GeoapifyProperties): ParsedAddress {
+  const latitude = props.lat ?? 0;
+  const longitude = props.lon ?? 0;
+
+  const city =
+    props.city ||
+    props.town ||
+    props.village ||
+    props.municipality ||
+    props.county ||
+    props.state ||
+    props.name ||
+    props.address_line1 ||
+    '';
+
+  const state = props.state_code || props.state || '';
+
+  let streetAddress = '';
+  if (props.housenumber && props.street) {
+    streetAddress = `${props.housenumber} ${props.street}`;
+  } else if (props.street) {
+    streetAddress = props.street;
+  } else if (props.address_line1) {
+    const line1Lower = props.address_line1.trim().toLowerCase();
+    const cityLower = city.trim().toLowerCase();
+    const stateLower = (props.state || '').trim().toLowerCase();
+    const nameLower = (props.name || '').trim().toLowerCase();
+
+    if (
+      line1Lower !== cityLower &&
+      line1Lower !== stateLower &&
+      line1Lower !== nameLower
+    ) {
+      streetAddress = props.address_line1;
+    }
+  }
+
+  const zipCode =
+    props.postcode ||
+    (props.address_line1 && /^\d{5}(-\d{4})?$/.test(props.address_line1.trim())
+      ? props.address_line1.trim()
+      : '');
+
+  return {
+    streetAddress: streetAddress.trim(),
+    city: city.trim(),
+    state: state.trim(),
+    zipCode: zipCode.trim(),
+    latitude,
+    longitude,
+  };
+}
+
+export function parseGeoapifyFeatureToPlaceAddress(props: GeoapifyProperties): ParsedPlaceAddress {
+  const parsed = parseGeoapifyFeatureProperties(props);
+  return {
+    streetAddress: parsed.streetAddress,
+    city: parsed.city,
+    state: parsed.state,
+    zipCode: parsed.zipCode,
+    formattedAddress: props.formatted || '',
+  };
+}
+
 function getComponent(
   components: GoogleAddressComponent[],
   type: string,
@@ -111,35 +218,35 @@ type PlaceDetailsResult = {
   geometry: { location: { lat: number; lng: number } };
 };
 
-type PlaceDetailsResponse = {
-  status: string;
-  result?: PlaceDetailsResult;
-};
-
 export async function fetchPlaceDetails(
   placeId: string,
   apiKey: string,
 ): Promise<ParsedAddress | null> {
   if (!apiKey || !placeId) return null;
 
-  const url =
-    `https://maps.googleapis.com/maps/api/place/details/json?place_id=${encodeURIComponent(placeId)}` +
-    `&fields=address_components,geometry,formatted_address&key=${apiKey}`;
-
-  const response = await fetch(url);
-  const data = (await response.json()) as PlaceDetailsResponse;
-
-  if (data.status !== 'OK' || !data.result?.geometry?.location) {
-    return null;
+  const cached = geoapifyCache.get(placeId);
+  if (cached) {
+    return parseGeoapifyFeatureProperties(cached);
   }
 
-  const { lat, lng } = data.result.geometry.location;
-  return parseAddressComponents(
-    data.result.address_components ?? [],
-    lat,
-    lng,
-    data.result.formatted_address,
-  );
+  try {
+    const url = `https://api.geoapify.com/v2/place-details?id=${encodeURIComponent(placeId)}&apiKey=${apiKey}`;
+    const response = await fetch(url);
+    const data = (await response.json()) as GeoapifyResponse;
+
+    const feature = data.features?.[0];
+    if (!feature?.properties) return null;
+
+    const props = feature.properties;
+    if (props.lat === undefined && feature.geometry?.coordinates) {
+      props.lon = feature.geometry.coordinates[0];
+      props.lat = feature.geometry.coordinates[1];
+    }
+    geoapifyCache.set(placeId, props);
+    return parseGeoapifyFeatureProperties(props);
+  } catch {
+    return null;
+  }
 }
 
 export function parsePlaceDetails(
@@ -155,14 +262,6 @@ export function parsePlaceDetails(
   );
 }
 
-type GeocodeResponse = {
-  status: string;
-  results?: Array<{
-    address_components: GoogleAddressComponent[];
-    formatted_address?: string;
-  }>;
-};
-
 export async function reverseGeocode(
   latitude: number,
   longitude: number,
@@ -170,20 +269,23 @@ export async function reverseGeocode(
 ): Promise<ParsedAddress | null> {
   if (!apiKey) return null;
 
-  const url = `https://maps.googleapis.com/maps/api/geocode/json?latlng=${latitude},${longitude}&key=${apiKey}`;
-  const response = await fetch(url);
-  const data = (await response.json()) as GeocodeResponse;
+  try {
+    const url = `https://api.geoapify.com/v1/geocode/reverse?lat=${latitude}&lon=${longitude}&apiKey=${apiKey}`;
+    const response = await fetch(url);
+    const data = (await response.json()) as GeoapifyResponse;
 
-  if (data.status !== 'OK' || !data.results?.[0]) {
+    const feature = data.features?.[0];
+    if (!feature?.properties) return null;
+
+    const props = feature.properties;
+    if (props.lat === undefined && feature.geometry?.coordinates) {
+      props.lon = feature.geometry.coordinates[0];
+      props.lat = feature.geometry.coordinates[1];
+    }
+    return parseGeoapifyFeatureProperties(props);
+  } catch {
     return null;
   }
-
-  return parseAddressComponents(
-    data.results[0].address_components,
-    latitude,
-    longitude,
-    data.results[0].formatted_address,
-  );
 }
 
 export const DEFAULT_MAP_CENTER = {
@@ -208,12 +310,6 @@ export type PlaceSuggestion = {
   };
 };
 
-type AutocompleteResponse = {
-  status: string;
-  predictions?: PlaceSuggestion[];
-  error_message?: string;
-};
-
 export async function fetchPlaceSuggestions(
   input: string,
   apiKey: string,
@@ -223,23 +319,48 @@ export async function fetchPlaceSuggestions(
     return { suggestions: [] };
   }
 
-  const url =
-    `https://maps.googleapis.com/maps/api/place/autocomplete/json?` +
-    `input=${encodeURIComponent(trimmed)}&key=${apiKey}&components=country:us&language=en`;
+  try {
+    const url = `https://api.geoapify.com/v1/geocode/autocomplete?text=${encodeURIComponent(trimmed)}&apiKey=${apiKey}`;
+    const response = await fetch(url);
+    const data = (await response.json()) as GeoapifyResponse;
 
-  const response = await fetch(url);
-  const data = (await response.json()) as AutocompleteResponse;
+    if (data.message) {
+      return { suggestions: [], error: data.message };
+    }
 
-  if (data.status === 'ZERO_RESULTS') {
-    return { suggestions: [] };
-  }
+    if (!data.features || data.features.length === 0) {
+      return { suggestions: [] };
+    }
 
-  if (data.status !== 'OK') {
+    const suggestions: PlaceSuggestion[] = data.features.map((feature) => {
+      const props = feature.properties;
+      if (props.lat === undefined && feature.geometry?.coordinates) {
+        props.lon = feature.geometry.coordinates[0];
+        props.lat = feature.geometry.coordinates[1];
+      }
+
+      const placeId = props.place_id || `${props.lat}_${props.lon}_${Math.random()}`;
+      props.place_id = placeId;
+      geoapifyCache.set(placeId, props);
+
+      const mainText = props.address_line1 || props.name || props.formatted || '';
+      const secondaryText = props.address_line2 || props.country || '';
+
+      return {
+        place_id: placeId,
+        description: props.formatted || `${mainText}, ${secondaryText}`.replace(/^,\s*|,\s*$/g, ''),
+        structured_formatting: {
+          main_text: mainText,
+          secondary_text: secondaryText,
+        },
+      };
+    });
+
+    return { suggestions };
+  } catch (err) {
     return {
       suggestions: [],
-      error: data.error_message ?? data.status,
+      error: err instanceof Error ? err.message : 'Autocomplete request failed',
     };
   }
-
-  return { suggestions: data.predictions ?? [] };
 }
