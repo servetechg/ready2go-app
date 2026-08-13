@@ -320,7 +320,7 @@ export async function fetchPlaceSuggestions(
   }
 
   try {
-    const url = `https://api.geoapify.com/v1/geocode/autocomplete?text=${encodeURIComponent(trimmed)}&apiKey=${apiKey}`;
+    const url = `https://api.geoapify.com/v1/geocode/autocomplete?text=${encodeURIComponent(trimmed)}&filter=countrycode:us&apiKey=${apiKey}`;
     const response = await fetch(url);
     const data = (await response.json()) as GeoapifyResponse;
 

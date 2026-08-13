@@ -1,6 +1,6 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
 
-import { fetchCurrentUser, logout, logoutUser } from '@/redux/slices/authSlice';
+import { fetchCurrentUser, logout, logoutUser, signupUser, verifyOtp } from '@/redux/slices/authSlice';
 import type { ProfilePayload } from '@/types/api';
 import type { AddressData, AlertLocation, RegistrationState, YesNoStepData } from '@/types/registration';
 import type { ProfileDocumentValue } from '@/types/profileDocument';
@@ -41,7 +41,6 @@ function applyProfilePayload(state: RegistrationState, profile: ProfilePayload) 
   if (p.alertLocations) {
     state.alertLocations = pickAlertLocations(p.alertLocations);
   }
-  state.currentStep = 8;
 }
 
 function markRegistrationComplete(state: RegistrationState) {
@@ -140,6 +139,13 @@ const registrationSlice = createSlice({
           markRegistrationComplete(state);
         }
       })
+      .addCase(verifyOtp.fulfilled, (state, action) => {
+        if (action.payload.kind === 'auth' && !toBoolean(action.payload.data.user?.profileComplete)) {
+          state.currentStep = 1;
+          state.isComplete = false;
+        }
+      })
+      .addCase(signupUser.fulfilled, () => initialRegistrationState())
       .addCase(logoutUser.fulfilled, () => initialRegistrationState())
       .addCase(logoutUser.rejected, () => initialRegistrationState())
       .addCase(logout, () => initialRegistrationState());

@@ -145,6 +145,7 @@ export function AddressPickerScreen({
   const webRef = useRef<WebView>(null);
   const mapReadyRef = useRef(false);
   const searchRef = useRef<TextInput>(null);
+  const justSelectedRef = useRef(false);
 
   const [searchText, setSearchText] = useState('');
   const [suggestions, setSuggestions] = useState<PlaceSuggestion[]>([]);
@@ -169,16 +170,31 @@ export function AddressPickerScreen({
   }, [value.latitude, value.longitude]);
 
   useEffect(() => {
+    if (justSelectedRef.current) {
+      justSelectedRef.current = false;
+      setSuggestions([]);
+      setSearchError(null);
+      setSearchLoading(false);
+      setDropdownOpen(false);
+      return;
+    }
+
     if (searchText.trim().length < 2) {
       setSuggestions([]);
       setSearchError(null);
       setSearchLoading(false);
+      setDropdownOpen(false);
       return;
     }
 
     setSearchLoading(true);
     const timer = setTimeout(() => {
       void searchPlaces(searchText).then(({ suggestions: next, error }) => {
+        if (justSelectedRef.current) {
+          setSearchLoading(false);
+          setDropdownOpen(false);
+          return;
+        }
         setSuggestions(next);
         setSearchError(error ?? null);
         setSearchLoading(false);
@@ -198,11 +214,22 @@ export function AddressPickerScreen({
     runJs(`window.__setMarker(${latitude}, ${longitude})`);
   }, [runJs]);
 
+function formatParsedLabel(parsed: ParsedAddress): string {
+  const parts = [
+    parsed.streetAddress,
+    parsed.city,
+    parsed.state ? `${parsed.state}${parsed.zipCode ? ' ' + parsed.zipCode : ''}` : '',
+  ].filter(Boolean);
+  return parts.join(', ');
+}
+
   const applyParsedAddress = useCallback(
     (parsed: ParsedAddress, useCurrentLocation: boolean, label?: string) => {
+      justSelectedRef.current = true;
       setPin({ latitude: parsed.latitude, longitude: parsed.longitude });
       focusMapOn(parsed.latitude, parsed.longitude);
-      if (label) setSearchText(label);
+      const displayLabel = label || formatParsedLabel(parsed);
+      if (displayLabel) setSearchText(displayLabel);
       setDropdownOpen(false);
       setSuggestions([]);
       onChange({
@@ -220,8 +247,10 @@ export function AddressPickerScreen({
 
   const handleSelectSuggestion = useCallback(
     async (item: PlaceSuggestion) => {
+      justSelectedRef.current = true;
       setGeocoding(true);
       setDropdownOpen(false);
+      setSuggestions([]);
       searchRef.current?.blur();
       try {
         const parsed = await resolvePlaceSelection(item.place_id, apiKey);
@@ -398,11 +427,14 @@ export function AddressPickerScreen({
           ref={searchRef}
           value={searchText}
           onChangeText={(text) => {
+            justSelectedRef.current = false;
             setSearchText(text);
             setDropdownOpen(true);
           }}
           onFocus={() => {
-            if (searchText.trim().length >= 2) setDropdownOpen(true);
+            if (!justSelectedRef.current && searchText.trim().length >= 2 && suggestions.length > 0) {
+              setDropdownOpen(true);
+            }
           }}
           placeholder="Search city, area, or street address"
           placeholderTextColor={colors.textMuted}

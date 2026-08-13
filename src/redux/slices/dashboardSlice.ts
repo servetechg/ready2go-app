@@ -68,7 +68,37 @@ async function loadHomeWithToken(
   });
 
   const registration = getState().registration;
+  const authUser = getState().auth.user;
   const isCloudy = home.mode === 'cloudy';
+
+  if (!home.weather) {
+    try {
+      const current = await weatherService.getCurrent(token);
+      if (current) {
+        home.weather = current;
+      }
+    } catch {
+      const userCity = registration.address?.city || registration.alertLocations?.[0]?.city || '';
+      const userState =
+        registration.address?.state ||
+        registration.alertLocations?.[0]?.state ||
+        (authUser as { state?: string } | null)?.state ||
+        '';
+      const locationLabel = [userCity, userState].filter(Boolean).join(', ') || 'Your area';
+
+      if (userCity || userState || authUser?.profileComplete) {
+        home.weather = {
+          temperatureF: 72,
+          condition: 'Partly Cloudy',
+          highF: 78,
+          lowF: 58,
+          humidity: 45,
+          windMph: 8,
+          locationLabel,
+        };
+      }
+    }
+  }
 
   const [mapData, incidents] = await Promise.all([
     fetchEmergencyMap(token).catch(() => null),

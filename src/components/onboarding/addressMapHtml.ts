@@ -5,9 +5,8 @@ import { palette } from '@/theme';
 /**
  * Lightweight Leaflet map for the registration address picker.
  *
- * Supports a single draggable marker, click-to-place, and
- * `__setView` / `__setMarker` bridge methods called from React Native.
- * No Google Maps API key required — tiles come from CARTO CDN.
+ * Renders a crisp SVG location pin (no broken image assets) with
+ * draggable marker support, click-to-place, and RN bridge methods.
  */
 export function buildAddressMapHtml(): string {
   const inlineJs = (source: string) => source.replace(/<\//g, '<\\/');
@@ -22,6 +21,18 @@ export function buildAddressMapHtml(): string {
   html, body, #map { margin: 0; padding: 0; height: 100%; width: 100%; }
   body { overflow: hidden; -webkit-tap-highlight-color: transparent; }
   .leaflet-container { background: ${palette.borderLight}; outline: none; font-family: -apple-system, Roboto, system-ui, sans-serif; }
+  .r2g-pin { width: 36px; height: 46px; display: flex; flex-direction: column; align-items: center; }
+  .r2g-pin-head {
+    width: 34px; height: 34px; border-radius: 17px; box-sizing: border-box;
+    background: #1B4F8A; border: 2.5px solid #FFFFFF; color: #FFFFFF;
+    display: flex; align-items: center; justify-content: center;
+    box-shadow: 0 3px 6px rgba(0, 0, 0, 0.4);
+  }
+  .r2g-pin-tail {
+    width: 0; height: 0; margin-top: -2px;
+    border-left: 7px solid transparent; border-right: 7px solid transparent;
+    border-top: 10px solid #1B4F8A;
+  }
 </style>
 </head>
 <body>
@@ -60,13 +71,20 @@ export function buildAddressMapHtml(): string {
     updateWhenIdle: false
   }).addTo(map);
 
+  var pinIcon = L.divIcon({
+    html: '<div class="r2g-pin"><div class="r2g-pin-head"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="20" height="20" fill="#FFFFFF"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg></div><div class="r2g-pin-tail"></div></div>',
+    className: '',
+    iconSize: [36, 46],
+    iconAnchor: [18, 46]
+  });
+
   var marker = null;
 
   function ensureMarker(lat, lng) {
     if (marker) {
       marker.setLatLng([lat, lng]);
     } else {
-      marker = L.marker([lat, lng], { draggable: true }).addTo(map);
+      marker = L.marker([lat, lng], { icon: pinIcon, draggable: true }).addTo(map);
       marker.on('dragend', function () {
         var pos = marker.getLatLng();
         post({ type: 'markerDragEnd', coordinate: { latitude: pos.lat, longitude: pos.lng } });

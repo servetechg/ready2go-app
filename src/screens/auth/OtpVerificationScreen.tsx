@@ -50,27 +50,40 @@ export function OtpVerificationScreen() {
   const formatted = countdown.formatted;
   const resetTimer = countdown.reset;
 
-  const { control, handleSubmit, formState: { errors } } = useForm<OtpFormData>({
+  const { control, handleSubmit, watch, formState: { errors } } = useForm<OtpFormData>({
     resolver: zodResolver(otpSchema),
     defaultValues: { code: '' },
   });
+
+  const submittedCodeRef = React.useRef<string>('');
+  const codeValue = watch('code');
 
   React.useEffect(() => {
     dispatch(clearAuthError());
   }, [dispatch]);
 
-  const onSubmit = async (data: OtpFormData) => {
-    const result = await dispatch(verifyOtp({ email, code: data.code, purpose }));
-    if (!verifyOtp.fulfilled.match(result)) return;
+  const onSubmit = React.useCallback(
+    async (data: OtpFormData) => {
+      const result = await dispatch(verifyOtp({ email, code: data.code, purpose }));
+      if (!verifyOtp.fulfilled.match(result)) return;
 
-    if (result.payload.kind === 'password_reset') {
-      showSuccess('Code verified');
-      navigation.navigate(AUTH_ROUTES.UPDATE_PASSWORD, { email });
-      return;
+      if (result.payload.kind === 'password_reset') {
+        showSuccess('Code verified');
+        navigation.navigate(AUTH_ROUTES.UPDATE_PASSWORD, { email });
+        return;
+      }
+
+      showSuccess('Email verified! Complete your emergency profile.');
+    },
+    [dispatch, email, navigation, purpose, showSuccess],
+  );
+
+  React.useEffect(() => {
+    if (codeValue?.length === 6 && codeValue !== submittedCodeRef.current && !isLoading) {
+      submittedCodeRef.current = codeValue;
+      void handleSubmit(onSubmit)();
     }
-
-    showSuccess('Email verified! Complete your emergency profile.');
-  };
+  }, [codeValue, handleSubmit, isLoading, onSubmit]);
 
   const handleResend = async () => {
     if (isResetFlow && !canResend) return;

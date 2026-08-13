@@ -1,3 +1,5 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
 import { MOCK_BLUE_SKY_NEWS } from '@/constants/emergency';
 import { resolveStateLabel, US_STATE_NAMES } from '@/constants/usStates';
 import { apiRequest } from '@/services/api/client';
@@ -342,7 +344,8 @@ const NATIONAL_QUERIES = [
  */
 const MAX_REQUESTS_PER_LOAD = 3;
 const ENOUGH_ARTICLES = 8;
-const NEWS_CACHE_TTL_MS = 15 * 60 * 1000;
+const NEWS_CACHE_TTL_MS = 30 * 60 * 1000;
+const DISK_CACHE_PREFIX = 'ready2go_news_cache_v2_';
 
 const newsCache = new Map<string, { cachedAt: number; response: PersonalizedNewsApiResponse }>();
 
@@ -358,6 +361,44 @@ function readCache(key: string): PersonalizedNewsApiResponse | null {
     return null;
   }
   return hit.response;
+}
+
+async function readDiskCache(key: string): Promise<PersonalizedNewsApiResponse | null> {
+  const memoryHit = readCache(key);
+  if (memoryHit) return memoryHit;
+
+  try {
+    const raw = await AsyncStorage.getItem(DISK_CACHE_PREFIX + key);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (Date.now() - parsed.cachedAt > NEWS_CACHE_TTL_MS) {
+      void AsyncStorage.removeItem(DISK_CACHE_PREFIX + key);
+      return null;
+    }
+    newsCache.set(key, { cachedAt: parsed.cachedAt, response: parsed.response });
+    return parsed.response;
+  } catch {
+    return null;
+  }
+}
+
+async function writeDiskCache(key: string, response: PersonalizedNewsApiResponse): Promise<void> {
+  try {
+    newsCache.set(key, { cachedAt: Date.now(), response });
+    await AsyncStorage.setItem(
+      DISK_CACHE_PREFIX + key,
+      JSON.stringify({ cachedAt: Date.now(), response }),
+    );
+  } catch {
+    // best-effort
+  }
+}
+
+export async function getCachedPersonalizedNews(
+  userState?: string | null,
+): Promise<PersonalizedNewsApiResponse | null> {
+  const cacheKey = `${(userState || '').trim().toUpperCase()}|`;
+  return readDiskCache(cacheKey);
 }
 
 function buildNewsDataQueries(stateName: string | null): string[] {
@@ -637,8 +678,8 @@ async function fetchFromWebz(
   const collected: PersonalizedNewsArticle[] = [];
   let nextPath: string | null = null;
   let pagesFetched = 0;
-  // First load may need a second page after state/topic filtering.
-  const maxPages = page?.startsWith('/api/news') ? 1 : 3;
+  // Page size 50 gets 2.5x more articles in 1 single HTTP request.
+  const maxPages = page?.startsWith('/api/news') ? 1 : 2;
 
   let requestUrl: string | null;
   if (page && page.startsWith('/api/news')) {
@@ -649,7 +690,7 @@ async function fetchFromWebz(
     url.searchParams.set('sort', 'published');
     url.searchParams.set('order', 'desc');
     url.searchParams.set('format', 'json');
-    url.searchParams.set('size', '20');
+    url.searchParams.set('size', '50');
     url.searchParams.set('webz_reporter', 'true');
     url.searchParams.set('includeSyndicated', 'false');
     url.searchParams.set('allowNewsHistory', 'false');
@@ -679,6 +720,12 @@ async function fetchFromWebz(
 
     nextPath =
       typeof data.next === 'string' && data.next.startsWith('/api/news') ? data.next : null;
+
+    // Fast exit: If 1st request returned >= 4 emergency articles, return immediately!
+    if (collected.length >= 4 && !page) {
+      break;
+    }
+
     const hasMore: boolean = Boolean(data.more_results_available) && Boolean(nextPath);
     requestUrl =
       hasMore && collected.length < ENOUGH_ARTICLES && nextPath
@@ -835,7 +882,7 @@ export async function fetchPersonalizedNews(
       }
       const response = buildResponse(webz.articles, webz.nextPage);
       if (webz.articles.length > 0) {
-        newsCache.set(cacheKey, { cachedAt: Date.now(), response });
+        void writeDiskCache(cacheKey, response);
         return response;
       }
       if (webz.articles.length > 0 || page?.startsWith('/api/news')) {
@@ -854,7 +901,7 @@ export async function fetchPersonalizedNews(
     const newsData = await fetchFromNewsData(page, stateFilterName, stateFilterName, stateCode);
     const response = buildResponse(newsData.articles, newsData.nextPage);
     if (newsData.articles.length > 0) {
-      newsCache.set(cacheKey, { cachedAt: Date.now(), response });
+      void writeDiskCache(cacheKey, response);
       return response;
     }
   } catch {
@@ -863,6 +910,6 @@ export async function fetchPersonalizedNews(
 
   const fallbackArticles = getFallbackMockArticles();
   const fallbackResponse = buildResponse(fallbackArticles, null);
-  newsCache.set(cacheKey, { cachedAt: Date.now(), response: fallbackResponse });
+  void writeDiskCache(cacheKey, fallbackResponse);
   return fallbackResponse;
 }
