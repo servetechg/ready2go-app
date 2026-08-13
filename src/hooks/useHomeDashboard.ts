@@ -25,7 +25,7 @@ export function useHomeDashboard() {
   const profileComplete = toBoolean(useAppSelector((s) => s.auth.user?.profileComplete));
   const alertItems = useAppSelector((s) => s.alerts.items ?? []);
   const alertsLastFetchedAt = useAppSelector((s) => s.alerts.lastFetchedAt);
-  const preparednessCategories = useAppSelector((s) => s.preparedness.categories);
+  const prepLastFetchedAt = useAppSelector((s) => s.preparedness.lastFetchedAt);
   const preparednessLoading = useAppSelector((s) => s.preparedness.loading);
 
   useFocusEffect(
@@ -44,7 +44,8 @@ export function useHomeDashboard() {
         void dispatch(fetchAlerts());
       }
 
-      if (profileComplete && preparednessCategories.length === 0 && !preparednessLoading) {
+      const prepStale = !prepLastFetchedAt || Date.now() - prepLastFetchedAt > STALE_MS;
+      if (profileComplete && prepStale && !preparednessLoading) {
         void dispatch(fetchCategories(undefined));
       }
     }, [
@@ -56,7 +57,7 @@ export function useHomeDashboard() {
       alertItems.length,
       alertsLastFetchedAt,
       profileComplete,
-      preparednessCategories.length,
+      prepLastFetchedAt,
       preparednessLoading,
     ]),
   );

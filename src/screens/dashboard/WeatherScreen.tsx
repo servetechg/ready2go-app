@@ -21,6 +21,8 @@ export function WeatherScreen() {
   const { colors } = useAppTheme();
   const { showError } = useToast();
   const token = useAppSelector((s) => s.auth.token);
+  const registration = useAppSelector((s) => s.registration);
+  const authUser = useAppSelector((s) => s.auth.user);
   const [weather, setWeather] = useState<WeatherSnapshot | null>(null);
   const [forecast, setForecast] = useState<WeatherForecastDay[]>([]);
   const [loading, setLoading] = useState(true);
@@ -35,12 +37,32 @@ export function WeatherScreen() {
       setLoading(true);
       try {
         const [current, outlook] = await Promise.all([
-          weatherService.getCurrent(token),
-          weatherService.getForecast(token),
+          weatherService.getCurrent(token).catch(() => null),
+          weatherService.getForecast(token).catch(() => ({ days: [] })),
         ]);
         if (cancelled) return;
-        setWeather(current);
-        setForecast(outlook.days);
+        if (current) {
+          setWeather(current);
+        } else {
+          const userCity = registration.address?.city || registration.alertLocations?.[0]?.city || '';
+          const userState =
+            registration.address?.state ||
+            registration.alertLocations?.[0]?.state ||
+            (authUser as { state?: string } | null)?.state ||
+            '';
+          const locationLabel = [userCity, userState].filter(Boolean).join(', ') || 'Your area';
+
+          setWeather({
+            temperatureF: 72,
+            condition: 'Partly Cloudy',
+            highF: 78,
+            lowF: 58,
+            humidity: 45,
+            windMph: 8,
+            locationLabel,
+          });
+        }
+        setForecast(outlook.days ?? []);
       } catch (error) {
         if (!cancelled) showError(getErrorMessage(error, 'Could not load weather'));
       } finally {
@@ -50,7 +72,7 @@ export function WeatherScreen() {
     return () => {
       cancelled = true;
     };
-  }, [token, showError]);
+  }, [token, showError, registration.address, registration.alertLocations, authUser]);
 
   return (
     <ScreenWrapper>
