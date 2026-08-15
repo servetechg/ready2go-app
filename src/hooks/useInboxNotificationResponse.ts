@@ -2,8 +2,10 @@ import { useEffect } from 'react';
 
 import { DISASTER_NOTIFICATION_SCREEN } from '@/constants/disasterSurvey';
 import { INBOX_NOTIFICATION_SCREEN } from '@/constants/notifications';
+import { IDA_NOTIFICATION_SCREEN } from '@/constants/routes';
 import {
   navigateToDisasterSurveyIfActive,
+  navigateToIdaIfActive,
   navigateToNotifications,
 } from '@/navigation/navigationRef';
 import { markSurveyNotificationPresented } from '@/services/notification.service';
@@ -35,6 +37,10 @@ function handleNotificationNavigation(data: Record<string, unknown> | undefined)
 
   if (screen === DISASTER_NOTIFICATION_SCREEN || notificationType === 'disaster_survey') {
     void navigateToDisasterSurveyIfActive();
+    return;
+  }
+  if (screen === IDA_NOTIFICATION_SCREEN || notificationType === 'ida_application') {
+    void navigateToIdaIfActive();
     return;
   }
   if (screen === INBOX_NOTIFICATION_SCREEN) {

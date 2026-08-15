@@ -49,6 +49,7 @@ export const MAIN_STACK_ROUTES = {
   STATIC_INFO: 'StaticInfo',
   FAQ: 'Faq',
   DISASTER_SURVEY: 'DisasterSurvey',
+  IDA: 'InitialDisasterAssistance',
   CITIZEN_ASSISTANCE: 'CitizenAssistance',
   NOTIFICATIONS: 'Notifications',
   SPLASH_PREVIEW: 'SplashPreview',
@@ -59,6 +60,18 @@ export const DISASTER_SURVEY_ROUTES = {
   IMMEDIATE_NEEDS: 'DisasterImmediateNeeds',
   COMPLETE: 'DisasterSurveyComplete',
 } as const;
+
+export const IDA_ROUTES = {
+  INTRO: 'IdaIntro',
+  APPLICANT: 'IdaApplicantHousehold',
+  DISASTER_HOUSING: 'IdaDisasterHousing',
+  NEEDS_INSURANCE: 'IdaNeedsInsurance',
+  DOCUMENTS: 'IdaDocuments',
+  COMPLETE: 'IdaComplete',
+} as const;
+
+/** Push / inbox deep-link screen key (matches backend IDA_PUSH_SCREEN). */
+export const IDA_NOTIFICATION_SCREEN = 'idaApplication' as const;
 
 export const DRAWER_ROUTES = {
   MAIN: 'DrawerMain',

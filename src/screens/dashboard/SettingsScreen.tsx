@@ -9,8 +9,12 @@ import { AppCard } from '@/components/ui/AppCard';
 import { AppText } from '@/components/ui/AppText';
 import { HOME_STACK_ROUTES, MAIN_STACK_ROUTES, TAB_ROUTES } from '@/constants/routes';
 import { useActiveDisasterSurvey } from '@/hooks/useActiveDisasterSurvey';
+import { useActiveIda } from '@/hooks/useActiveIda';
 import { useAppTheme } from '@/hooks/useAppTheme';
-import { navigateToDisasterSurveyIfActive } from '@/navigation/navigationRef';
+import {
+  navigateToDisasterSurveyIfActive,
+  navigateToIdaIfActive,
+} from '@/navigation/navigationRef';
 import { useAppSelector } from '@/redux/hooks';
 import { spacing } from '@/theme';
 import type { MainStackParamList } from '@/types/navigation';
@@ -22,6 +26,7 @@ export function SettingsScreen() {
   const { colors } = useAppTheme();
   const authToken = useAppSelector((s) => s.auth.token);
   const { invitation, hasOpenSurvey } = useActiveDisasterSurvey(authToken);
+  const { invitation: idaInvitation, hasOpenIda } = useActiveIda(authToken);
 
   const openWeatherAlerts = () => {
     navigation.navigate(MAIN_STACK_ROUTES.TABS, {
@@ -38,7 +43,7 @@ export function SettingsScreen() {
       <ScrollView contentContainerStyle={styles.content}>
         {hasOpenSurvey && invitation ? (
           <Pressable onPress={() => void navigateToDisasterSurveyIfActive()}>
-            <AppCard style={[styles.card, styles.surveyCard]}>
+            <AppCard style={{ ...styles.card, ...styles.surveyCard }}>
               <AppText variant="label">Disaster relief survey</AppText>
               <AppText variant="bodySmall" color={colors.textSecondary}>
                 {invitation.campaign.title}
@@ -47,6 +52,22 @@ export function SettingsScreen() {
                 {invitation.status === 'needs_info'
                   ? 'Tap to add missing comments, pictures, or videos'
                   : 'Tap to complete your status assessment'}
+              </AppText>
+            </AppCard>
+          </Pressable>
+        ) : null}
+
+        {hasOpenIda && idaInvitation ? (
+          <Pressable onPress={() => void navigateToIdaIfActive()}>
+            <AppCard style={{ ...styles.card, ...styles.surveyCard }}>
+              <AppText variant="label">Initial Disaster Assistance</AppText>
+              <AppText variant="bodySmall" color={colors.textSecondary}>
+                {idaInvitation.campaign.title}
+              </AppText>
+              <AppText variant="bodySmall" color={colors.primary} style={styles.surveyCta}>
+                {idaInvitation.status === 'needs_info'
+                  ? 'Tap to add missing documents or details'
+                  : 'Tap to complete your assistance application'}
               </AppText>
             </AppCard>
           </Pressable>

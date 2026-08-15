@@ -4,12 +4,15 @@ import Toast from 'react-native-toast-message';
 import {
   DISASTER_SURVEY_ROUTES,
   DRAWER_ROUTES,
+  IDA_ROUTES,
   MAIN_STACK_ROUTES,
   ROOT_ROUTES,
 } from '@/constants/routes';
 import { setDisasterSurveyInvitation } from '@/redux/slices/disasterSurveySlice';
+import { setIdaInvitation } from '@/redux/slices/idaSlice';
 import { store } from '@/redux/store';
 import { disasterSurveyService } from '@/services/disasterSurvey.service';
+import { idaService } from '@/services/ida.service';
 import type { RootStackParamList } from '@/types/navigation';
 
 export const navigationRef = createNavigationContainerRef<RootStackParamList>();
@@ -86,6 +89,51 @@ export async function navigateToDisasterSurveyIfActive(): Promise<boolean> {
     }
     store.dispatch(setDisasterSurveyInvitation(invitation));
     navigateToDisasterSurveyIntro();
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export function navigateToIdaIntro(): void {
+  if (!navigationRef.isReady()) return;
+
+  navigationRef.dispatch(
+    CommonActions.navigate({
+      name: ROOT_ROUTES.MAIN,
+      params: {
+        screen: DRAWER_ROUTES.MAIN,
+        params: {
+          screen: MAIN_STACK_ROUTES.IDA,
+          params: {
+            screen: IDA_ROUTES.INTRO,
+          },
+        },
+      },
+    }),
+  );
+}
+
+/**
+ * Opens IDA only when the user still has a pending/opened/needs_info invitation.
+ */
+export async function navigateToIdaIfActive(): Promise<boolean> {
+  const token = store.getState().auth.token;
+  if (!token) return false;
+
+  try {
+    const { invitation } = await idaService.getActive(token);
+    if (!invitation || invitation.status === 'submitted') {
+      store.dispatch(setIdaInvitation(null));
+      Toast.show({
+        type: 'info',
+        text1: 'This application is already completed.',
+        position: 'bottom',
+      });
+      return false;
+    }
+    store.dispatch(setIdaInvitation(invitation));
+    navigateToIdaIntro();
     return true;
   } catch {
     return false;

@@ -72,6 +72,7 @@ module.exports = {
           color: '#1B4F8A',
         },
       ],
+      '@react-native-community/datetimepicker',
       [
         'expo-build-properties',
         {

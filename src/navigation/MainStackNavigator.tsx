@@ -9,6 +9,7 @@ import { StaticInfoScreen } from '@/screens/dashboard/StaticInfoScreen';
 import type { MainStackParamList } from '@/types/navigation';
 
 import { DisasterSurveyStackNavigator } from './DisasterSurveyStackNavigator';
+import { IdaStackNavigator } from './IdaStackNavigator';
 import { MainTabNavigator } from './MainTabNavigator';
 import { stackScreenOptions } from './screenOptions';
 import { CitizenAssistanceScreen } from '@/screens/citizen/CitizenAssistanceScreen';
@@ -42,6 +43,16 @@ export function MainStackNavigator() {
       <Stack.Screen
         name={MAIN_STACK_ROUTES.DISASTER_SURVEY}
         component={DisasterSurveyStackNavigator}
+        options={{
+          headerShown: false,
+          presentation: 'card',
+          gestureEnabled: false,
+          detachPreviousScreen: true,
+        }}
+      />
+      <Stack.Screen
+        name={MAIN_STACK_ROUTES.IDA}
+        component={IdaStackNavigator}
         options={{
           headerShown: false,
           presentation: 'card',

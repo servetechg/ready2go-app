@@ -5,6 +5,7 @@ import {
   DISASTER_SURVEY_ROUTES,
   DRAWER_ROUTES,
   HOME_STACK_ROUTES,
+  IDA_ROUTES,
   MAIN_STACK_ROUTES,
   ONBOARDING_ROUTES,
   PREPAREDNESS_STACK_ROUTES,
@@ -70,12 +71,22 @@ export type DisasterSurveyStackParamList = {
   [DISASTER_SURVEY_ROUTES.COMPLETE]: undefined;
 };
 
+export type IdaStackParamList = {
+  [IDA_ROUTES.INTRO]: undefined;
+  [IDA_ROUTES.APPLICANT]: undefined;
+  [IDA_ROUTES.DISASTER_HOUSING]: undefined;
+  [IDA_ROUTES.NEEDS_INSURANCE]: undefined;
+  [IDA_ROUTES.DOCUMENTS]: undefined;
+  [IDA_ROUTES.COMPLETE]: undefined;
+};
+
 export type MainStackParamList = {
   [MAIN_STACK_ROUTES.TABS]: NavigatorScreenParams<MainTabParamList>;
   [MAIN_STACK_ROUTES.SETTINGS]: undefined;
   [MAIN_STACK_ROUTES.STATIC_INFO]: { title: string; body: string };
   [MAIN_STACK_ROUTES.FAQ]: undefined;
   [MAIN_STACK_ROUTES.DISASTER_SURVEY]: NavigatorScreenParams<DisasterSurveyStackParamList>;
+  [MAIN_STACK_ROUTES.IDA]: NavigatorScreenParams<IdaStackParamList>;
   [MAIN_STACK_ROUTES.CITIZEN_ASSISTANCE]: undefined;
   [MAIN_STACK_ROUTES.NOTIFICATIONS]: undefined;
   [MAIN_STACK_ROUTES.SPLASH_PREVIEW]: undefined;

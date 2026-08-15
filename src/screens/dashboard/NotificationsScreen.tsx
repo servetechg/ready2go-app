@@ -20,6 +20,7 @@ import { usePullToRefresh } from '@/hooks/usePullToRefresh';
 import {
   navigateToCitizenAssistance,
   navigateToDisasterSurveyIfActive,
+  navigateToIdaIfActive,
 } from '@/navigation/navigationRef';
 import { useAppDispatch, useAppSelector } from '@/redux/hooks';
 import {
@@ -38,6 +39,7 @@ const TYPE_ICONS: Record<InboxNotificationType, keyof typeof Ionicons.glyphMap> 
   citizen_report_resolved: 'checkmark-circle',
   alert_dispatched: 'warning',
   disaster_survey: 'document-text',
+  ida_application: 'clipboard',
   ai_report: 'sparkles',
   responder_approval: 'shield',
   system: 'notifications',
@@ -142,6 +144,10 @@ export function NotificationsScreen() {
       }
       if (item.type === 'disaster_survey') {
         void navigateToDisasterSurveyIfActive();
+        return;
+      }
+      if (item.type === 'ida_application') {
+        void navigateToIdaIfActive();
       }
     },
     [dispatch],
