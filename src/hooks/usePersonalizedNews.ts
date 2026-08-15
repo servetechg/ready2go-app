@@ -2,7 +2,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { useAppSelector } from '@/redux/hooks';
-import { fetchPersonalizedNews } from '@/services/personalizedNews.service';
+import { fetchPersonalizedNews, getCachedPersonalizedNews } from '@/services/personalizedNews.service';
 import type {
   PersonalizedNewsArticle,
   UsePersonalizedNewsResult,
@@ -41,13 +41,6 @@ export function usePersonalizedNews(): UsePersonalizedNewsResult {
   /** Identifies the account + state a fetch was made for, so a change triggers a refetch. */
   const fetchedKeyRef = useRef<string | null>(null);
 
-  useEffect(() => {
-    const fetchKey = `${token ?? ''}|${normalizeStateKey(userState)}`;
-    if (fetchedKeyRef.current === fetchKey) return;
-    fetchedKeyRef.current = fetchKey;
-    void loadInitial();
-  }, [token, userState, loadInitial]);
-
   const loadInitial = useCallback(async () => {
     if (!token) {
       setArticles([]);
@@ -58,10 +51,21 @@ export function usePersonalizedNews(): UsePersonalizedNewsResult {
     }
 
     try {
-      setLoading(true);
       setError(null);
-      setArticles([]);
-      setNextPage(null);
+      // 1. Instant load from disk cache if available (0ms delay)
+      const cached = await getCachedPersonalizedNews(userState);
+      if (cached && cached.results && cached.results.length > 0) {
+        setArticles(cached.results);
+        setIsPersonalized(cached.isPersonalized);
+        setUserStateCode(cached.userStateCode);
+        setMappedStateName(cached.mappedStateName);
+        setNextPage(cached.nextPage);
+        setLoading(false);
+      } else {
+        setLoading(true);
+      }
+
+      // 2. Fast background revalidation / fresh fetch
       const response = await fetchPersonalizedNews(token, null, userState);
 
       setArticles(response.results || []);
@@ -70,12 +74,20 @@ export function usePersonalizedNews(): UsePersonalizedNewsResult {
       setMappedStateName(response.mappedStateName);
       setNextPage(response.nextPage);
     } catch (err) {
-      setError(getErrorMessage(err, 'Failed to fetch news feed'));
-      setArticles([]);
+      if (articles.length === 0) {
+        setError(getErrorMessage(err, 'Failed to fetch news feed'));
+      }
     } finally {
       setLoading(false);
     }
-  }, [token, userState]);
+  }, [token, userState, articles.length]);
+
+  useEffect(() => {
+    const fetchKey = `${token ?? ''}|${normalizeStateKey(userState)}`;
+    if (fetchedKeyRef.current === fetchKey) return;
+    fetchedKeyRef.current = fetchKey;
+    void loadInitial();
+  }, [token, userState, loadInitial]);
 
   const reload = useCallback(async () => {
     if (!token) return;
@@ -122,8 +134,6 @@ export function usePersonalizedNews(): UsePersonalizedNewsResult {
       const fetchKey = `${token ?? ''}|${normalizeStateKey(userState)}`;
       if (fetchedKeyRef.current === fetchKey) return;
       fetchedKeyRef.current = fetchKey;
-      setArticles([]);
-      setNextPage(null);
       void loadInitial();
     }, [token, userState, loadInitial]),
   );

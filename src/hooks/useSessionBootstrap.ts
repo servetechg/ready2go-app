@@ -15,6 +15,7 @@ import {
   loadSession,
   saveSession,
 } from '@/utils/authSessionStorage';
+import { guardFreshInstall } from '@/utils/freshInstallGuard';
 
 /**
  * Restore session from disk once, then softly validate.
@@ -50,14 +51,25 @@ export function useSessionBootstrap() {
 
         if (!didRestore.current) {
           didRestore.current = true;
-          const stored = await loadSession();
+
+          // Detect fresh install and clear any stale session data
+          // that Android auto-backup may have restored.
+          const wasFreshInstall = await guardFreshInstall();
+          if (!alive) return;
+
+          const stored = wasFreshInstall ? null : await loadSession();
           if (!alive) return;
 
           if (stored && (stored.token || stored.refreshToken)) {
             access = asTokenString(stored.token) ?? access;
             refresh = asTokenString(stored.refreshToken) ?? refresh;
 
-            if (stored.user && access) {
+            const verified =
+              stored.user &&
+              (stored.user.emailVerified === true ||
+                String(stored.user.emailVerified).toLowerCase() === 'true');
+
+            if (stored.user && access && verified) {
               dispatch(
                 setCredentials({
                   user: stored.user,
@@ -65,14 +77,20 @@ export function useSessionBootstrap() {
                   refreshToken: refresh ?? undefined,
                 }),
               );
-            } else {
-              dispatch(
-                hydrateTokens({
-                  token: access,
-                  refreshToken: refresh,
-                  replace: true,
-                }),
-              );
+            } else if (access || refresh) {
+              // Skip hydrating unverified / orphan sessions — Login should show.
+              if (!verified && stored.user) {
+                access = null;
+                refresh = null;
+              } else if (!stored.user) {
+                dispatch(
+                  hydrateTokens({
+                    token: access,
+                    refreshToken: refresh,
+                    replace: true,
+                  }),
+                );
+              }
             }
 
             if (__DEV__) {
@@ -80,6 +98,7 @@ export function useSessionBootstrap() {
                 hasAccess: Boolean(access),
                 hasRefresh: Boolean(refresh),
                 hasUser: Boolean(stored.user),
+                verified: Boolean(verified),
               });
             }
           }

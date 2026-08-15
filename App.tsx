@@ -56,7 +56,13 @@ async function restoreSessionFromDisk(): Promise<void> {
   const hasReduxToken = Boolean(state?.token || state?.refreshToken);
   if (hasReduxToken) return;
 
-  if (stored.user && stored.token) {
+  // Unverified users must land on Login after app restart (OTP only after login).
+  const verified =
+    stored.user &&
+    (stored.user.emailVerified === true ||
+      String(stored.user.emailVerified).toLowerCase() === 'true');
+
+  if (stored.user && stored.token && verified) {
     store.dispatch(
       setCredentials({
         user: stored.user,
@@ -65,6 +71,10 @@ async function restoreSessionFromDisk(): Promise<void> {
       }),
     );
   } else if (stored.token || stored.refreshToken) {
+    // Orphan / unverified session — do not hydrate into a live session.
+    if (!verified) {
+      return;
+    }
     store.dispatch(
       hydrateTokens({
         token: stored.token || null,
@@ -79,6 +89,7 @@ async function restoreSessionFromDisk(): Promise<void> {
       hasAccess: Boolean(stored.token),
       hasRefresh: Boolean(stored.refreshToken),
       hasUser: Boolean(stored.user),
+      verified: Boolean(verified),
     });
   }
 }

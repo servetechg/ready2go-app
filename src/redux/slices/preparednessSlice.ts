@@ -19,6 +19,7 @@ interface PreparednessState {
   categoryDetails: Record<string, PreparednessCategoryDetail>;
   loading: boolean;
   tasksLoading: Record<string, boolean>;
+  lastFetchedAt: number | null;
   error: string | null;
 }
 
@@ -28,6 +29,7 @@ const initialState: PreparednessState = {
   categoryDetails: {},
   loading: false,
   tasksLoading: {},
+  lastFetchedAt: null,
   error: null,
 };
 
@@ -116,6 +118,7 @@ const preparednessSlice = createSlice({
       state.tasksByCategoryId = {};
       state.categoryDetails = {};
       state.tasksLoading = {};
+      state.lastFetchedAt = null;
       state.error = null;
     },
   },
@@ -127,12 +130,14 @@ const preparednessSlice = createSlice({
       })
       .addCase(fetchCategories.fulfilled, (state, action) => {
         state.loading = false;
+        state.lastFetchedAt = Date.now();
         state.categories = [...action.payload.items]
           .map(normalizeCategory)
           .sort((a, b) => a.sortOrder - b.sortOrder);
       })
       .addCase(fetchCategories.rejected, (state, action) => {
         state.loading = false;
+        state.lastFetchedAt = Date.now();
         state.error = (action.payload as string) ?? 'Could not load guides';
       })
       .addCase(fetchCategoryDetail.fulfilled, (state, action) => {

@@ -469,6 +469,17 @@ const authSlice = createSlice({
         void saveSession({ token: null, refreshToken: null, user: null });
       }
     },
+    /** Cold start: unverified accounts must not resume into OTP — show Login instead. */
+    clearUnverifiedSession: (state) => {
+      state.user = null;
+      state.token = null;
+      state.refreshToken = null;
+      state.isAuthenticated = false;
+      state.pendingAuth = null;
+      state.otpEmail = null;
+      state.error = null;
+      void saveSession({ token: null, refreshToken: null, user: null });
+    },
     clearPasswordReset: (state) => {
       state.pendingPasswordResetEmail = null;
       state.passwordResetToken = null;
@@ -615,6 +626,7 @@ export const {
   hydrateTokens,
   clearAuthError,
   clearPendingAuth,
+  clearUnverifiedSession,
   clearPasswordReset,
 } = authSlice.actions;
 export default authSlice.reducer;

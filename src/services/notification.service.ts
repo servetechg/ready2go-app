@@ -4,6 +4,7 @@ import * as Device from 'expo-device';
 import { Platform } from 'react-native';
 
 import { DISASTER_NOTIFICATION_SCREEN } from '@/constants/disasterSurvey';
+import { IDA_NOTIFICATION_SCREEN } from '@/constants/routes';
 import { getProfileReminderDelaySeconds } from '@/utils/profileReminderDelay';
 import {
   clearStoredProfileReminder,
@@ -250,7 +251,9 @@ export const notificationService = {
 
     for (const item of items) {
       if (item.read) continue;
-      if (item.type !== 'disaster_survey') continue;
+      const isDisaster = item.type === 'disaster_survey';
+      const isIda = item.type === 'ida_application';
+      if (!isDisaster && !isIda) continue;
 
       const invitationId =
         typeof item.meta?.invitationId === 'string' ? item.meta.invitationId : '';
@@ -259,20 +262,26 @@ export const notificationService = {
 
       try {
         await Notifications.scheduleNotificationAsync({
-          identifier: `inbox-disaster-survey-${item.id}`,
+          identifier: isIda
+            ? `inbox-ida-application-${item.id}`
+            : `inbox-disaster-survey-${item.id}`,
           content: {
-            title: item.title || 'Disaster relief survey',
+            title:
+              item.title ||
+              (isIda ? 'Initial Disaster Assistance' : 'Disaster relief survey'),
             body:
               item.body ||
-              'You may be eligible for disaster relief. Tap to complete your status survey.',
+              (isIda
+                ? 'If your property was damaged, tap to complete your assistance application.'
+                : 'You may be eligible for disaster relief. Tap to complete your status survey.'),
             sound: true,
             priority: Notifications.AndroidNotificationPriority.MAX,
             ...(Platform.OS === 'android'
               ? { channelId: DISASTER_SURVEY_CHANNEL_ID }
               : {}),
             data: {
-              screen: DISASTER_NOTIFICATION_SCREEN,
-              notificationType: 'disaster_survey',
+              screen: isIda ? IDA_NOTIFICATION_SCREEN : DISASTER_NOTIFICATION_SCREEN,
+              notificationType: isIda ? 'ida_application' : 'disaster_survey',
               inboxNotificationId: item.id,
               ...(invitationId ? { invitationId } : {}),
             },

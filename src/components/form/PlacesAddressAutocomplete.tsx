@@ -26,6 +26,7 @@ import { sanitizeTextInputProps } from '@/utils/nativeProps';
 interface PlacesAddressAutocompleteProps {
   label?: string;
   placeholder?: string;
+  initialValue?: string;
   error?: string;
   onPlaceSelected: (place: ParsedPlaceAddress) => void;
   onClear?: () => void;
@@ -34,12 +35,13 @@ interface PlacesAddressAutocompleteProps {
 export function PlacesAddressAutocomplete({
   label = 'Search location',
   placeholder = 'City, area, or address',
+  initialValue,
   error,
   onPlaceSelected,
   onClear,
 }: PlacesAddressAutocompleteProps) {
   const { colors } = useAppTheme();
-  const [query, setQuery] = useState('');
+  const [query, setQuery] = useState(initialValue ?? '');
   const [predictions, setPredictions] = useState<PlacePrediction[]>([]);
   const [loading, setLoading] = useState(false);
   const [lookupError, setLookupError] = useState<string | null>(null);
@@ -47,7 +49,13 @@ export function PlacesAddressAutocomplete({
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const requestIdRef = useRef(0);
 
-  const placesEnabled = isPlacesSearchAvailable() && Platform.OS !== 'web';
+  const placesEnabled = isPlacesSearchAvailable();
+
+  useEffect(() => {
+    if (initialValue !== undefined) {
+      setQuery(initialValue);
+    }
+  }, [initialValue]);
 
   useEffect(() => {
     return () => {
@@ -133,9 +141,7 @@ export function PlacesAddressAutocomplete({
           </AppText>
         ) : null}
         <AppText variant="caption" color={colors.textMuted}>
-          {Platform.OS === 'web'
-            ? 'Use the fields below on web. Google address search is available in the mobile app.'
-            : 'Add GOOGLE_MAPS_API_KEY to .env and restart Expo to enable address search.'}
+          Add EXPO_PUBLIC_GEOAPIFY_API_KEY to .env and restart Expo to enable address search.
         </AppText>
       </View>
     );

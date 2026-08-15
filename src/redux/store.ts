@@ -19,6 +19,7 @@ import authReducer from './slices/authSlice';
 import dashboardReducer from './slices/dashboardSlice';
 import disasterSurveyReducer from './slices/disasterSurveySlice';
 import emergencyNewsReducer from './slices/emergencyNewsSlice';
+import idaReducer from './slices/idaSlice';
 import notificationsReducer from './slices/notificationsSlice';
 import preparednessReducer from './slices/preparednessSlice';
 import registrationReducer from './slices/registrationSlice';
@@ -46,6 +47,7 @@ const rootReducer = combineReducers({
   dashboard: dashboardReducer,
   emergencyNews: emergencyNewsReducer,
   disasterSurvey: disasterSurveyReducer,
+  ida: idaReducer,
   notifications: notificationsReducer,
   preparedness: preparednessReducer,
   ui: uiReducer,

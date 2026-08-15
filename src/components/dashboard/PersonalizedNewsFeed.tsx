@@ -62,15 +62,11 @@ export function PersonalizedNewsFeed({
         return;
       }
 
-      if (article.link) {
-        try {
-          const supported = await Linking.canOpenURL(article.link);
-          if (supported) {
-            await Linking.openURL(article.link);
-          }
-        } catch (err) {
-          console.warn('Could not open article URL:', article.link, err);
-        }
+      const targetUrl = article.link?.trim() || 'https://www.fema.gov';
+      try {
+        await Linking.openURL(targetUrl);
+      } catch (err) {
+        console.warn('Could not open article URL:', targetUrl, err);
       }
     },
     [onArticlePress],
@@ -184,11 +180,15 @@ export function PersonalizedNewsFeed({
             </AppText>
           ) : null}
 
-          <View style={styles.actionRow}>
+          <Pressable
+            onPress={() => handlePressArticle(item)}
+            hitSlop={8}
+            style={styles.actionRow}
+          >
             <AppText variant="caption" color={colors.primary} style={styles.readMoreText}>
               Read Full Article →
             </AppText>
-          </View>
+          </Pressable>
         </View>
       </Pressable>
     </AppCard>

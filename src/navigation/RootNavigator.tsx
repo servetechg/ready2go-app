@@ -4,7 +4,7 @@ import { createStackNavigator } from '@react-navigation/stack';
 
 import { AUTH_ROUTES, ROOT_ROUTES } from '@/constants/routes';
 import { useAppDispatch, useAppSelector } from '@/redux/hooks';
-import { hydrateTokens } from '@/redux/slices/authSlice';
+import { clearUnverifiedSession, hydrateTokens } from '@/redux/slices/authSlice';
 import { asTokenString, saveSession } from '@/utils/authSessionStorage';
 import { toBoolean } from '@/utils/coerce';
 import { palette } from '@/theme';
@@ -39,19 +39,28 @@ export function RootNavigator() {
   const emailVerified = toBoolean(user?.emailVerified);
   const profileComplete = toBoolean(user?.profileComplete);
   const hasToken = Boolean(asTokenString(token) || asTokenString(refreshToken));
-  /** Live session requires a user profile — tokens alone are not enough (signup OTP). */
-  const hasAuthenticatedUser = Boolean(user && hasToken);
-  const awaitingEmailOtp = Boolean(
-    otpEmail || pendingAuth || (user && !emailVerified),
-  );
+  const hasAuthenticatedUser = Boolean(user && hasToken && emailVerified);
 
-  // Clear orphan tokens left by the old signup bug (refresh without user / OTP).
+  /**
+   * OTP is only an in-session flow (signup just completed, or login returned
+   * EMAIL_NOT_VERIFIED). These fields are not persisted — so closing the app
+   * returns the user to Login, as required.
+   */
+  const awaitingEmailOtp = Boolean(otpEmail || pendingAuth);
+
+  // Drop persisted unverified sessions / orphan tokens so cold start shows Login.
   useEffect(() => {
     if (!sessionReady && !gateTimedOut) return;
-    if (user || awaitingEmailOtp) return;
-    if (!hasToken) return;
-    dispatch(hydrateTokens({ token: null, refreshToken: null, replace: true }));
-    void saveSession({ token: null, refreshToken: null, user: null });
+
+    if (user && !toBoolean(user.emailVerified)) {
+      dispatch(clearUnverifiedSession());
+      return;
+    }
+
+    if (!user && !awaitingEmailOtp && hasToken) {
+      dispatch(hydrateTokens({ token: null, refreshToken: null, replace: true }));
+      void saveSession({ token: null, refreshToken: null, user: null });
+    }
   }, [sessionReady, gateTimedOut, user, awaitingEmailOtp, hasToken, dispatch]);
 
   // Brief splash while disk restore runs — never spin forever.
@@ -69,13 +78,9 @@ export function RootNavigator() {
     );
   }
 
-  // Signup / login-unverified: stay on Auth → OTP (do not mount Main).
-  if (awaitingEmailOtp && !emailVerified) {
-    const email =
-      otpEmail ||
-      pendingAuth?.user?.email ||
-      user?.email ||
-      '';
+  // Same-session signup / unverified login → OTP. Not used after app restart.
+  if (awaitingEmailOtp) {
+    const email = otpEmail || pendingAuth?.user?.email || '';
     return (
       <Stack.Navigator screenOptions={stackScreenOptions}>
         <Stack.Screen
@@ -93,7 +98,7 @@ export function RootNavigator() {
     );
   }
 
-  // No authenticated user → Auth (login/signup).
+  // Cold start / no verified session → Login (and Signup from there).
   if (!hasAuthenticatedUser) {
     return (
       <Stack.Navigator screenOptions={stackScreenOptions}>

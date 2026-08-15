@@ -3,17 +3,11 @@ import type { ParsedPlaceAddress } from '@/utils/googlePlaces';
 import {
   fetchPlaceDetails,
   fetchPlaceSuggestions,
-  parseGoogleAddressComponents,
+  getCachedGeoapifyProperties,
+  parseGeoapifyFeatureToPlaceAddress,
   type ParsedAddress,
   type PlaceSuggestion,
 } from '@/utils/googlePlaces';
-import { formatGooglePlacesError, isGoogleMapsKeyConfigured } from '@/utils/googlePlacesErrors';
-
-type GoogleAddressComponent = {
-  long_name: string;
-  short_name: string;
-  types: string[];
-};
 
 export interface PlacePrediction {
   placeId: string;
@@ -23,11 +17,11 @@ export interface PlacePrediction {
 export type PlaceSearchResult = {
   suggestions: PlaceSuggestion[];
   error?: string;
-  source?: 'proxy' | 'google';
+  source?: 'proxy' | 'geoapify' | 'google';
 };
 
 function getApiKey(): string {
-  return ENV.GOOGLE_MAPS_API_KEY.trim();
+  return ENV.GEOAPIFY_API_KEY.trim() || ENV.GOOGLE_MAPS_API_KEY.trim();
 }
 
 export function isPlacesSearchAvailable(): boolean {
@@ -39,62 +33,38 @@ export async function fetchPlacePredictions(input: string): Promise<PlacePredict
   const query = input.trim();
   if (!key || query.length < 2) return [];
 
-  const params = new URLSearchParams({
-    input: query,
-    key,
-    components: 'country:us',
-    types: 'geocode',
-  });
-
-  const response = await fetch(
-    `https://maps.googleapis.com/maps/api/place/autocomplete/json?${params.toString()}`,
-  );
-  const data = (await response.json()) as {
-    status: string;
-    predictions?: { place_id: string; description: string }[];
-    error_message?: string;
-  };
-
-  if (data.status !== 'OK' && data.status !== 'ZERO_RESULTS') {
-    throw new Error(data.error_message ?? `Places search failed (${data.status})`);
-  }
-
-  return (data.predictions ?? []).map((p) => ({
-    placeId: p.place_id,
-    description: p.description,
+  const result = await fetchPlaceSuggestions(query, key);
+  return result.suggestions.map((s) => ({
+    placeId: s.place_id,
+    description: s.description,
   }));
 }
 
 export async function fetchPlaceAddress(placeId: string): Promise<ParsedPlaceAddress> {
   const key = getApiKey();
-  if (!key) throw new Error('Google Maps API key is not configured');
+  if (!key) throw new Error('API key is not configured');
 
-  const params = new URLSearchParams({
-    place_id: placeId,
-    key,
-    fields: 'address_component,formatted_address',
-  });
-
-  const response = await fetch(
-    `https://maps.googleapis.com/maps/api/place/details/json?${params.toString()}`,
-  );
-  const data = (await response.json()) as {
-    status: string;
-    result?: {
-      formatted_address?: string;
-      address_components?: GoogleAddressComponent[];
-    };
-    error_message?: string;
-  };
-
-  if (data.status !== 'OK' || !data.result) {
-    throw new Error(data.error_message ?? `Place details failed (${data.status})`);
+  const cached = getCachedGeoapifyProperties(placeId);
+  if (cached) {
+    const parsed = parseGeoapifyFeatureToPlaceAddress(cached);
+    if (!parsed.city && !parsed.state) {
+      throw new Error('Could not determine city and state for this place');
+    }
+    return parsed;
   }
 
-  const parsed = parseGoogleAddressComponents(
-    data.result.address_components ?? [],
-    data.result.formatted_address ?? '',
-  );
+  const details = await fetchPlaceDetails(placeId, key);
+  if (!details) {
+    throw new Error('Place details lookup failed');
+  }
+
+  const parsed: ParsedPlaceAddress = {
+    streetAddress: details.streetAddress,
+    city: details.city,
+    state: details.state,
+    zipCode: details.zipCode,
+    formattedAddress: `${details.streetAddress ? details.streetAddress + ', ' : ''}${details.city}, ${details.state} ${details.zipCode}`.trim(),
+  };
 
   if (!parsed.city && !parsed.state) {
     throw new Error('Could not determine city and state for this place');
@@ -103,65 +73,17 @@ export async function fetchPlaceAddress(placeId: string): Promise<ParsedPlaceAdd
   return parsed;
 }
 
-/** Web app origin derived from EXPO_PUBLIC_API_BASE_URL (strip /api/v1). */
-function getWebOrigin(): string | null {
-  const base = ENV.API_BASE_URL.replace(/\/api\/v1\/?$/, '');
-  if (!base) return null;
-  if (!__DEV__ && base.includes('localhost')) return null;
-  return base;
-}
-
-/**
- * Try the Next.js web API proxy first (same key as web, server-side — no referrer issue).
- * Falls back to direct Google REST with EXPO_PUBLIC / native-configured mobile key.
- */
 export async function searchPlaces(input: string): Promise<PlaceSearchResult> {
   const trimmed = input.trim();
   if (trimmed.length < 2) {
     return { suggestions: [] };
   }
 
-  const proxyUrl = process.env.EXPO_PUBLIC_PLACES_AUTOCOMPLETE_URL;
-  const origin = getWebOrigin();
-
-  const proxyCandidates = [
-    proxyUrl,
-    origin ? `${origin}/api/places/autocomplete?input=${encodeURIComponent(trimmed)}` : null,
-    origin ? `${origin}/api/google/places/autocomplete?input=${encodeURIComponent(trimmed)}` : null,
-  ].filter(Boolean) as string[];
-
-  for (const url of proxyCandidates) {
-    try {
-      const response = await fetch(url, {
-        headers: { Accept: 'application/json' },
-      });
-      if (!response.ok) continue;
-
-      const data = (await response.json()) as {
-        predictions?: PlaceSuggestion[];
-        suggestions?: PlaceSuggestion[];
-        status?: string;
-        error_message?: string;
-      };
-
-      const list = data.predictions ?? data.suggestions;
-      if (Array.isArray(list)) {
-        return { suggestions: list, source: 'proxy' };
-      }
-      if (data.status && data.status !== 'OK' && data.status !== 'ZERO_RESULTS') {
-        continue;
-      }
-    } catch {
-      // try next candidate
-    }
-  }
-
-  const apiKey = ENV.GOOGLE_MAPS_API_KEY;
-  if (!isGoogleMapsKeyConfigured(apiKey)) {
+  const apiKey = getApiKey();
+  if (!apiKey) {
     return {
       suggestions: [],
-      error:
-        'Google Maps API key missing. Add EXPO_PUBLIC_GOOGLE_MAPS_API_KEY to .env (mobile key, not website-only), then run: npx expo start -c',
+      error: 'API key missing. Add EXPO_PUBLIC_GEOAPIFY_API_KEY to .env',
     };
   }
 
@@ -169,20 +91,19 @@ export async function searchPlaces(input: string): Promise<PlaceSearchResult> {
   if (result.error) {
     return {
       suggestions: [],
-      error: formatGooglePlacesError('ERROR', result.error),
-      source: 'google',
+      error: result.error,
     };
   }
 
-  return { ...result, source: 'google' };
+  return result;
 }
 
 export async function resolvePlaceSelection(
   placeId: string,
   apiKey?: string,
 ): Promise<ParsedAddress | null> {
-  const key = apiKey ?? ENV.GOOGLE_MAPS_API_KEY;
-  if (!isGoogleMapsKeyConfigured(key)) return null;
+  const key = apiKey || getApiKey();
+  if (!key) return null;
   return fetchPlaceDetails(placeId, key);
 }
 

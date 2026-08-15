@@ -58,7 +58,7 @@ export function AddLocationModal({
   editingLocation = null,
 }: AddLocationModalProps) {
   const { colors } = useAppTheme();
-  const usePlacesSearch = isPlacesSearchAvailable() && Platform.OS !== 'web';
+  const usePlacesSearch = isPlacesSearchAvailable();
   const isEditing = Boolean(editingLocation);
   const { control, handleSubmit, reset, setValue, watch, formState: { errors } } = useForm<AddLocationFormData>({
     resolver: zodResolver(locationFormSchema),
@@ -106,42 +106,28 @@ export function AddLocationModal({
             </Pressable>
           </View>
           <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
-            <Controller
-              control={control}
-              name="label"
-              render={({ field: { onChange, onBlur, value }, fieldState: { error } }) => (
-                <AppInput
-                  label="Location name"
-                  placeholder="e.g. Parents House"
-                  value={value}
-                  onChangeText={onChange}
-                  onBlur={onBlur}
-                  error={fieldErrorMessage(error)}
-                />
-              )}
-            />
-            <Controller
-              control={control}
-              name="streetAddress"
-              render={({ field: { onChange, onBlur, value } }) => (
-                <AppInput
-                  label="Street (optional)"
-                  placeholder="Street address"
-                  value={value ?? ''}
-                  onChangeText={onChange}
-                  onBlur={onBlur}
-                />
-              )}
-            />
             {usePlacesSearch ? (
               <>
                 <PlacesAddressAutocomplete
-                  label="Search address"
+                  label="Search address / location"
+                  placeholder="Type city, state, or address..."
+                  initialValue={editingLocation ? [editingLocation.streetAddress, editingLocation.city, editingLocation.state].filter(Boolean).join(', ') : ''}
                   onPlaceSelected={(place) => {
-                    setValue('streetAddress', place.streetAddress, { shouldValidate: true });
-                    setValue('city', place.city, { shouldValidate: true });
-                    setValue('state', place.state, { shouldValidate: true });
-                    setValue('zipCode', place.zipCode, { shouldValidate: true });
+                    const cityVal = place.city || place.state || place.formattedAddress || 'N/A';
+                    const stateVal = place.state || 'N/A';
+                    setValue('streetAddress', place.streetAddress ?? '', { shouldValidate: true });
+                    setValue('city', cityVal, { shouldValidate: true });
+                    setValue('state', stateVal, { shouldValidate: true });
+                    setValue('zipCode', place.zipCode ?? '', { shouldValidate: true });
+                    const currentLabel = watch('label');
+                    if (!currentLabel || currentLabel.trim().length === 0) {
+                      const autoLabel = cityVal !== 'N/A'
+                        ? (stateVal !== 'N/A' && stateVal !== cityVal ? `${cityVal}, ${stateVal}` : cityVal)
+                        : (place.streetAddress || place.formattedAddress || 'My Location');
+                      if (autoLabel) {
+                        setValue('label', autoLabel, { shouldValidate: true, shouldDirty: true });
+                      }
+                    }
                   }}
                   onClear={() => {
                     setValue('streetAddress', '', { shouldValidate: true });
@@ -149,6 +135,33 @@ export function AddLocationModal({
                     setValue('state', '', { shouldValidate: true });
                     setValue('zipCode', '', { shouldValidate: true });
                   }}
+                />
+                <Controller
+                  control={control}
+                  name="label"
+                  render={({ field: { onChange, onBlur, value }, fieldState: { error } }) => (
+                    <AppInput
+                      label="Location name"
+                      placeholder="e.g. Arizona, Parents House"
+                      value={value}
+                      onChangeText={onChange}
+                      onBlur={onBlur}
+                      error={fieldErrorMessage(error)}
+                    />
+                  )}
+                />
+                <Controller
+                  control={control}
+                  name="streetAddress"
+                  render={({ field: { onChange, onBlur, value } }) => (
+                    <AppInput
+                      label="Street (optional)"
+                      placeholder="Street address"
+                      value={value ?? ''}
+                      onChangeText={onChange}
+                      onBlur={onBlur}
+                    />
+                  )}
                 />
                 {streetAddress || city || state ? (
                   <AppText variant="bodySmall" color={colors.textSecondary} style={styles.preview}>

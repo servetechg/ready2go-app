@@ -1,3 +1,5 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
 import { MOCK_BLUE_SKY_NEWS } from '@/constants/emergency';
 import { resolveStateLabel, US_STATE_NAMES } from '@/constants/usStates';
 import { apiRequest } from '@/services/api/client';
@@ -342,7 +344,8 @@ const NATIONAL_QUERIES = [
  */
 const MAX_REQUESTS_PER_LOAD = 3;
 const ENOUGH_ARTICLES = 8;
-const NEWS_CACHE_TTL_MS = 15 * 60 * 1000;
+const NEWS_CACHE_TTL_MS = 30 * 60 * 1000;
+const DISK_CACHE_PREFIX = 'ready2go_news_cache_v2_';
 
 const newsCache = new Map<string, { cachedAt: number; response: PersonalizedNewsApiResponse }>();
 
@@ -360,6 +363,44 @@ function readCache(key: string): PersonalizedNewsApiResponse | null {
   return hit.response;
 }
 
+async function readDiskCache(key: string): Promise<PersonalizedNewsApiResponse | null> {
+  const memoryHit = readCache(key);
+  if (memoryHit) return memoryHit;
+
+  try {
+    const raw = await AsyncStorage.getItem(DISK_CACHE_PREFIX + key);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (Date.now() - parsed.cachedAt > NEWS_CACHE_TTL_MS) {
+      void AsyncStorage.removeItem(DISK_CACHE_PREFIX + key);
+      return null;
+    }
+    newsCache.set(key, { cachedAt: parsed.cachedAt, response: parsed.response });
+    return parsed.response;
+  } catch {
+    return null;
+  }
+}
+
+async function writeDiskCache(key: string, response: PersonalizedNewsApiResponse): Promise<void> {
+  try {
+    newsCache.set(key, { cachedAt: Date.now(), response });
+    await AsyncStorage.setItem(
+      DISK_CACHE_PREFIX + key,
+      JSON.stringify({ cachedAt: Date.now(), response }),
+    );
+  } catch {
+    // best-effort
+  }
+}
+
+export async function getCachedPersonalizedNews(
+  userState?: string | null,
+): Promise<PersonalizedNewsApiResponse | null> {
+  const cacheKey = `${(userState || '').trim().toUpperCase()}|`;
+  return readDiskCache(cacheKey);
+}
+
 function buildNewsDataQueries(stateName: string | null): string[] {
   const queries = stateName
     ? KEYWORD_GROUPS.map((group) => `${stateName} AND ${group}`)
@@ -373,11 +414,11 @@ function getFallbackMockArticles(): PersonalizedNewsArticle[] {
   return MOCK_BLUE_SKY_NEWS.map((item) => ({
     article_id: item.id,
     title: item.title,
-    link: item.url || '',
+    link: item.url && item.url.startsWith('http') ? item.url : 'https://www.fema.gov',
     description: item.body,
     content: item.body,
     pubDate: item.timestamp,
-    image_url: item.imageUrl || null,
+    image_url: item.imageUrl || getFallbackImage(item.title, [item.category || 'EMERGENCY']),
     source_id: 'ready2go',
     source_name: item.publisher || 'Ready2Go Emergency Response',
     source_icon: null,
@@ -483,33 +524,66 @@ function isAcceptableWebzArticle(
   return true;
 }
 
+const DEFAULT_NEWS_IMAGES: Record<string, string> = {
+  wildfire: 'https://images.unsplash.com/photo-1574786198875-49f5d09fe2d5?q=80&w=800&auto=format&fit=crop',
+  earthquake: 'https://images.unsplash.com/photo-1544620347-c4fd4a3d5957?q=80&w=800&auto=format&fit=crop',
+  flood: 'https://images.unsplash.com/photo-1515694346937-94d85e41e6f0?q=80&w=800&auto=format&fit=crop',
+  hurricane: 'https://images.unsplash.com/photo-1527482797697-8795b05a13fe?q=80&w=800&auto=format&fit=crop',
+  tornado: 'https://images.unsplash.com/photo-1527482797697-8795b05a13fe?q=80&w=800&auto=format&fit=crop',
+  weather: 'https://images.unsplash.com/photo-1534088568595-a066f410bcda?q=80&w=800&auto=format&fit=crop',
+  default: 'https://images.unsplash.com/photo-1584036561566-baf8f5f1b144?q=80&w=800&auto=format&fit=crop',
+};
+
+function getFallbackImage(title: string, category?: string[]): string {
+  const text = `${title} ${(category || []).join(' ')}`.toLowerCase();
+  if (text.includes('fire') || text.includes('wildfire')) return DEFAULT_NEWS_IMAGES.wildfire;
+  if (text.includes('quake') || text.includes('earthquake')) return DEFAULT_NEWS_IMAGES.earthquake;
+  if (text.includes('flood') || text.includes('rain')) return DEFAULT_NEWS_IMAGES.flood;
+  if (text.includes('hurricane') || text.includes('storm')) return DEFAULT_NEWS_IMAGES.hurricane;
+  if (text.includes('tornado')) return DEFAULT_NEWS_IMAGES.tornado;
+  if (text.includes('weather')) return DEFAULT_NEWS_IMAGES.weather;
+  return DEFAULT_NEWS_IMAGES.default;
+}
+
 function mapNewsDataArticle(art: any): PersonalizedNewsArticle {
+  const rawUrl = String(art.link || art.url || '').trim();
+  const link = rawUrl.startsWith('http') ? rawUrl : 'https://www.fema.gov';
+  const title = String(art.title || '').trim();
+  const category = Array.isArray(art.category) ? art.category : [];
+
   return {
-    article_id: art.article_id,
-    title: art.title,
-    link: art.link,
+    article_id: String(art.article_id || art.link || Math.random()),
+    title,
+    link,
     description: art.description || null,
     content: art.content || null,
-    pubDate: art.pubDate,
-    image_url: art.image_url || null,
-    source_id: art.source_id,
-    source_name: art.source_name || art.source_id,
+    pubDate: String(art.pubDate || ''),
+    image_url:
+      typeof art.image_url === 'string' && art.image_url.trim()
+        ? art.image_url.trim()
+        : getFallbackImage(title, category),
+    source_id: String(art.source_id || 'news'),
+    source_name: String(art.source_name || art.source_id || 'News'),
     source_icon: art.source_icon || null,
-    category: art.category || [],
+    category,
     country: art.country || [],
   };
 }
 
-function pickWebzImage(post: any): string | null {
+function pickWebzImage(post: any, title = '', category: string[] = []): string {
   const threadImage = post?.thread?.main_image;
-  if (typeof threadImage === 'string' && threadImage.trim()) return threadImage.trim();
+  if (typeof threadImage === 'string' && threadImage.trim() && !threadImage.includes('default')) {
+    return threadImage.trim();
+  }
 
   const external = Array.isArray(post?.external_images) ? post.external_images : [];
   const internal = Array.isArray(post?.internal_images) ? post.internal_images : [];
   const first = [...external, ...internal].find(
     (img) => typeof img === 'string' && img.trim().length > 0,
   );
-  return first?.trim() || null;
+  if (first?.trim()) return first.trim();
+
+  return getFallbackImage(title, category);
 }
 
 function mapWebzArticle(post: any): PersonalizedNewsArticle {
@@ -521,21 +595,25 @@ function mapWebzArticle(post: any): PersonalizedNewsArticle {
 
   const site = String(post?.thread?.site || post?.thread?.site_full || '').trim();
   const siteTitle = String(post?.thread?.site_title || '').trim();
+  const title = String(post?.title || post?.thread?.title || '').trim();
+  const rawUrl = String(post?.url || post?.thread?.url || '').trim();
+  const link = rawUrl.startsWith('http') ? rawUrl : 'https://www.fema.gov';
+  const category = Array.isArray(post?.categories)
+    ? post.categories.map((c: unknown) => String(c))
+    : [];
 
   return {
-    article_id: String(post?.uuid || post?.thread?.uuid || post?.url || ''),
-    title: String(post?.title || post?.thread?.title || '').trim(),
-    link: String(post?.url || post?.thread?.url || ''),
+    article_id: String(post?.uuid || post?.thread?.uuid || post?.url || Math.random()),
+    title,
+    link,
     description: cleanSnippet(rawSummary),
     content: text || null,
     pubDate: String(post?.published || post?.thread?.published || ''),
-    image_url: pickWebzImage(post),
+    image_url: pickWebzImage(post, title, category),
     source_id: site || 'webz',
     source_name: cleanSourceName(site, siteTitle),
     source_icon: null,
-    category: Array.isArray(post?.categories)
-      ? post.categories.map((c: unknown) => String(c))
-      : [],
+    category,
     country: post?.thread?.country ? [String(post.thread.country)] : ['US'],
   };
 }
@@ -600,8 +678,8 @@ async function fetchFromWebz(
   const collected: PersonalizedNewsArticle[] = [];
   let nextPath: string | null = null;
   let pagesFetched = 0;
-  // First load may need a second page after state/topic filtering.
-  const maxPages = page?.startsWith('/api/news') ? 1 : 3;
+  // Page size 50 gets 2.5x more articles in 1 single HTTP request.
+  const maxPages = page?.startsWith('/api/news') ? 1 : 2;
 
   let requestUrl: string | null;
   if (page && page.startsWith('/api/news')) {
@@ -612,7 +690,7 @@ async function fetchFromWebz(
     url.searchParams.set('sort', 'published');
     url.searchParams.set('order', 'desc');
     url.searchParams.set('format', 'json');
-    url.searchParams.set('size', '20');
+    url.searchParams.set('size', '50');
     url.searchParams.set('webz_reporter', 'true');
     url.searchParams.set('includeSyndicated', 'false');
     url.searchParams.set('allowNewsHistory', 'false');
@@ -642,6 +720,12 @@ async function fetchFromWebz(
 
     nextPath =
       typeof data.next === 'string' && data.next.startsWith('/api/news') ? data.next : null;
+
+    // Fast exit: If 1st request returned >= 4 emergency articles, return immediately!
+    if (collected.length >= 4 && !page) {
+      break;
+    }
+
     const hasMore: boolean = Boolean(data.more_results_available) && Boolean(nextPath);
     requestUrl =
       hasMore && collected.length < ENOUGH_ARTICLES && nextPath
@@ -798,7 +882,7 @@ export async function fetchPersonalizedNews(
       }
       const response = buildResponse(webz.articles, webz.nextPage);
       if (webz.articles.length > 0) {
-        newsCache.set(cacheKey, { cachedAt: Date.now(), response });
+        void writeDiskCache(cacheKey, response);
         return response;
       }
       if (webz.articles.length > 0 || page?.startsWith('/api/news')) {
@@ -817,7 +901,7 @@ export async function fetchPersonalizedNews(
     const newsData = await fetchFromNewsData(page, stateFilterName, stateFilterName, stateCode);
     const response = buildResponse(newsData.articles, newsData.nextPage);
     if (newsData.articles.length > 0) {
-      newsCache.set(cacheKey, { cachedAt: Date.now(), response });
+      void writeDiskCache(cacheKey, response);
       return response;
     }
   } catch {
@@ -826,6 +910,6 @@ export async function fetchPersonalizedNews(
 
   const fallbackArticles = getFallbackMockArticles();
   const fallbackResponse = buildResponse(fallbackArticles, null);
-  newsCache.set(cacheKey, { cachedAt: Date.now(), response: fallbackResponse });
+  void writeDiskCache(cacheKey, fallbackResponse);
   return fallbackResponse;
 }

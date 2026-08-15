@@ -10,6 +10,7 @@ import { CitizenAssistantHomeCard } from '@/components/dashboard/CitizenAssistan
 import { DashboardLayout } from '@/components/dashboard/DashboardLayout';
 import { DisruptionStatusBanner } from '@/components/dashboard/DisruptionStatusBanner';
 import { EmergencyMap } from '@/components/dashboard/EmergencyMap';
+import { IdaHomeCard } from '@/components/dashboard/IdaHomeCard';
 import { IncidentLog } from '@/components/dashboard/IncidentLog';
 import { PersonalizedNewsFeed } from '@/components/dashboard/PersonalizedNewsFeed';
 import { PreparednessCategoryCard } from '@/components/dashboard/PreparednessCategoryCard';
@@ -22,12 +23,16 @@ import {
     PREPAREDNESS_STACK_ROUTES,
     TAB_ROUTES,
 } from '@/constants/routes';
+import { useActiveIda } from '@/hooks/useActiveIda';
 import { useAlertSourcePress } from '@/hooks/useAlertSourcePress';
 import { useAppTheme } from '@/hooks/useAppTheme';
 import { useHomeDashboard } from '@/hooks/useHomeDashboard';
 import { usePullToRefresh } from '@/hooks/usePullToRefresh';
 import { navigateToAlertsTab, navigateToTab } from '@/navigation/navigationHelpers';
-import { navigateToCitizenAssistance } from '@/navigation/navigationRef';
+import {
+  navigateToCitizenAssistance,
+  navigateToIdaIfActive,
+} from '@/navigation/navigationRef';
 import { useAppSelector } from '@/redux/hooks';
 import { selectPreparednessCategories } from '@/redux/slices/dashboardSlice';
 import { spacing } from '@/theme';
@@ -52,6 +57,8 @@ export function HomeScreen() {
   const alertItems = useAppSelector((s) => s.alerts.items ?? []);
   const slicePreparedness = useAppSelector((s) => s.preparedness.categories);
   const preparednessLoading = useAppSelector((s) => s.preparedness.loading);
+  const authToken = useAppSelector((s) => s.auth.token);
+  const { invitation: idaInvitation, hasOpenIda } = useActiveIda(authToken);
   const { home, emergency, isCloudy, loading, error, reload } = useHomeDashboard();
   const { refreshControlProps } = usePullToRefresh(reload);
   const handleAlertPress = useAlertSourcePress();
@@ -168,6 +175,19 @@ export function HomeScreen() {
         </View>
         <CitizenAssistantHomeCard onPress={navigateToCitizenAssistance} />
 
+        {hasOpenIda && idaInvitation ? (
+          <IdaHomeCard
+            title="Initial Disaster Assistance"
+            subtitle={idaInvitation.campaign.title}
+            cta={
+              idaInvitation.status === 'needs_info'
+                ? 'Tap to add missing details'
+                : 'Tap to complete your application'
+            }
+            onPress={() => void navigateToIdaIfActive()}
+          />
+        ) : null}
+
         {loading && !home ? (
           <ActivityIndicator style={styles.loader} color={colors.primary} />
         ) : null}
@@ -224,7 +244,7 @@ export function HomeScreen() {
             title="News Feed"
             scrollable={false}
             maxItems={3}
-            showImages={false}
+            showImages={true}
             showSectionHeader={true}
             onViewAll={() => navigation.navigate(HOME_STACK_ROUTES.EMERGENCY_NEWS)}
           />
