@@ -30,6 +30,7 @@ import type { MainTabParamList } from '@/types/navigation';
 import { toBoolean } from '@/utils/coerce';
 import { mapMobileAlertToWeatherAlert } from '@/utils/dashboardMappers';
 import { formatAddressLine } from '@/utils/formatAddress';
+import { filterAlertsByAllowedStates, getAllowedStateTokens } from '@/utils/alertFilters';
 import { palette, spacing } from '@/theme';
 
 type AlertsTabNav = BottomTabNavigationProp<MainTabParamList, typeof TAB_ROUTES.ALERTS>;
@@ -116,10 +117,11 @@ export function AlertsScreen() {
     return zones.length ? zones.join(' · ') : 'your saved locations';
   }, [address, alertLocations]);
 
-  const displayAlerts = useMemo(
-    () => items.map(mapMobileAlertToWeatherAlert),
-    [items],
-  );
+  const displayAlerts = useMemo(() => {
+    const mapped = items.map(mapMobileAlertToWeatherAlert);
+    const allowedTokens = getAllowedStateTokens(address, alertLocations);
+    return filterAlertsByAllowedStates(mapped, allowedTokens);
+  }, [items, address, alertLocations]);
 
   const handleSortChange = useCallback(
     (sort: AlertsSort) => {

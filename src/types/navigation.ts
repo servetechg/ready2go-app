@@ -90,6 +90,7 @@ export type MainStackParamList = {
   [MAIN_STACK_ROUTES.CITIZEN_ASSISTANCE]: undefined;
   [MAIN_STACK_ROUTES.NOTIFICATIONS]: undefined;
   [MAIN_STACK_ROUTES.SPLASH_PREVIEW]: undefined;
+  [MAIN_STACK_ROUTES.CHANGE_PASSWORD]: undefined;
 };
 
 export type DrawerParamList = {

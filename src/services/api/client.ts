@@ -37,8 +37,9 @@ export async function apiRequest<T>(
   const data = (await response.json().catch(() => ({}))) as ApiErrorBody & T;
 
   if (!response.ok) {
+    const errorMsg = data.message ?? (data as any).error ?? `Request failed (${response.status})`;
     throw new ApiClientError(response.status, {
-      message: data.message ?? `Request failed (${response.status})`,
+      message: errorMsg,
       code: data.code,
       errors: data.errors,
     });
@@ -67,8 +68,9 @@ export async function apiFormRequest<T>(
   const data = (await response.json().catch(() => ({}))) as ApiErrorBody & T;
 
   if (!response.ok) {
+    const errorMsg = data.message ?? (data as any).error ?? `Request failed (${response.status})`;
     throw new ApiClientError(response.status, {
-      message: data.message ?? `Request failed (${response.status})`,
+      message: errorMsg,
       code: data.code,
       errors: data.errors,
     });

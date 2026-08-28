@@ -45,3 +45,16 @@ export type SignupFormData = z.infer<typeof signupSchema>;
 export type ForgotPasswordFormData = z.infer<typeof forgotPasswordSchema>;
 export type OtpFormData = z.infer<typeof otpSchema>;
 export type UpdatePasswordFormData = z.infer<typeof updatePasswordSchema>;
+
+export const changePasswordSchema = z
+  .object({
+    currentPassword: z.string().min(1, 'Current password is required'),
+    newPassword: z.string().min(8, 'New password must be at least 8 characters'),
+    confirmNewPassword: z.string().min(1, 'Please confirm your new password'),
+  })
+  .refine((data) => data.newPassword === data.confirmNewPassword, {
+    message: 'Passwords do not match',
+    path: ['confirmNewPassword'],
+  });
+
+export type ChangePasswordFormData = z.infer<typeof changePasswordSchema>;

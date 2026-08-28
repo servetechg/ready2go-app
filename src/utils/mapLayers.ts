@@ -9,9 +9,11 @@ const LEGACY_TYPE_TO_LAYER: Record<
   shelter: 'shelters',
   resource: 'resourceSites',
   hazard: 'incidentReports',
+  alert: 'alerts',
 };
 
 export function resolveMarkerLayer(marker: MapMarkerPoint): GisMapLayerId {
+  if (marker.type === 'alert') return 'alerts';
   if (marker.layer) return marker.layer;
   if (marker.type) return LEGACY_TYPE_TO_LAYER[marker.type];
   return 'incidentReports';
@@ -26,7 +28,27 @@ export function normalizeMapMarker(marker: MapMarkerPoint): MapMarkerPoint {
 }
 
 export function normalizeMapMarkers(markers: MapMarkerPoint[]): MapMarkerPoint[] {
-  return markers.map(normalizeMapMarker);
+  return markers
+    .filter((m) => {
+      const rawLat = m.latitude ?? (m as any).lat;
+      const rawLng = m.longitude ?? (m as any).lng;
+      const lat = typeof rawLat === 'number' ? rawLat : Number(rawLat);
+      const lng = typeof rawLng === 'number' ? rawLng : Number(rawLng);
+      return (
+        typeof lat === 'number' &&
+        typeof lng === 'number' &&
+        !Number.isNaN(lat) &&
+        !Number.isNaN(lng) &&
+        (lat !== 0 || lng !== 0)
+      );
+    })
+    .map((m) => {
+      const rawLat = m.latitude ?? (m as any).lat;
+      const rawLng = m.longitude ?? (m as any).lng;
+      const lat = typeof rawLat === 'number' ? rawLat : Number(rawLat);
+      const lng = typeof rawLng === 'number' ? rawLng : Number(rawLng);
+      return normalizeMapMarker({ ...m, latitude: lat, longitude: lng });
+    });
 }
 
 /** Layers rendered as a heatmap instead of pin markers. */

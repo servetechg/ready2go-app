@@ -6,6 +6,7 @@ import type {
 } from '@/types/dashboard';
 import type { PreparednessCategory } from '@/types/preparedness';
 import type { EmergencyNewsItem, NewsCategory, NewsIconType } from '@/types/emergency';
+import { extractAlertCoordinates } from '@/utils/alertCoordinates';
 import { formatExpiresLabel, formatIssuedLabel } from '@/utils/formatTimestamp';
 import {
   formatPreparednessText,
@@ -48,18 +49,71 @@ function toNewsSource(source: string): EmergencyNewsItem['source'] {
   return 'emergency';
 }
 
-export function mapMobileAlertToWeatherAlert(alert: MobileWeatherAlert): WeatherAlert {
+function withNormalizedCoordinates(alert: WeatherAlert): WeatherAlert {
+  const coords = extractAlertCoordinates(alert);
+  if (!coords) return alert;
+
   return {
+    ...alert,
+    coordinates: { lat: coords.lat, lon: coords.lng },
+    lat: coords.lat,
+    lng: coords.lng,
+  };
+}
+
+export function mapMobileAlertToWeatherAlert(alert: MobileWeatherAlert): WeatherAlert {
+  const coords = extractAlertCoordinates(alert);
+  const mapped: WeatherAlert = {
     id: alert.id,
     severity: alert.severity,
-    title: alert.title,
+    title: alert.title || alert.name || 'Alert',
+    name: alert.name,
     location: alert.location,
     source: alert.source,
     issuedAgo: formatIssuedLabel(alert.issuedAt),
     expires: alert.expiresLabel?.trim() || formatExpiresLabel(alert.expiresAt),
     read: alert.read,
     sourceUrl: alert.sourceUrl,
+    lat: coords?.lat ?? alert.lat ?? alert.latitude ?? null,
+    lng: coords?.lng ?? alert.lng ?? alert.longitude ?? null,
   };
+
+  if (coords) {
+    mapped.coordinates = { lat: coords.lat, lon: coords.lng };
+  }
+
+  return mapped;
+}
+
+/** Merge alert lists by id, keeping coordinate data when either source has it. */
+export function mergeWeatherAlerts(...sources: WeatherAlert[][]): WeatherAlert[] {
+  const byId = new Map<string, WeatherAlert>();
+
+  for (const list of sources) {
+    for (const alert of list) {
+      const existing = byId.get(alert.id);
+      if (!existing) {
+        byId.set(alert.id, withNormalizedCoordinates(alert));
+        continue;
+      }
+
+      const merged = withNormalizedCoordinates({ ...existing, ...alert });
+      const coords =
+        extractAlertCoordinates(merged) ??
+        extractAlertCoordinates(alert) ??
+        extractAlertCoordinates(existing);
+
+      if (coords) {
+        merged.coordinates = { lat: coords.lat, lon: coords.lng };
+        merged.lat = coords.lat;
+        merged.lng = coords.lng;
+      }
+
+      byId.set(alert.id, merged);
+    }
+  }
+
+  return Array.from(byId.values());
 }
 
 /** @deprecated Use mapMobileAlertToWeatherAlert */

@@ -1,5 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
-import React, { useCallback, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Modal,
   Platform,
@@ -24,6 +24,7 @@ import { useAppTheme } from '@/hooks/useAppTheme';
 import { borderRadius, palette, shadows, spacing } from '@/theme';
 import type { GisMapLayerId, MapMarkerPoint, MapPolygonOverlay } from '@/types/emergency';
 import { findNearestMapMarker, heatmapTapThresholdDegrees } from '@/utils/mapGeo';
+import { isValidMapRegion, sanitizeMapRegion } from '@/utils/mapRegion';
 import {
   buildHeatmapPoints,
   filterIncidentMarkersForHeatmap,
@@ -42,6 +43,9 @@ interface EmergencyMapProps {
   markers: MapMarkerPoint[];
   overlays?: MapPolygonOverlay[];
   variant?: 'situation' | 'area';
+  userLocation?: { latitude?: number; longitude?: number };
+  /** When false, keep the registered home pin instead of replacing it with GPS. */
+  trackDeviceLocation?: boolean;
 }
 
 type MapControlAction = 'zoomIn' | 'zoomOut' | 'recenter' | 'maximize' | 'minimize' | 'layers';
@@ -110,6 +114,9 @@ interface MapCanvasProps {
   mapStyle: ViewStyle;
   onRegionChangeComplete: (next: Region) => void;
   onIncidentTap: (incident: MapMarkerPoint | null) => void;
+  userLocation?: { latitude?: number; longitude?: number };
+  initialRegion: Region;
+  trackDeviceLocation?: boolean;
 }
 
 function MapCanvas({
@@ -122,6 +129,9 @@ function MapCanvas({
   mapStyle,
   onRegionChangeComplete,
   onIncidentTap,
+  userLocation,
+  initialRegion,
+  trackDeviceLocation = false,
 }: MapCanvasProps) {
   const handleMapPress = useCallback(
     (coordinate: { latitude: number; longitude: number }) => {
@@ -145,7 +155,8 @@ function MapCanvas({
       pointMarkers={pointMarkers}
       heatmapPoints={heatmapPoints}
       overlays={overlays}
-      showsUserLocation={true}
+      showsUserLocation={trackDeviceLocation}
+      staticUserLocation={userLocation}
       onRegionChangeComplete={onRegionChangeComplete}
       onPress={handleMapPress}
     />
@@ -157,15 +168,26 @@ export function EmergencyMap({
   markers = [],
   overlays = [],
   variant = 'situation',
+  userLocation,
+  trackDeviceLocation = false,
 }: EmergencyMapProps) {
   const { colors } = useAppTheme();
   const insets = useSafeAreaInsets();
   const mapRef = useRef<OsmMapHandle>(null);
   const fullscreenMapRef = useRef<OsmMapHandle>(null);
-  const [mapRegion, setMapRegion] = useState<Region>(initialRegion);
+  const safeInitialRegion = useMemo(() => sanitizeMapRegion(initialRegion), [initialRegion]);
+  const [mapRegion, setMapRegion] = useState<Region>(safeInitialRegion);
   const [fullscreen, setFullscreen] = useState(false);
   const [layersOpen, setLayersOpen] = useState(false);
   const [selectedIncident, setSelectedIncident] = useState<MapMarkerPoint | null>(null);
+
+  useEffect(() => {
+    if (!isValidMapRegion(initialRegion)) return;
+    setMapRegion(safeInitialRegion);
+    mapRef.current?.animateToRegion(safeInitialRegion, 300);
+    fullscreenMapRef.current?.animateToRegion(safeInitialRegion, 300);
+  }, [initialRegion, safeInitialRegion]);
+
   const [enabledLayers, setEnabledLayers] =
     useState<Record<GisMapLayerId, boolean>>(DEFAULT_GIS_LAYER_STATE);
 
@@ -219,8 +241,8 @@ export function EmergencyMap({
           applyZoom(2, ref);
           break;
         case 'recenter':
-          setMapRegion(initialRegion);
-          ref.current?.animateToRegion(initialRegion, 300);
+          setMapRegion(safeInitialRegion);
+          ref.current?.animateToRegion(safeInitialRegion, 300);
           setSelectedIncident(null);
           break;
         case 'maximize':
@@ -236,7 +258,7 @@ export function EmergencyMap({
           break;
       }
     },
-    [applyZoom, initialRegion],
+    [applyZoom, safeInitialRegion],
   );
 
   const renderMapSection = (
@@ -256,6 +278,9 @@ export function EmergencyMap({
           mapStyle={mapStyle}
           onRegionChangeComplete={setMapRegion}
           onIncidentTap={handleIncidentTap}
+          userLocation={userLocation}
+          initialRegion={initialRegion}
+          trackDeviceLocation={trackDeviceLocation}
         />
         <View style={styles.attribution} pointerEvents="none">
           <AppText variant="caption" style={styles.attributionText}>
