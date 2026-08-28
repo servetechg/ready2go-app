@@ -24,6 +24,7 @@ import {
     TAB_ROUTES,
 } from '@/constants/routes';
 import { useActiveIda } from '@/hooks/useActiveIda';
+import { usePendingCitizenActivitySupplement } from '@/hooks/usePendingCitizenActivitySupplement';
 import { useAlertSourcePress } from '@/hooks/useAlertSourcePress';
 import { useAppTheme } from '@/hooks/useAppTheme';
 import { useHomeDashboard } from '@/hooks/useHomeDashboard';
@@ -33,6 +34,7 @@ import { usePullToRefresh } from '@/hooks/usePullToRefresh';
 import { navigateToAlertsTab, navigateToTab } from '@/navigation/navigationHelpers';
 import {
   navigateToCitizenAssistance,
+  navigateToCitizenAssistanceIfPending,
   navigateToIdaIfActive,
 } from '@/navigation/navigationRef';
 import { useAppSelector } from '@/redux/hooks';
@@ -66,6 +68,8 @@ export function HomeScreen() {
   const preparednessLoading = useAppSelector((s) => s.preparedness.loading);
   const authToken = useAppSelector((s) => s.auth.token);
   const { invitation: idaInvitation, hasOpenIda } = useActiveIda(authToken);
+  const { pending: citizenPending, hasPendingSupplement } =
+    usePendingCitizenActivitySupplement(authToken);
   const { home, emergency, isCloudy, loading, error, reload } = useHomeDashboard();
   const { refreshControlProps } = usePullToRefresh(reload);
   const handleAlertPress = useAlertSourcePress();
@@ -246,6 +250,15 @@ export function HomeScreen() {
           </AppText>
         </View>
         <CitizenAssistantHomeCard onPress={navigateToCitizenAssistance} />
+
+        {hasPendingSupplement && citizenPending ? (
+          <IdaHomeCard
+            title="Citizen report — details needed"
+            subtitle={citizenPending.title}
+            cta="Tap to add missing details, pictures, or videos"
+            onPress={() => void navigateToCitizenAssistanceIfPending()}
+          />
+        ) : null}
 
         {hasOpenIda && idaInvitation ? (
           <IdaHomeCard
