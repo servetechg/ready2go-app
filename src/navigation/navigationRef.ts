@@ -9,10 +9,12 @@ import {
   ROOT_ROUTES,
 } from '@/constants/routes';
 import { setDisasterSurveyInvitation } from '@/redux/slices/disasterSurveySlice';
+import { setCitizenActivityPendingSupplement } from '@/redux/slices/citizenActivitySlice';
 import { setIdaInvitation } from '@/redux/slices/idaSlice';
 import { store } from '@/redux/store';
 import { disasterSurveyService } from '@/services/disasterSurvey.service';
 import { idaService } from '@/services/ida.service';
+import { citizenActivityService } from '@/services/citizenActivity.service';
 import type { RootStackParamList } from '@/types/navigation';
 
 export const navigationRef = createNavigationContainerRef<RootStackParamList>();
@@ -31,6 +33,32 @@ export function navigateToCitizenAssistance(): void {
       },
     }),
   );
+}
+
+/**
+ * Opens Citizen Assistant when the user has a pending missing-details request.
+ */
+export async function navigateToCitizenAssistanceIfPending(): Promise<boolean> {
+  const token = store.getState().auth.token;
+  if (!token) return false;
+
+  try {
+    const { pending } = await citizenActivityService.getPendingSupplement(token);
+    if (!pending || pending.requestedMissingFields.length === 0) {
+      store.dispatch(setCitizenActivityPendingSupplement(null));
+      Toast.show({
+        type: 'info',
+        text1: 'No additional report details are needed right now.',
+        position: 'bottom',
+      });
+      return false;
+    }
+    store.dispatch(setCitizenActivityPendingSupplement(pending));
+    navigateToCitizenAssistance();
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 export function navigateToNotifications(): void {

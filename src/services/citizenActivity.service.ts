@@ -35,6 +35,20 @@ export type CitizenActivityItem = {
   videos?: CitizenActivityMediaRef[];
 };
 
+export type CitizenActivityMissingField = 'details' | 'pictures' | 'videos';
+
+export type CitizenActivityPendingSupplement = {
+  activityId: string;
+  title: string;
+  description: string;
+  details: string;
+  category: string;
+  requestedMissingFields: CitizenActivityMissingField[];
+  existingPictures: CitizenActivityMediaRef[];
+  existingVideos: CitizenActivityMediaRef[];
+  missingInfoRequestedAt?: string | null;
+};
+
 export const CITIZEN_ACTIVITY_MAX_PICTURES = 5;
 export const CITIZEN_ACTIVITY_MAX_VIDEOS = 5;
 export const CITIZEN_ACTIVITY_PICTURE_MAX_BYTES = 10 * 1024 * 1024;
@@ -123,5 +137,32 @@ export const citizenActivityService = {
 
   async getHistory(token: string): Promise<{ items: CitizenActivityItem[] }> {
     return apiRequest('/citizen-activity?limit=20', { token });
+  },
+
+  async getPendingSupplement(
+    token: string,
+  ): Promise<{ pending: CitizenActivityPendingSupplement | null }> {
+    return apiRequest('/citizen-activity/pending-supplement', { token });
+  },
+
+  async supplement(
+    token: string,
+    body: {
+      activityId: string;
+      details?: string;
+      pictures?: CitizenActivityMediaRef[];
+      videos?: CitizenActivityMediaRef[];
+    },
+  ): Promise<{
+    message: string;
+    activityId: string;
+    remainingMissingFields: CitizenActivityMissingField[];
+    completed: boolean;
+  }> {
+    return apiRequest('/citizen-activity/supplement', {
+      method: 'POST',
+      token,
+      body,
+    });
   },
 };

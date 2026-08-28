@@ -1,3 +1,5 @@
+export const CITIZEN_ASSISTANCE_NOTIFICATION_SCREEN = 'citizenAssistance' as const;
+
 export type CitizenReportCategoryId =
   | 'help_request'
   | 'medical_assistance'

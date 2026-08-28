@@ -11,9 +11,11 @@ import { AppText } from '@/components/ui/AppText';
 import { HOME_STACK_ROUTES, MAIN_STACK_ROUTES, TAB_ROUTES } from '@/constants/routes';
 import { useActiveDisasterSurvey } from '@/hooks/useActiveDisasterSurvey';
 import { useActiveIda } from '@/hooks/useActiveIda';
+import { usePendingCitizenActivitySupplement } from '@/hooks/usePendingCitizenActivitySupplement';
 import { useAppTheme } from '@/hooks/useAppTheme';
 import { PROFILE_STACK_ROUTES } from '@/constants/routes';
 import {
+  navigateToCitizenAssistanceIfPending,
   navigateToDisasterSurveyIfActive,
   navigateToIdaIfActive,
 } from '@/navigation/navigationRef';
@@ -61,6 +63,8 @@ export function SettingsScreen() {
   const authToken = useAppSelector((s) => s.auth.token);
   const { invitation, hasOpenSurvey } = useActiveDisasterSurvey(authToken);
   const { invitation: idaInvitation, hasOpenIda } = useActiveIda(authToken);
+  const { pending: citizenPending, hasPendingSupplement } =
+    usePendingCitizenActivitySupplement(authToken);
 
   const openWeatherAlerts = () => {
     navigation.navigate(MAIN_STACK_ROUTES.TABS, {
@@ -111,6 +115,16 @@ export function SettingsScreen() {
             icon="document-text-outline"
             isDanger={true}
             onPress={() => void navigateToIdaIfActive()}
+          />
+        ) : null}
+
+        {hasPendingSupplement && citizenPending ? (
+          <SettingItem
+            title="Citizen report — details needed"
+            subtitle="Tap to add missing details, pictures, or videos"
+            icon="alert-circle-outline"
+            isDanger
+            onPress={() => void navigateToCitizenAssistanceIfPending()}
           />
         ) : null}
 

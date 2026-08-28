@@ -3,6 +3,7 @@ import Constants from 'expo-constants';
 import * as Device from 'expo-device';
 import { Platform } from 'react-native';
 
+import { CITIZEN_ASSISTANCE_NOTIFICATION_SCREEN } from '@/constants/citizenActivity';
 import { DISASTER_NOTIFICATION_SCREEN } from '@/constants/disasterSurvey';
 import { IDA_NOTIFICATION_SCREEN } from '@/constants/routes';
 import { getProfileReminderDelaySeconds } from '@/utils/profileReminderDelay';
@@ -253,37 +254,61 @@ export const notificationService = {
       if (item.read) continue;
       const isDisaster = item.type === 'disaster_survey';
       const isIda = item.type === 'ida_application';
-      if (!isDisaster && !isIda) continue;
+      const isCitizenActivity = item.type === 'citizen_activity';
+      if (!isDisaster && !isIda && !isCitizenActivity) continue;
 
       const invitationId =
         typeof item.meta?.invitationId === 'string' ? item.meta.invitationId : '';
-      const keys = [item.id, invitationId ? `inv:${invitationId}` : ''].filter(Boolean);
+      const activityId =
+        typeof item.meta?.activityId === 'string' ? item.meta.activityId : '';
+      const keys = [
+        item.id,
+        invitationId ? `inv:${invitationId}` : '',
+        activityId ? `activity:${activityId}` : '',
+      ].filter(Boolean);
       if (keys.some((k) => presented.has(k))) continue;
 
       try {
         await Notifications.scheduleNotificationAsync({
           identifier: isIda
             ? `inbox-ida-application-${item.id}`
-            : `inbox-disaster-survey-${item.id}`,
+            : isCitizenActivity
+              ? `inbox-citizen-activity-${item.id}`
+              : `inbox-disaster-survey-${item.id}`,
           content: {
             title:
               item.title ||
-              (isIda ? 'Initial Disaster Assistance' : 'Disaster relief survey'),
+              (isIda
+                ? 'Initial Disaster Assistance'
+                : isCitizenActivity
+                  ? 'Citizen report details needed'
+                  : 'Disaster relief survey'),
             body:
               item.body ||
               (isIda
                 ? 'If your property was damaged, tap to complete your assistance application.'
-                : 'You may be eligible for disaster relief. Tap to complete your status survey.'),
+                : isCitizenActivity
+                  ? 'Tap to add missing details, pictures, or videos for your report.'
+                  : 'You may be eligible for disaster relief. Tap to complete your status survey.'),
             sound: true,
             priority: Notifications.AndroidNotificationPriority.MAX,
             ...(Platform.OS === 'android'
               ? { channelId: DISASTER_SURVEY_CHANNEL_ID }
               : {}),
             data: {
-              screen: isIda ? IDA_NOTIFICATION_SCREEN : DISASTER_NOTIFICATION_SCREEN,
-              notificationType: isIda ? 'ida_application' : 'disaster_survey',
+              screen: isIda
+                ? IDA_NOTIFICATION_SCREEN
+                : isCitizenActivity
+                  ? CITIZEN_ASSISTANCE_NOTIFICATION_SCREEN
+                  : DISASTER_NOTIFICATION_SCREEN,
+              notificationType: isIda
+                ? 'ida_application'
+                : isCitizenActivity
+                  ? 'citizen_activity'
+                  : 'disaster_survey',
               inboxNotificationId: item.id,
               ...(invitationId ? { invitationId } : {}),
+              ...(activityId ? { activityId } : {}),
             },
           },
           trigger: null,

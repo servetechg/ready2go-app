@@ -1,7 +1,7 @@
 import * as Location from 'expo-location';
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 
 import { DisasterSurveyOptionalMediaFields } from '@/components/disaster/DisasterSurveyOptionalMediaFields';
@@ -17,14 +17,19 @@ import {
 } from '@/constants/citizenActivity';
 import { MAIN_STACK_ROUTES } from '@/constants/routes';
 import { useAppTheme } from '@/hooks/useAppTheme';
+import { usePendingCitizenActivitySupplement } from '@/hooks/usePendingCitizenActivitySupplement';
 import { useToast } from '@/hooks/useToast';
-import { useAppSelector } from '@/redux/hooks';
+import { useAppDispatch, useAppSelector } from '@/redux/hooks';
+import {
+  clearCitizenActivityPendingSupplement,
+} from '@/redux/slices/citizenActivitySlice';
 import {
   CITIZEN_ACTIVITY_MAX_PICTURES,
   CITIZEN_ACTIVITY_MAX_VIDEOS,
   CITIZEN_ACTIVITY_PICTURE_MAX_BYTES,
   CITIZEN_ACTIVITY_VIDEO_MAX_BYTES,
   citizenActivityService,
+  type CitizenActivityMissingField,
 } from '@/services/citizenActivity.service';
 import type { LocalMediaAsset } from '@/services/disasterSurvey.service';
 import { borderRadius, spacing } from '@/theme';
@@ -32,19 +37,47 @@ import type { MainStackParamList } from '@/types/navigation';
 
 type Nav = StackNavigationProp<MainStackParamList, typeof MAIN_STACK_ROUTES.CITIZEN_ASSISTANCE>;
 
+type ScreenMode = 'menu' | 'report' | 'supplement';
+
+const MISSING_LABELS: Record<CitizenActivityMissingField, string> = {
+  details: 'additional details',
+  pictures: 'pictures',
+  videos: 'videos',
+};
+
 export function CitizenAssistanceScreen() {
   const navigation = useNavigation<Nav>();
+  const dispatch = useAppDispatch();
   const { colors } = useAppTheme();
   const { showError, showSuccess } = useToast();
   const authToken = useAppSelector((s) => s.auth.token);
+  const reduxPending = useAppSelector((s) => s.citizenActivity.pendingSupplement);
+  const { pending, hasPendingSupplement, refresh } = usePendingCitizenActivitySupplement(authToken);
+  const activePending = pending ?? reduxPending;
 
-  const [mode, setMode] = useState<'menu' | 'report'>('menu');
+  const [mode, setMode] = useState<ScreenMode>(() =>
+    reduxPending && reduxPending.requestedMissingFields.length > 0 ? 'supplement' : 'menu',
+  );
   const [selectedCategory, setSelectedCategory] = useState<CitizenReportCategoryId | null>(null);
   const [description, setDescription] = useState('');
   const [details, setDetails] = useState('');
   const [pictures, setPictures] = useState<LocalMediaAsset[]>([]);
   const [videos, setVideos] = useState<LocalMediaAsset[]>([]);
   const [submitting, setSubmitting] = useState(false);
+
+  const requested = useMemo(
+    () => new Set<CitizenActivityMissingField>(activePending?.requestedMissingFields ?? []),
+    [activePending?.requestedMissingFields],
+  );
+
+  useEffect(() => {
+    if (activePending && activePending.requestedMissingFields.length > 0) {
+      setMode('supplement');
+      setDetails('');
+      setPictures([]);
+      setVideos([]);
+    }
+  }, [activePending?.activityId, activePending?.requestedMissingFields.length]);
 
   const resetReportForm = () => {
     setSelectedCategory(null);
@@ -134,6 +167,60 @@ export function CitizenAssistanceScreen() {
     }
   };
 
+  const handleSubmitSupplement = async () => {
+    if (!authToken || !activePending) {
+      showError('Sign in to submit additional details.');
+      return;
+    }
+
+    if (requested.has('details') && !details.trim()) {
+      showError('Please add the requested additional details.');
+      return;
+    }
+    if (requested.has('pictures') && pictures.length === 0) {
+      showError('Please add at least one picture.');
+      return;
+    }
+    if (requested.has('videos') && videos.length === 0) {
+      showError('Please add at least one video.');
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      const { uploadedPictures, uploadedVideos } = await uploadAllMedia(authToken);
+      const result = await citizenActivityService.supplement(authToken, {
+        activityId: activePending.activityId,
+        ...(requested.has('details') && details.trim() ? { details: details.trim() } : {}),
+        ...(requested.has('pictures') && uploadedPictures.length
+          ? { pictures: uploadedPictures }
+          : {}),
+        ...(requested.has('videos') && uploadedVideos.length ? { videos: uploadedVideos } : {}),
+      });
+      showSuccess(result.message);
+      await refresh();
+      if (result.completed) {
+        dispatch(clearCitizenActivityPendingSupplement());
+        setMode('menu');
+      } else {
+        setDetails('');
+        setPictures([]);
+        setVideos([]);
+      }
+    } catch (e) {
+      showError(e instanceof Error ? e.message : 'Could not submit additional details.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const headerTitle =
+    mode === 'supplement'
+      ? 'Add report details'
+      : mode === 'menu'
+        ? 'Citizen Assistant'
+        : 'Report a need';
+
   return (
     <View style={styles.wrapper}>
       <ScreenWrapper contentContainerStyle={styles.content}>
@@ -145,12 +232,61 @@ export function CitizenAssistanceScreen() {
               resetReportForm();
               return;
             }
+            if (mode === 'supplement' && !hasPendingSupplement && !reduxPending) {
+              setMode('menu');
+              return;
+            }
             navigation.goBack();
           }}
-          title={mode === 'menu' ? 'Citizen Assistant' : 'Report a need'}
+          title={headerTitle}
         />
 
-        {mode === 'menu' ? (
+        {mode === 'supplement' && activePending ? (
+          <ScrollView contentContainerStyle={styles.scroll}>
+            <AppText variant="bodySmall" color={colors.textSecondary} style={styles.lead}>
+              Coordinators need a few more details for your {activePending.title.toLowerCase()}{' '}
+              report.
+            </AppText>
+            <AppCard style={styles.summaryCard}>
+              <AppText variant="label">{activePending.title}</AppText>
+              <AppText variant="bodySmall" color={colors.textSecondary} style={styles.summaryBody}>
+                {activePending.description}
+              </AppText>
+              <AppText variant="caption" color={colors.textMuted} style={styles.missingLine}>
+                Missing:{' '}
+                {activePending.requestedMissingFields.map((f) => MISSING_LABELS[f]).join(', ')}
+              </AppText>
+            </AppCard>
+
+            {requested.has('details') ? (
+              <TextInput
+                value={details}
+                onChangeText={setDetails}
+                placeholder="Additional details (required)"
+                placeholderTextColor={colors.textMuted}
+                multiline
+                style={[styles.input, { borderColor: colors.border, color: colors.text }]}
+              />
+            ) : null}
+
+            <DisasterSurveyOptionalMediaFields
+              pictures={pictures}
+              videos={videos}
+              onChangePictures={setPictures}
+              onChangeVideos={setVideos}
+              showPictures={requested.has('pictures')}
+              showVideos={requested.has('videos')}
+              picturesLabel={
+                requested.has('pictures') ? 'Pictures (required)' : 'Pictures (optional)'
+              }
+              videosLabel={requested.has('videos') ? 'Videos (required)' : 'Videos (optional)'}
+              maxPictures={CITIZEN_ACTIVITY_MAX_PICTURES}
+              maxVideos={CITIZEN_ACTIVITY_MAX_VIDEOS}
+              pictureMaxBytes={CITIZEN_ACTIVITY_PICTURE_MAX_BYTES}
+              videoMaxBytes={CITIZEN_ACTIVITY_VIDEO_MAX_BYTES}
+            />
+          </ScrollView>
+        ) : mode === 'menu' ? (
           <ScrollView contentContainerStyle={styles.scroll}>
             <AppText variant="bodySmall" color={colors.textSecondary} style={styles.lead}>
               Let coordinators know you are safe or request help. When reporting, you can attach
@@ -238,6 +374,14 @@ export function CitizenAssistanceScreen() {
           primaryLoading={submitting}
         />
       ) : null}
+
+      {mode === 'supplement' && activePending ? (
+        <BottomButtonBar
+          primaryTitle="Submit details"
+          onPrimaryPress={() => void handleSubmitSupplement()}
+          primaryLoading={submitting}
+        />
+      ) : null}
     </View>
   );
 }
@@ -251,6 +395,9 @@ const styles = StyleSheet.create({
   safeBtn: { flex: 1 },
   sectionLabel: { marginBottom: spacing.sm, marginTop: spacing.sm },
   optionCard: { marginBottom: spacing.sm },
+  summaryCard: { marginBottom: spacing.md },
+  summaryBody: { marginTop: spacing.xs },
+  missingLine: { marginTop: spacing.sm },
   input: {
     borderWidth: 1,
     borderRadius: borderRadius.md,
