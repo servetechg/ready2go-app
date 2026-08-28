@@ -6,7 +6,8 @@ export type AlertSeverity = 'LOW' | 'MODERATE' | 'HIGH' | 'EXTREME';
 export interface MobileWeatherAlert {
   id: string;
   severity: AlertSeverity;
-  title: string;
+  title?: string;
+  name?: string;
   location: string;
   source: string;
   issuedAt: string;
@@ -16,6 +17,16 @@ export interface MobileWeatherAlert {
   description?: string;
   /** Official source page (NWS, USGS, InciWeb, etc.) */
   sourceUrl?: string;
+  coordinates?: { lat?: number; lon?: number; lng?: number; latitude?: number; longitude?: number };
+  lat?: number | null;
+  lng?: number | null;
+  latitude?: number | null;
+  longitude?: number | null;
+  centroid?: { lat?: number; lon?: number; lng?: number; latitude?: number; longitude?: number };
+  geometry?: {
+    type?: string;
+    coordinates?: number[] | number[][] | number[][][];
+  };
 }
 
 export type DashboardStatus = {
@@ -64,12 +75,16 @@ export interface WeatherAlert {
   id: string;
   severity: AlertSeverity;
   title: string;
+  name?: string;
   location: string;
   source: string;
   issuedAgo: string;
   expires: string;
   read: boolean;
   sourceUrl?: string;
+  coordinates?: { lat: number; lon: number };
+  lat?: number | null;
+  lng?: number | null;
 }
 
 export interface WeatherSnapshot {

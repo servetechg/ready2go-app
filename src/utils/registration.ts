@@ -11,6 +11,9 @@ export function pickAddressData(input: unknown): AddressData {
       ? (raw.address as Record<string, unknown>)
       : raw;
 
+  const lat = typeof nested.latitude === 'number' ? nested.latitude : Number(nested.latitude);
+  const lng = typeof nested.longitude === 'number' ? nested.longitude : Number(nested.longitude);
+
   return {
     streetAddress: String(nested.streetAddress ?? ''),
     aptUnit: String(nested.aptUnit ?? ''),
@@ -18,12 +21,8 @@ export function pickAddressData(input: unknown): AddressData {
     state: String(nested.state ?? ''),
     zipCode: String(nested.zipCode ?? ''),
     useCurrentLocation: Boolean(nested.useCurrentLocation),
-    ...(typeof nested.latitude === 'number' && !Number.isNaN(nested.latitude)
-      ? { latitude: nested.latitude }
-      : {}),
-    ...(typeof nested.longitude === 'number' && !Number.isNaN(nested.longitude)
-      ? { longitude: nested.longitude }
-      : {}),
+    ...(typeof lat === 'number' && !Number.isNaN(lat) ? { latitude: lat } : {}),
+    ...(typeof lng === 'number' && !Number.isNaN(lng) ? { longitude: lng } : {}),
   };
 }
 

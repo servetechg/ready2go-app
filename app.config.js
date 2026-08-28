@@ -79,12 +79,11 @@ module.exports = {
           android: {
             // Prevent Android auto-backup from restoring auth data after reinstall.
             allowBackup: false,
-            // An APK missing a device's ABI crashes on launch (SoLoader cannot find
-            // libreactnative.so). These three cover every real phone plus the x86_64
-            // emulator; 32-bit x86 is emulator-only legacy and just slows the build.
-            buildArchs: ['armeabi-v7a', 'arm64-v8a', 'x86_64'],
-            enableMinifyInReleaseBuilds: false,
-            enableShrinkResourcesInReleaseBuilds: false,
+            // arm64-v8a targets modern physical Android devices (released in the last ~8+ years)
+            // and cuts multi-ABI duplicate native library weight (~35MB reduction).
+            buildArchs: ['arm64-v8a'],
+            enableMinifyInReleaseBuilds: true,
+            enableShrinkResourcesInReleaseBuilds: true,
             extraProguardRules: `
               -keep class com.google.android.gms.** { *; }
               -keep interface com.google.android.gms.** { *; }
@@ -92,6 +91,8 @@ module.exports = {
               -keep class com.rnmaps.maps.** { *; }
               -keep interface com.rnmaps.maps.** { *; }
               -dontwarn com.rnmaps.maps.**
+              -keep class com.swmansion.reanimated.** { *; }
+              -keep class com.facebook.react.turbomodule.** { *; }
             `,
           },
         },

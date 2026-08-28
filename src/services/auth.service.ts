@@ -33,10 +33,11 @@ function pickToken(
   sources: Array<Record<string, unknown> | null | undefined>,
   keys: string[],
 ): string | undefined {
-  for (const source of sources) {
+  for (let i = 0; i < sources.length; i++) {
+    const source = sources[i];
     if (!source) continue;
-    for (const key of keys) {
-      const found = asTokenString(source[key]);
+    for (let j = 0; j < keys.length; j++) {
+      const found = asTokenString(source[keys[j]]);
       if (found) return found;
     }
   }
@@ -84,7 +85,9 @@ export const authService = {
         body: payload,
       },
     );
-    const normalized = normalizeAuthResponse(raw);
+    const normalized = normalizeAuthResponse(
+      raw as unknown as ApiAuthResponse & Record<string, unknown>,
+    );
     // Signup no longer returns live tokens — only the unverified user for OTP.
     if (!normalized.user) {
       throw new Error('Signup succeeded but user payload was missing');
@@ -101,7 +104,7 @@ export const authService = {
       method: 'POST',
       body: credentials,
     });
-    return normalizeAuthResponse(raw);
+    return normalizeAuthResponse(raw as unknown as ApiAuthResponse & Record<string, unknown>);
   },
 
   async forgotPassword(payload: ForgotPasswordPayload): Promise<MessageResponse> {
@@ -134,7 +137,7 @@ export const authService = {
       body: payload,
       token: accessToken,
     });
-    return normalizeAuthResponse(raw);
+    return normalizeAuthResponse(raw as unknown as ApiAuthResponse & Record<string, unknown>);
   },
 
   async resetPassword(payload: ResetPasswordPayload): Promise<MessageResponse> {

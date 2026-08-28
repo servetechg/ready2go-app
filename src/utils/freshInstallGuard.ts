@@ -12,7 +12,7 @@ import { clearAuthTokens } from '@/utils/authSessionStorage';
  * uninstall → reinstall, which causes the old user session to reappear.
  * This guard ensures a clean slate after reinstall.
  */
-const INSTALL_SENTINEL_KEY = 'ready2go_install_sentinel_v1';
+const INSTALL_SENTINEL_KEY = 'ready2go_install_sentinel_v2';
 
 /**
  * Call once at app startup, **before** session bootstrap.

@@ -908,8 +908,7 @@ export async function fetchPersonalizedNews(
     // Fall through to ultimate mock fallback
   }
 
-  const fallbackArticles = getFallbackMockArticles();
-  const fallbackResponse = buildResponse(fallbackArticles, null);
-  void writeDiskCache(cacheKey, fallbackResponse);
-  return fallbackResponse;
+  const emptyResponse = buildResponse([], null);
+  void writeDiskCache(cacheKey, emptyResponse);
+  return emptyResponse;
 }

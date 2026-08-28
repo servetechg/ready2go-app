@@ -3,8 +3,8 @@ import { isApiClientError } from '@/services/api/errors';
 export function getErrorMessage(error: unknown, fallback = 'Something went wrong'): string {
   if (typeof error === 'string') return error;
   if (isApiClientError(error)) {
-    if (error.errors?.length) {
-      const detail = error.errors.map((e) => e.message).filter(Boolean).join('. ');
+    if (Array.isArray(error.errors) && error.errors.length) {
+      const detail = error.errors.map((e: any) => e?.message ?? '').filter(Boolean).join('. ');
       if (detail) return detail;
     }
     return error.message;

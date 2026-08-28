@@ -135,4 +135,15 @@ export const profileService = {
       token,
     });
   },
+
+  async updatePassword(
+    token: string,
+    body: { currentPassword: string; newPassword: string },
+  ): Promise<{ message: string }> {
+    return apiRequest<{ message: string }>('/users/update-password', {
+      method: 'POST',
+      body,
+      token,
+    });
+  },
 };

@@ -19,13 +19,14 @@ import { useProfileReminder } from '@/hooks/useProfileReminder';
 import { usePushTokenRegistration } from '@/hooks/usePushTokenRegistration';
 import { RootNavigator } from '@/navigation';
 import { navigationRef } from '@/navigation/navigationRef';
-import { hydrateTokens, setCredentials } from '@/redux/slices/authSlice';
+import { hydrateTokens, logout, setCredentials } from '@/redux/slices/authSlice';
 import { initPersistor, store } from '@/redux/store';
 import { initNotificationHandler } from '@/services/notification.service';
 import { palette } from '@/theme';
 import { fontFamily } from '@/theme/fonts';
 import Toast from 'react-native-toast-message';
 import { loadSession } from '@/utils/authSessionStorage';
+import { guardFreshInstall } from '@/utils/freshInstallGuard';
 import { runStorageMigration } from '@/utils/storageMigration';
 
 SplashScreen.preventAutoHideAsync().catch(() => {});
@@ -164,6 +165,10 @@ export default function App() {
     let cancelled = false;
     (async () => {
       await runStorageMigration();
+      const wasFreshInstall = await guardFreshInstall();
+      if (wasFreshInstall) {
+        store.dispatch(logout());
+      }
       if (cancelled) return;
       setPersistor(initPersistor());
     })().catch(() => {

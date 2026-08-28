@@ -53,6 +53,7 @@ export const MAIN_STACK_ROUTES = {
   CITIZEN_ASSISTANCE: 'CitizenAssistance',
   NOTIFICATIONS: 'Notifications',
   SPLASH_PREVIEW: 'SplashPreview',
+  CHANGE_PASSWORD: 'ChangePassword',
 } as const;
 
 export const DISASTER_SURVEY_ROUTES = {

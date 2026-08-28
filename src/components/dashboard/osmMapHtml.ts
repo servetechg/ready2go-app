@@ -33,17 +33,57 @@ export function buildOsmMapHtml({ tileUrl, maxZoom, colors }: OsmMapHtmlOptions)
   html, body, #map { margin: 0; padding: 0; height: 100%; width: 100%; }
   body { overflow: hidden; -webkit-tap-highlight-color: transparent; }
   .leaflet-container { background: ${colors.background}; outline: none; font-family: -apple-system, Roboto, system-ui, sans-serif; }
-  .r2g-pin { width: 40px; height: 50px; display: flex; flex-direction: column; align-items: center; }
+  .r2g-pin {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.28));
+  }
   .r2g-pin-head {
-    width: 40px; height: 40px; border-radius: 20px; box-sizing: border-box;
-    background: ${colors.surface}; border: 1.5px solid #B0BEC5; color: ${colors.text};
-    display: flex; align-items: center; justify-content: center;
-    box-shadow: 0 2px 3px rgba(0, 0, 0, 0.28);
+    box-sizing: border-box;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 2px solid #ffffff;
+    color: #ffffff;
+  }
+  .r2g-pin--alert {
+    width: 26px;
+    height: 26px;
+  }
+  .r2g-pin--alert .r2g-pin-head {
+    width: 26px;
+    height: 26px;
+    border-radius: 13px;
+  }
+  .r2g-pin--home {
+    width: 28px;
+    height: 28px;
+  }
+  .r2g-pin--home .r2g-pin-head {
+    width: 28px;
+    height: 28px;
+    border-radius: 14px;
+    background: #1a73e8;
+    border-color: #ffffff;
+    color: #ffffff;
+  }
+  .r2g-pin--default {
+    width: 30px;
+    height: 38px;
+  }
+  .r2g-pin--default .r2g-pin-head {
+    width: 30px;
+    height: 30px;
+    border-radius: 15px;
   }
   .r2g-pin-tail {
-    width: 0; height: 0; margin-top: -2px;
-    border-left: 7px solid transparent; border-right: 7px solid transparent;
-    border-top: 10px solid ${colors.surface};
+    width: 0;
+    height: 0;
+    margin-top: -2px;
+    border-left: 6px solid transparent;
+    border-right: 6px solid transparent;
+    border-top: 8px solid var(--pin-color, ${colors.surface});
   }
   .r2g-popup-title { font-size: 13px; font-weight: 600; color: ${colors.text}; }
   .r2g-popup-body { font-size: 12px; color: ${colors.textSecondary}; margin-top: 2px; }
@@ -88,9 +128,28 @@ export function buildOsmMapHtml({ tileUrl, maxZoom, colors }: OsmMapHtmlOptions)
     updateWhenIdle: false
   }).addTo(map);
 
+  var markerPane = map.createPane('r2gMarkers');
+  markerPane.style.zIndex = '650';
+  var userPane = map.createPane('r2gUser');
+  userPane.style.zIndex = '700';
+
   var shapeLayer = L.layerGroup().addTo(map);
   var markerLayer = L.layerGroup().addTo(map);
   var userLayer = L.layerGroup().addTo(map);
+
+  function isValidLatLng(lat, lng) {
+    var la = Number(lat);
+    var ln = Number(lng);
+    return isFinite(la) && isFinite(ln) && (la !== 0 || ln !== 0) && la >= -90 && la <= 90 && ln >= -180 && ln <= 180;
+  }
+
+  function isValidRegion(region) {
+    if (!region) return false;
+    if (!isValidLatLng(region.latitude, region.longitude)) return false;
+    var latDelta = Number(region.latitudeDelta);
+    var lngDelta = Number(region.longitudeDelta);
+    return isFinite(latDelta) && isFinite(lngDelta) && latDelta > 0 && lngDelta > 0;
+  }
 
   function toBounds(region) {
     var latPad = Math.max(region.latitudeDelta, 0.0001) / 2;
@@ -118,11 +177,50 @@ export function buildOsmMapHtml({ tileUrl, maxZoom, colors }: OsmMapHtmlOptions)
     });
   }
 
-  function pinHtml(iconName) {
-    var artwork = ICONS[iconName] || '';
-    return '<div class="r2g-pin"><div class="r2g-pin-head">' +
-      '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="22" height="22" fill="currentColor">' +
-      artwork + '</svg></div><div class="r2g-pin-tail"></div></div>';
+  function pinVariant(layer) {
+    if (layer === 'alerts') return 'alert';
+    if (layer === 'home') return 'home';
+    return 'default';
+  }
+
+  function pinLayout(variant) {
+    if (variant === 'alert') {
+      return { className: 'r2g-pin r2g-pin--alert', iconSize: 13, boxW: 26, boxH: 26, anchorY: 26, popupY: -28, tail: false };
+    }
+    if (variant === 'home') {
+      return { className: 'r2g-pin r2g-pin--home', iconSize: 14, boxW: 28, boxH: 28, anchorY: 28, popupY: -30, tail: false };
+    }
+    return { className: 'r2g-pin r2g-pin--default', iconSize: 15, boxW: 30, boxH: 38, anchorY: 38, popupY: -36, tail: true };
+  }
+
+  function pinHtml(iconName, options) {
+    options = options || {};
+    var variant = options.variant || 'default';
+    var color = options.color || '#546E7A';
+    var layout = pinLayout(variant);
+    var artwork = ICONS[iconName] || ICONS.warning || '';
+    var headStyle = 'background:' + color + ';';
+    if (variant === 'home') {
+      headStyle = '';
+    }
+    var tail = layout.tail
+      ? '<div class="r2g-pin-tail" style="--pin-color:' + color + ';"></div>'
+      : '';
+    return '<div class="' + layout.className + '" style="--pin-color:' + color + ';">' +
+      '<div class="r2g-pin-head" style="' + headStyle + '">' +
+      '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="' + layout.iconSize + '" height="' + layout.iconSize + '" fill="currentColor">' +
+      artwork + '</svg></div>' + tail + '</div>';
+  }
+
+  function markerIcon(marker) {
+    var variant = pinVariant(marker.layer);
+    var layout = pinLayout(variant);
+    return {
+      html: pinHtml(marker.icon, { variant: variant, color: marker.color }),
+      iconSize: [layout.boxW, layout.boxH],
+      iconAnchor: [layout.boxW / 2, layout.anchorY],
+      popupAnchor: [0, layout.popupY]
+    };
   }
 
   function popupHtml(marker) {
@@ -141,6 +239,7 @@ export function buildOsmMapHtml({ tileUrl, maxZoom, colors }: OsmMapHtmlOptions)
     markerLayer.clearLayers();
 
     (data.heat || []).forEach(function (circle) {
+      if (!isValidLatLng(circle.lat, circle.lng)) return;
       L.circle([circle.lat, circle.lng], {
         radius: circle.radius,
         color: circle.stroke,
@@ -153,7 +252,11 @@ export function buildOsmMapHtml({ tileUrl, maxZoom, colors }: OsmMapHtmlOptions)
     });
 
     (data.polygons || []).forEach(function (polygon) {
-      L.polygon(polygon.coordinates, {
+      var ring = (polygon.coordinates || []).filter(function (point) {
+        return Array.isArray(point) && isValidLatLng(point[0], point[1]);
+      });
+      if (ring.length < 3) return;
+      L.polygon(ring, {
         color: polygon.stroke,
         opacity: polygon.strokeOpacity,
         weight: 2,
@@ -164,16 +267,20 @@ export function buildOsmMapHtml({ tileUrl, maxZoom, colors }: OsmMapHtmlOptions)
     });
 
     (data.markers || []).forEach(function (marker) {
+      if (!isValidLatLng(marker.lat, marker.lng)) return;
+      var iconSpec = markerIcon(marker);
       var pin = L.marker([marker.lat, marker.lng], {
+        pane: 'r2gMarkers',
         icon: L.divIcon({
-          html: pinHtml(marker.icon),
+          html: iconSpec.html,
           className: '',
-          iconSize: [40, 50],
-          iconAnchor: [20, 50],
-          popupAnchor: [0, -46]
+          iconSize: iconSpec.iconSize,
+          iconAnchor: iconSpec.iconAnchor,
+          popupAnchor: iconSpec.popupAnchor
         }),
         keyboard: false,
-        title: marker.title || ''
+        title: marker.title || '',
+        zIndexOffset: marker.layer === 'alerts' ? 300 : 200
       });
       if (marker.title || marker.description) {
         pin.bindPopup(popupHtml(marker), { closeButton: false });
@@ -183,6 +290,7 @@ export function buildOsmMapHtml({ tileUrl, maxZoom, colors }: OsmMapHtmlOptions)
   };
 
   window.__setView = function (region, duration) {
+    if (!isValidRegion(region)) return;
     var bounds = toBounds(region);
     if (duration > 0) {
       map.flyToBounds(bounds, { duration: duration / 1000 });
@@ -193,7 +301,7 @@ export function buildOsmMapHtml({ tileUrl, maxZoom, colors }: OsmMapHtmlOptions)
 
   window.__setUserLocation = function (location) {
     userLayer.clearLayers();
-    if (!location) return;
+    if (!location || !isValidLatLng(location.lat, location.lng)) return;
     if (location.accuracy > 0) {
       L.circle([location.lat, location.lng], {
         radius: location.accuracy,
@@ -203,14 +311,24 @@ export function buildOsmMapHtml({ tileUrl, maxZoom, colors }: OsmMapHtmlOptions)
         interactive: false
       }).addTo(userLayer);
     }
-    L.circleMarker([location.lat, location.lng], {
-      radius: 7,
-      color: '#FFFFFF',
-      weight: 3,
-      fillColor: '#4285F4',
-      fillOpacity: 1,
-      interactive: false
-    }).addTo(userLayer);
+    var homeIcon = markerIcon({ icon: 'home', color: '#1a73e8', layer: 'home' });
+    L.marker([location.lat, location.lng], {
+      pane: 'r2gUser',
+      icon: L.divIcon({
+        html: homeIcon.html,
+        className: '',
+        iconSize: homeIcon.iconSize,
+        iconAnchor: homeIcon.iconAnchor,
+        popupAnchor: homeIcon.popupAnchor
+      }),
+      keyboard: false,
+      interactive: true,
+      zIndexOffset: 2000
+    })
+      .on('click', function (event) {
+        L.DomEvent.stopPropagation(event);
+      })
+      .addTo(userLayer);
   };
 
   map.on('moveend', function () {
@@ -228,7 +346,7 @@ export function buildOsmMapHtml({ tileUrl, maxZoom, colors }: OsmMapHtmlOptions)
     map.invalidateSize();
   });
 
-  if (initial.region) {
+  if (initial.region && isValidRegion(initial.region)) {
     map.fitBounds(toBounds(initial.region), { animate: false });
   } else {
     map.setView([0, 0], 2);
