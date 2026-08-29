@@ -19,14 +19,9 @@ function normalizeStateKey(value?: string | null): string {
  */
 export function usePersonalizedNews(): UsePersonalizedNewsResult {
   const token = useAppSelector((state) => state.auth.token);
-  const userState = useAppSelector((state) => {
-    const candidates = [
-      (state.auth.user as { state?: string } | null)?.state,
-      state.registration?.address?.state,
-      state.registration?.alertLocations?.[0]?.state,
-    ];
-    return candidates.find((value) => typeof value === 'string' && value.trim())?.trim() ?? null;
-  });
+  const userState = useAppSelector(
+    (state) => state.registration?.address?.state?.trim() || null,
+  );
 
   const [articles, setArticles] = useState<PersonalizedNewsArticle[]>([]);
   const [loading, setLoading] = useState<boolean>(true);

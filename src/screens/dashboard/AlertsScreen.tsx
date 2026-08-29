@@ -30,7 +30,7 @@ import type { MainTabParamList } from '@/types/navigation';
 import { toBoolean } from '@/utils/coerce';
 import { mapMobileAlertToWeatherAlert } from '@/utils/dashboardMappers';
 import { formatAddressLine } from '@/utils/formatAddress';
-import { filterAlertsByAllowedStates, getAllowedStateTokens } from '@/utils/alertFilters';
+import { filterAlertsByAllowedStates, getSignupStateTokens } from '@/utils/alertFilters';
 import { palette, spacing } from '@/theme';
 
 type AlertsTabNav = BottomTabNavigationProp<MainTabParamList, typeof TAB_ROUTES.ALERTS>;
@@ -119,9 +119,9 @@ export function AlertsScreen() {
 
   const displayAlerts = useMemo(() => {
     const mapped = items.map(mapMobileAlertToWeatherAlert);
-    const allowedTokens = getAllowedStateTokens(address, alertLocations);
+    const allowedTokens = getSignupStateTokens(address);
     return filterAlertsByAllowedStates(mapped, allowedTokens);
-  }, [items, address, alertLocations]);
+  }, [items, address]);
 
   const handleSortChange = useCallback(
     (sort: AlertsSort) => {
@@ -169,9 +169,9 @@ export function AlertsScreen() {
           No active alerts for your locations right now.
         </AppText>
         <AppText variant="caption" color={colors.textMuted} center={true}>
-          Add more places in Profile to watch additional areas.
+          Alerts are limited to your signup state. Update your home address in Profile if this looks wrong.
         </AppText>
-        <AppButton title="Manage alert locations" variant="secondary" onPress={goToProfile} />
+        <AppButton title="Edit home address" variant="secondary" onPress={goToProfile} />
       </View>
     );
   }, [colors.textMuted, colors.textSecondary, dispatch, error, goToProfile, profileComplete]);

@@ -369,7 +369,11 @@ function formatParsedLabel(parsed: ParsedAddress): string {
         case 'ready':
           mapReadyRef.current = true;
           if (pin) {
-            runJs(`window.__setMarker(${pin.latitude}, ${pin.longitude})`);
+            focusMapOn(pin.latitude, pin.longitude);
+          } else {
+            runJs(
+              `window.__setView(${JSON.stringify({ ...DEFAULT_MAP_CENTER })}, 0)`,
+            );
           }
           break;
         case 'markerDragEnd':
@@ -382,7 +386,7 @@ function formatParsedLabel(parsed: ParsedAddress): string {
           break;
       }
     },
-    [handleMarkerDragEnd, pin, runJs],
+    [focusMapOn, handleMarkerDragEnd, pin, runJs],
   );
 
   const showDropdown =

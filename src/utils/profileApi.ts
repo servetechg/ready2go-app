@@ -79,6 +79,10 @@ export function buildPatchProfileBody(
     streetAddress: string;
     city: string;
     state: string;
+    zipCode?: string;
+    latitude?: number;
+    longitude?: number;
+    useCurrentLocation?: boolean;
     householdSize: number;
     isPrimaryAddress?: boolean | null;
     allowResidenceInspection?: boolean | null;
@@ -91,6 +95,12 @@ export function buildPatchProfileBody(
     streetAddress: updates.streetAddress.trim(),
     city: updates.city.trim(),
     state: updates.state,
+    ...(updates.zipCode !== undefined ? { zipCode: updates.zipCode.trim() } : {}),
+    ...(updates.latitude !== undefined ? { latitude: updates.latitude } : {}),
+    ...(updates.longitude !== undefined ? { longitude: updates.longitude } : {}),
+    ...(updates.useCurrentLocation !== undefined
+      ? { useCurrentLocation: updates.useCurrentLocation }
+      : {}),
   });
   const nextHousehold = updates.householdSize;
 
@@ -99,7 +109,10 @@ export function buildPatchProfileBody(
     nextAddress.city !== registration.address.city ||
     nextAddress.state !== registration.address.state ||
     nextAddress.zipCode !== registration.address.zipCode ||
-    nextAddress.aptUnit !== registration.address.aptUnit;
+    nextAddress.aptUnit !== registration.address.aptUnit ||
+    nextAddress.latitude !== registration.address.latitude ||
+    nextAddress.longitude !== registration.address.longitude ||
+    nextAddress.useCurrentLocation !== registration.address.useCurrentLocation;
 
   const householdChanged = nextHousehold !== registration.householdSize;
   const primaryChanged =

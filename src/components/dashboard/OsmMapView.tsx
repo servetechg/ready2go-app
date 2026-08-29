@@ -155,17 +155,19 @@ export const OsmMapView = forwardRef<OsmMapHandle, OsmMapViewProps>(function Osm
 
   useEffect(() => {
     if (!readyRef.current) return;
-    if (!staticUserLocation || !isValidLatLng(staticUserLocation.latitude, staticUserLocation.longitude)) {
+    const lat = staticUserLocation?.latitude;
+    const lng = staticUserLocation?.longitude;
+    if (!isValidLatLng(lat, lng)) {
       return;
     }
     run(
       `window.__setUserLocation(${JSON.stringify({
-        lat: staticUserLocation.latitude,
-        lng: staticUserLocation.longitude,
+        lat,
+        lng,
         accuracy: 0,
       })})`,
     );
-  }, [staticUserLocation, run]);
+  }, [staticUserLocation?.latitude, staticUserLocation?.longitude, run]);
 
   useImperativeHandle(
     ref,

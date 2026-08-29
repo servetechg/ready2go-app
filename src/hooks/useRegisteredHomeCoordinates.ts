@@ -16,35 +16,48 @@ function coordsFromAddress(address: AddressData): AlertCoordinates | null {
 
 /** Registered home coordinates from profile, geocoding the saved address when lat/lng are missing. */
 export function useRegisteredHomeCoordinates(address: AddressData) {
-  const profileCoords = useMemo(() => coordsFromAddress(address), [address]);
+  const addressQuery = useMemo(
+    () => formatAddressLine(address).trim(),
+    [address.streetAddress, address.city, address.state, address.zipCode],
+  );
+
+  const explicitCoords = useMemo(
+    () => coordsFromAddress(address),
+    [address.latitude, address.longitude],
+  );
+
   const [geocoded, setGeocoded] = useState<AlertCoordinates | null>(null);
+  const [geocodedQuery, setGeocodedQuery] = useState<string | null>(null);
 
   useEffect(() => {
-    if (profileCoords) {
+    if (!addressQuery || addressQuery === 'Address not set') {
       setGeocoded(null);
+      setGeocodedQuery(null);
       return;
     }
 
-    const query = formatAddressLine(address).trim();
-    if (!query || query === 'Address not set') return;
-
     let cancelled = false;
-    void geocodeAlertLocation(query).then((coords) => {
-      if (!cancelled && coords) setGeocoded(coords);
+    setGeocoded(null);
+    setGeocodedQuery(null);
+
+    void geocodeAlertLocation(addressQuery).then((coords) => {
+      if (!cancelled && coords) {
+        setGeocoded(coords);
+        setGeocodedQuery(addressQuery);
+      }
     });
 
     return () => {
       cancelled = true;
     };
-  }, [
-    profileCoords,
-    address.streetAddress,
-    address.city,
-    address.state,
-    address.zipCode,
-  ]);
+  }, [addressQuery]);
 
-  return profileCoords ?? geocoded;
+  const geocodedForCurrentAddress =
+    geocoded && geocodedQuery === addressQuery ? geocoded : null;
+
+  // Geocoded address text wins over stale saved lat/lng after Edit Profile.
+  // Saved lat/lng from AddressPicker is used while geocoding or if geocode fails.
+  return geocodedForCurrentAddress ?? explicitCoords;
 }
 
 export function separateFromReference(
