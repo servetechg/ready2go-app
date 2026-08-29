@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
-import React, { useMemo, useRef, useState } from 'react';
+import React, { useCallback, useMemo, useRef, useState } from 'react';
 import {
     Platform,
     Pressable,
@@ -12,14 +12,17 @@ import {
 } from 'react-native';
 
 import { AlertLocationsEditor } from '@/components/dashboard/AlertLocationsEditor';
-import { AppSelect } from '@/components/form/AppSelect';
+import {
+  AddressPickerScreen,
+  type AddressPickerValue,
+} from '@/components/onboarding/AddressPickerScreen';
 import { FormattedPhoneField } from '@/components/form/FormattedPhoneField';
 import { ScreenWrapper } from '@/components/layout/ScreenWrapper';
 import { AddressVerificationFields } from '@/components/profile/AddressVerificationFields';
 import { ProfileAvatarEditor } from '@/components/profile/ProfileAvatarEditor';
 import { AppText } from '@/components/ui/AppText';
 import { RequirementEditor } from '@/components/profile/RequirementEditor';
-import { ADA_OPTIONS, PET_OPTIONS, US_STATES } from '@/constants/registration';
+import { ADA_OPTIONS, PET_OPTIONS } from '@/constants/registration';
 import { PROFILE_STACK_ROUTES } from '@/constants/routes';
 import { useToast } from '@/hooks/useToast';
 import { useAppDispatch, useAppSelector } from '@/redux/hooks';
@@ -30,6 +33,7 @@ import {
     uploadProfileDocument,
 } from '@/redux/thunks/profileThunks';
 import {
+    setAddress,
     setAddressVerification,
     setAda,
     setPets,
@@ -42,6 +46,7 @@ import type { AlertLocation, YesNoStepData } from '@/types/registration';
 import { adaSchema, petsSchema } from '@/validations/registration.schemas';
 import type { LocalProfileDocument, ProfileDocumentValue } from '@/types/profileDocument';
 import { getErrorMessage } from '@/utils/error';
+import { pickAddressData } from '@/utils/registration';
 import { sanitizeTextInputProps } from '@/utils/nativeProps';
 import {
     e164ToPhoneDisplay,
@@ -60,8 +65,6 @@ type Nav = StackNavigationProp<
   ProfileStackParamList,
   typeof PROFILE_STACK_ROUTES.EDIT_PROFILE
 >;
-
-const COUNTRIES = ['United States'] as const;
 
 interface EditFieldProps {
   value: string;
@@ -124,10 +127,9 @@ export function EditProfileScreen() {
   const [email, setEmail] = useState(user?.email ?? '');
   const [phone, setPhone] = useState(() => e164ToPhoneDisplay(user?.phone));
   const [householdSize, setHouseholdSizeText] = useState(String(registration.householdSize));
-  const [country, setCountry] = useState<string>(COUNTRIES[0]);
-  const [state, setState] = useState(registration.address.state);
-  const [city, setCity] = useState(registration.address.city);
-  const [streetAddress, setStreetAddress] = useState(registration.address.streetAddress);
+  const [addressValue, setAddressValue] = useState<AddressPickerValue>(() =>
+    pickAddressData(registration.address),
+  );
   const [isPrimaryAddress, setIsPrimaryAddress] = useState<boolean | null>(
     registration.isPrimaryAddress,
   );
@@ -146,6 +148,10 @@ export function EditProfileScreen() {
   const [ada, setAdaLocal] = useState<YesNoStepData>(registration.ada);
   const [pets, setPetsLocal] = useState<YesNoStepData>(registration.pets);
   const [saving, setSaving] = useState(false);
+
+  const handleAddressChange = useCallback((patch: Partial<AddressPickerValue>) => {
+    setAddressValue((prev) => ({ ...prev, ...patch }));
+  }, []);
 
   const uploadDocument = async (
     kind: 'ownership' | 'residency',
@@ -204,9 +210,13 @@ export function EditProfileScreen() {
         phone: phoneE164,
       });
       const profileBody = buildPatchProfileBody(registration, {
-        streetAddress,
-        city,
-        state,
+        streetAddress: addressValue.streetAddress,
+        city: addressValue.city,
+        state: addressValue.state,
+        zipCode: addressValue.zipCode,
+        latitude: addressValue.latitude,
+        longitude: addressValue.longitude,
+        useCurrentLocation: addressValue.useCurrentLocation,
         householdSize: parsedHousehold,
         isPrimaryAddress,
         allowResidenceInspection,
@@ -246,6 +256,8 @@ export function EditProfileScreen() {
           throw new Error(String(result.payload));
         }
       }
+
+      dispatch(setAddress(pickAddressData(addressValue)));
 
       dispatch(
         setAddressVerification({
@@ -318,28 +330,10 @@ export function EditProfileScreen() {
               keyboardType="numeric"
             />
 
-            <AppSelect
-              value={country}
-              options={COUNTRIES}
-              onChange={setCountry}
-              placeholder="Country"
-              containerStyle={styles.selectField}
-              pill
-            />
-            <AppSelect
-              value={state}
-              options={US_STATES}
-              onChange={setState}
-              placeholder="State"
-              containerStyle={styles.selectField}
-              pill
-            />
-            <EditField value={city} onChangeText={setCity} placeholder="City" />
-            <EditField
-              value={streetAddress}
-              onChangeText={setStreetAddress}
-              placeholder="867 Snowbird Lane Hampton Bays, New York"
-              rightIcon={<Ionicons name="locate" size={22} color={palette.tabActive} />}
+            <AddressPickerScreen
+              value={addressValue}
+              onChange={handleAddressChange}
+              containerStyle={styles.addressPicker}
             />
 
             <AddressVerificationFields
@@ -431,6 +425,9 @@ const styles = StyleSheet.create({
   },
   form: {
     gap: spacing.md,
+  },
+  addressPicker: {
+    marginTop: spacing.xs,
   },
   fieldWrap: {
     position: 'relative',

@@ -1,6 +1,7 @@
 import { createAsyncThunk } from '@reduxjs/toolkit';
 
 import { profileService } from '@/services/profile.service';
+import { clearPersonalizedNewsCache } from '@/services/personalizedNews.service';
 import { setUser } from '@/redux/slices/authSlice';
 import { fetchAlerts } from '@/redux/slices/alertsSlice';
 import { fetchHome } from '@/redux/slices/dashboardSlice';
@@ -53,6 +54,7 @@ export const patchEmergencyProfile = createAsyncThunk(
       const response = await profileService.patchProfile(token, body);
       dispatch(hydrateProfileFromApi(response.profile));
       if (body.address) {
+        clearPersonalizedNewsCache();
         dispatch(clearPreparednessCache());
         void dispatch(fetchCategories(undefined));
         void dispatch(fetchHome());

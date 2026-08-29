@@ -259,12 +259,17 @@ function isStateRelevant(
  * Must match an allowed emergency/weather category phrase AND (when set) the user state.
  */
 export function isRelevantEmergencyArticle(
-  article: Pick<PersonalizedNewsArticle, 'title' | 'description' | 'content' | 'category'>,
+  article: Pick<
+    PersonalizedNewsArticle,
+    'title' | 'description' | 'content' | 'category' | 'country'
+  >,
   targetStateName?: string | null,
   targetStateCode?: string | null,
 ): boolean {
   const title = (article.title || '').trim();
   if (!title) return false;
+
+  if (isNonUsArticle(article)) return false;
 
   const description = (article.description || '').trim();
   const titleLower = title.toLowerCase();
@@ -293,7 +298,7 @@ export function isRelevantEmergencyArticle(
     return isStateRelevant(titleAndDesc, targetStateName, targetStateCode || null);
   }
 
-  return true;
+  return false;
 }
 
 function filterAndDedupeArticles(
@@ -351,6 +356,12 @@ const newsCache = new Map<string, { cachedAt: number; response: PersonalizedNews
 
 export function clearPersonalizedNewsCache(): void {
   newsCache.clear();
+  void AsyncStorage.getAllKeys().then((keys) => {
+    const newsKeys = keys.filter((key) => key.startsWith(DISK_CACHE_PREFIX));
+    if (newsKeys.length > 0) {
+      void AsyncStorage.multiRemove(newsKeys);
+    }
+  });
 }
 
 function readCache(key: string): PersonalizedNewsApiResponse | null {
@@ -487,16 +498,43 @@ function cleanSnippet(raw?: string | null): string | null {
 }
 
 /**
+ * Reject articles that are clearly outside the United States.
+ */
+function isNonUsArticle(
+  article: Pick<PersonalizedNewsArticle, 'title' | 'description' | 'content' | 'country'>,
+): boolean {
+  const countries = Array.isArray(article.country) ? article.country : [];
+  for (const raw of countries) {
+    const code = String(raw || '')
+      .trim()
+      .toUpperCase();
+    if (code && code !== 'US' && code !== 'USA' && code !== 'UNITED STATES') {
+      return true;
+    }
+  }
+
+  const blob = `${article.title || ''} ${article.description || ''} ${article.content || ''}`.toLowerCase();
+  return /\b(nepal|tibet|australia|australian|canada|mexico|ukraine|india|china|europe|international|diaspora|united kingdom|new zealand|pakistan|bangladesh|philippines|indonesia|japan|korea|africa|middle east)\b/i.test(
+    blob,
+  );
+}
+
+/**
  * Webz gate: title must match an allowed rescue category, state must match,
  * and sports/politics junk is dropped.
  */
 function isAcceptableWebzArticle(
-  article: Pick<PersonalizedNewsArticle, 'title' | 'description' | 'content' | 'category'>,
+  article: Pick<
+    PersonalizedNewsArticle,
+    'title' | 'description' | 'content' | 'category' | 'country'
+  >,
   targetStateName?: string | null,
   targetStateCode?: string | null,
 ): boolean {
   const title = (article.title || '').trim();
   if (!title) return false;
+
+  if (isNonUsArticle(article)) return false;
 
   const description = (article.description || '').trim();
   const titleLower = title.toLowerCase();
@@ -521,7 +559,7 @@ function isAcceptableWebzArticle(
     return isStateRelevant(fullBlob, targetStateName, targetStateCode || null);
   }
 
-  return true;
+  return false;
 }
 
 const DEFAULT_NEWS_IMAGES: Record<string, string> = {
@@ -831,7 +869,19 @@ export async function fetchPersonalizedNews(
   }
 
   const rawState = userState?.trim() || '';
-  const mappedName = rawState ? resolveStateLabel(rawState, rawState) : null;
+  if (!rawState) {
+    return {
+      success: true,
+      isPersonalized: false,
+      userStateCode: null,
+      mappedStateName: null,
+      totalResults: 0,
+      nextPage: null,
+      results: [],
+    };
+  }
+
+  const mappedName = resolveStateLabel(rawState, rawState);
   const isPersonalized = Boolean(mappedName && mappedName !== 'United States');
   const stateCode = isPersonalized && mappedName ? resolveStateCode(rawState, mappedName) : null;
   const stateFilterName = isPersonalized ? mappedName : null;
@@ -877,9 +927,6 @@ export async function fetchPersonalizedNews(
   if (NEWS_PROVIDER === 'webz' || page?.startsWith('/api/news')) {
     try {
       let webz = await fetchFromWebz(page, stateFilterName, stateCode);
-      if (webz.articles.length === 0 && isPersonalized && !page) {
-        webz = await fetchFromWebz(null, null, null);
-      }
       const response = buildResponse(webz.articles, webz.nextPage);
       if (webz.articles.length > 0) {
         void writeDiskCache(cacheKey, response);

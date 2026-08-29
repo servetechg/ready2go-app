@@ -25,7 +25,7 @@ function Sync-ProjectToShortPath {
     $SourceRoot,
     $TargetRoot,
     "/MIR",
-    "/XD", "node_modules", ".git",
+    "/XD", "node_modules", ".git", "android", "ios",
     "/NFL", "/NDL", "/NJH", "/NJS", "/nc", "/ns", "/np"
   )
   $null = & robocopy @robocopyArgs
@@ -112,11 +112,21 @@ function Reset-AndroidNativeProject {
       ForEach-Object { Remove-Item $_.FullName -Recurse -Force -ErrorAction SilentlyContinue }
   }
 
-  Write-Host "Generating fresh android project (expo prebuild)..."
+  Write-Host "Generating fresh android project (expo prebuild --clean)..."
   Push-Location $Root
-  npx expo prebuild --platform android --no-install
-  $code = $LASTEXITCODE
-  Pop-Location
+  $prevCi = $env:CI
+  $env:CI = "true"
+  try {
+    npx expo prebuild --platform android --no-install --clean
+    $code = $LASTEXITCODE
+  } finally {
+    if ($null -eq $prevCi) {
+      Remove-Item Env:CI -ErrorAction SilentlyContinue
+    } else {
+      $env:CI = $prevCi
+    }
+    Pop-Location
+  }
   if ($code -ne 0) {
     throw "expo prebuild failed with exit code $code"
   }

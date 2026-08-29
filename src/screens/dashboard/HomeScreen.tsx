@@ -44,7 +44,11 @@ import type { HomeStackParamList, MainTabParamList } from '@/types/navigation';
 import { mapHomeAlertToWeatherAlert, mergeWeatherAlerts } from '@/utils/dashboardMappers';
 import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import type { CompositeNavigationProp } from '@react-navigation/native';
-import { filterAlertsByAllowedStates, filterMapMarkersByAllowedStates, getAllowedStateTokens } from '@/utils/alertFilters';
+import {
+  filterAlertsByAllowedStates,
+  filterMapMarkersByAllowedStates,
+  getSignupStateTokens,
+} from '@/utils/alertFilters';
 import { calculateRegionForMarkers, resolveMapRegion } from '@/utils/mapRegion';
 import type { MapMarkerPoint } from '@/types/emergency';
 
@@ -60,7 +64,6 @@ export function HomeScreen() {
   const scrollRef = useRef<ScrollView>(null);
   const mapSectionY = useRef(0);
   const address = useAppSelector((s) => s.registration.address);
-  const alertLocations = useAppSelector((s) => s.registration.alertLocations ?? []);
   const searchQuery = useAppSelector((s) => s.dashboard.searchQuery);
   const preparednessCategories = useAppSelector(selectPreparednessCategories);
   const alertItems = useAppSelector((s) => s.alerts.items ?? []);
@@ -74,9 +77,7 @@ export function HomeScreen() {
   const { refreshControlProps } = usePullToRefresh(reload);
   const handleAlertPress = useAlertSourcePress();
 
-  const allowedTokens = useMemo(() => {
-    return getAllowedStateTokens(address, alertLocations);
-  }, [address, alertLocations]);
+  const allowedTokens = useMemo(() => getSignupStateTokens(address), [address]);
 
   const allActiveAlerts = useMemo(() => {
     const homeAlerts = Array.isArray(home?.recentAlerts) ? home.recentAlerts : [];
