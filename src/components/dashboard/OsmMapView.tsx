@@ -18,6 +18,7 @@ import { palette } from '@/theme';
 import type { MapMarkerPoint, MapPolygonOverlay } from '@/types/emergency';
 import { heatmapCircleStyle, overlayColors, resolveMarkerLayer } from '@/utils/mapLayers';
 import type { HeatmapPoint } from '@/utils/mapLayers';
+import { isValidLatLng, isValidMapRegion, sanitizeMapRegion } from '@/utils/mapRegion';
 
 export interface MapRegion {
   latitude: number;
@@ -37,6 +38,7 @@ interface OsmMapViewProps {
   overlays: MapPolygonOverlay[];
   style?: StyleProp<ViewStyle>;
   showsUserLocation?: boolean;
+  staticUserLocation?: { latitude?: number; longitude?: number };
   onRegionChangeComplete?: (region: MapRegion) => void;
   onPress?: (coordinate: { latitude: number; longitude: number }) => void;
 }
@@ -80,6 +82,7 @@ export const OsmMapView = forwardRef<OsmMapHandle, OsmMapViewProps>(function Osm
     overlays,
     style,
     showsUserLocation = false,
+    staticUserLocation,
     onRegionChangeComplete,
     onPress,
   },
@@ -88,18 +91,28 @@ export const OsmMapView = forwardRef<OsmMapHandle, OsmMapViewProps>(function Osm
   const webRef = useRef<WebView>(null);
   const readyRef = useRef(false);
   // The map must not reload when props change, so the first region is all the page ever gets.
-  const mountRegionRef = useRef(initialRegion);
+  const mountRegionRef = useRef(sanitizeMapRegion(initialRegion));
 
   const mapData = useMemo(
     () => ({
-      markers: pointMarkers.map((marker) => ({
-        lat: marker.latitude,
-        lng: marker.longitude,
-        title: marker.title,
-        description: marker.description ?? '',
-        icon: getMapLayerConfig(resolveMarkerLayer(marker)).icon,
-      })),
-      heat: heatmapPoints.map((point) => {
+      markers: pointMarkers
+        .map((marker) => {
+          const layer = resolveMarkerLayer(marker);
+          const config = getMapLayerConfig(layer);
+          return {
+            lat: marker.latitude,
+            lng: marker.longitude,
+            title: marker.title,
+            description: marker.description ?? '',
+            icon: config.icon,
+            color: config.color,
+            layer,
+          };
+        })
+        .filter((marker) => isValidLatLng(marker.lat, marker.lng)),
+      heat: heatmapPoints
+        .filter((point) => isValidLatLng(point.latitude, point.longitude))
+        .map((point) => {
         const circle = heatmapCircleStyle(point.weight ?? 1);
         const fill = splitColor(circle.fill);
         const stroke = splitColor(circle.stroke);
@@ -118,13 +131,15 @@ export const OsmMapView = forwardRef<OsmMapHandle, OsmMapViewProps>(function Osm
         const fill = splitColor(overlay.fillColor ?? defaults.fill);
         const stroke = splitColor(overlay.strokeColor ?? defaults.stroke);
         return {
-          coordinates: overlay.coordinates.map((point) => [point.latitude, point.longitude]),
+          coordinates: overlay.coordinates
+            .filter((point) => isValidLatLng(point.latitude, point.longitude))
+            .map((point) => [point.latitude, point.longitude]),
           fill: fill.color,
           fillOpacity: fill.opacity,
           stroke: stroke.color,
           strokeOpacity: stroke.opacity,
         };
-      }),
+      }).filter((overlay) => overlay.coordinates.length >= 3),
     }),
     [pointMarkers, heatmapPoints, overlays],
   );
@@ -138,11 +153,28 @@ export const OsmMapView = forwardRef<OsmMapHandle, OsmMapViewProps>(function Osm
     run(`window.__setData(${JSON.stringify(mapData)})`);
   }, [mapData, run]);
 
+  useEffect(() => {
+    if (!readyRef.current) return;
+    const lat = staticUserLocation?.latitude;
+    const lng = staticUserLocation?.longitude;
+    if (!isValidLatLng(lat, lng)) {
+      return;
+    }
+    run(
+      `window.__setUserLocation(${JSON.stringify({
+        lat,
+        lng,
+        accuracy: 0,
+      })})`,
+    );
+  }, [staticUserLocation?.latitude, staticUserLocation?.longitude, run]);
+
   useImperativeHandle(
     ref,
     () => ({
       animateToRegion: (region, duration = 0) => {
-        run(`window.__setView(${JSON.stringify(region)}, ${duration})`);
+        if (!isValidMapRegion(region)) return;
+        run(`window.__setView(${JSON.stringify(sanitizeMapRegion(region))}, ${duration})`);
       },
     }),
     [run],
@@ -150,18 +182,22 @@ export const OsmMapView = forwardRef<OsmMapHandle, OsmMapViewProps>(function Osm
 
   useEffect(() => {
     if (!showsUserLocation) return;
+    if (staticUserLocation && isValidLatLng(staticUserLocation.latitude, staticUserLocation.longitude)) {
+      return;
+    }
 
     let subscription: Location.LocationSubscription | undefined;
     let cancelled = false;
 
     void (async () => {
-      // Never prompt here — the map only mirrors a permission granted elsewhere.
-      const { granted } = await Location.getForegroundPermissionsAsync();
+      // Request permission here to ensure user location can be shown when they view the map
+      const { granted } = await Location.requestForegroundPermissionsAsync();
       if (!granted || cancelled) return;
 
       subscription = await Location.watchPositionAsync(
         { accuracy: Location.Accuracy.Balanced, distanceInterval: 10 },
         (position) => {
+          if (!isValidLatLng(position.coords.latitude, position.coords.longitude)) return;
           run(
             `window.__setUserLocation(${JSON.stringify({
               lat: position.coords.latitude,
@@ -178,7 +214,7 @@ export const OsmMapView = forwardRef<OsmMapHandle, OsmMapViewProps>(function Osm
       cancelled = true;
       subscription?.remove();
     };
-  }, [showsUserLocation, run]);
+  }, [showsUserLocation, staticUserLocation, run]);
 
   const handleMessage = useCallback(
     (event: WebViewMessageEvent) => {
@@ -195,10 +231,19 @@ export const OsmMapView = forwardRef<OsmMapHandle, OsmMapViewProps>(function Osm
       }
 
       switch (message.type) {
-        case 'ready':
+        case 'ready': {
           readyRef.current = true;
-          run(`window.__setData(${JSON.stringify(mapData)})`);
+          let initScript = `window.__setData(${JSON.stringify(mapData)});`;
+          if (staticUserLocation && isValidLatLng(staticUserLocation.latitude, staticUserLocation.longitude)) {
+            initScript += `window.__setUserLocation(${JSON.stringify({
+              lat: staticUserLocation.latitude,
+              lng: staticUserLocation.longitude,
+              accuracy: 0,
+            })});`;
+          }
+          run(initScript);
           break;
+        }
         case 'region':
           if (message.region) onRegionChangeComplete?.(message.region);
           break;
@@ -210,7 +255,7 @@ export const OsmMapView = forwardRef<OsmMapHandle, OsmMapViewProps>(function Osm
           break;
       }
     },
-    [mapData, onPress, onRegionChangeComplete, run],
+    [mapData, staticUserLocation, onPress, onRegionChangeComplete, run],
   );
 
   // Claim the touch stream so the surrounding ScrollView cannot steal vertical pans.

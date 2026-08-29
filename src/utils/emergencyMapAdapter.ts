@@ -36,51 +36,64 @@ type RawMapResponse = {
 export function adaptEmergencyMapMarkers(raw: RawMapMarker[] | undefined): MapMarkerPoint[] {
   if (!Array.isArray(raw)) return [];
 
-  return raw
-    .map((marker) => {
-      const latitude = marker.latitude ?? marker.lat;
-      const longitude = marker.longitude ?? marker.lng;
-      if (latitude == null || longitude == null || Number.isNaN(Number(latitude)) || Number.isNaN(Number(longitude))) {
-        return null;
-      }
-      return {
-        id: String(marker.id ?? `${latitude}-${longitude}`),
-        title: String(marker.title ?? 'Point'),
-        description: marker.description ? String(marker.description) : undefined,
-        latitude: Number(latitude),
-        longitude: Number(longitude),
-        layer: marker.layer,
-        severity: marker.severity ? String(marker.severity) : undefined,
-        type: marker.type,
-      } satisfies MapMarkerPoint;
-    })
-    .filter((marker): marker is MapMarkerPoint => marker !== null);
+  const markers: MapMarkerPoint[] = [];
+
+  for (const marker of raw) {
+    const latitude = marker.latitude ?? marker.lat;
+    const longitude = marker.longitude ?? marker.lng;
+    if (
+      latitude == null ||
+      longitude == null ||
+      Number.isNaN(Number(latitude)) ||
+      Number.isNaN(Number(longitude))
+    ) {
+      continue;
+    }
+
+    markers.push({
+      id: String(marker.id ?? `${latitude}-${longitude}`),
+      title: String(marker.title ?? 'Point'),
+      description: marker.description ? String(marker.description) : undefined,
+      latitude: Number(latitude),
+      longitude: Number(longitude),
+      layer: marker.layer,
+      severity: marker.severity ? String(marker.severity) : undefined,
+      type: marker.type,
+    });
+  }
+
+  return markers;
 }
 
 export function adaptEmergencyMapOverlays(raw: RawMapOverlay[] | undefined): MapPolygonOverlay[] {
   if (!Array.isArray(raw)) return [];
 
-  return raw
-    .map((overlay) => {
-      if (!overlay.layer || !Array.isArray(overlay.coordinates)) return null;
-      const coordinates = overlay.coordinates
-        .map((point) => {
-          const latitude = point.latitude ?? point.lat;
-          const longitude = point.longitude ?? point.lng;
-          if (latitude == null || longitude == null) return null;
-          return { latitude: Number(latitude), longitude: Number(longitude) };
-        })
-        .filter((point): point is { latitude: number; longitude: number } => point !== null);
-      if (coordinates.length < 3) return null;
-      return {
-        id: String(overlay.id ?? overlay.layer),
-        layer: overlay.layer,
-        coordinates,
-        fillColor: overlay.fillColor,
-        strokeColor: overlay.strokeColor,
-      } satisfies MapPolygonOverlay;
-    })
-    .filter((overlay): overlay is MapPolygonOverlay => overlay !== null);
+  const overlays: MapPolygonOverlay[] = [];
+
+  for (const overlay of raw) {
+    if (!overlay.layer || !Array.isArray(overlay.coordinates)) continue;
+
+    const coordinates = overlay.coordinates
+      .map((point) => {
+        const latitude = point.latitude ?? point.lat;
+        const longitude = point.longitude ?? point.lng;
+        if (latitude == null || longitude == null) return null;
+        return { latitude: Number(latitude), longitude: Number(longitude) };
+      })
+      .filter((point): point is { latitude: number; longitude: number } => point !== null);
+
+    if (coordinates.length < 3) continue;
+
+    overlays.push({
+      id: String(overlay.id ?? overlay.layer),
+      layer: overlay.layer,
+      coordinates,
+      fillColor: overlay.fillColor,
+      strokeColor: overlay.strokeColor,
+    });
+  }
+
+  return overlays;
 }
 
 export function adaptEmergencyMapResponse(response: RawMapResponse) {

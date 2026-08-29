@@ -1,5 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
+import { STORAGE_KEYS } from '@/constants/storage';
 import type { User } from '@/types/auth';
 
 const ACCESS_KEY = 'ready2go_access_token_v1';
@@ -71,7 +72,8 @@ export async function saveSession(input: {
     }
 
     if (ops.length) {
-      for (const [, value] of ops) {
+      for (let i = 0; i < ops.length; i++) {
+        const value = ops[i][1];
         if (typeof value !== 'string') {
           throw new Error('Refusing non-string AsyncStorage write');
         }
@@ -157,7 +159,12 @@ export async function loadSession(): Promise<StoredSession | null> {
 export async function loadAuthTokens(): Promise<StoredAuthTokens> {
   try {
     const pairs = await AsyncStorage.multiGet([ACCESS_KEY, REFRESH_KEY]);
-    const map = Object.fromEntries(pairs);
+    const map: Record<string, string | null> = {};
+    for (let i = 0; i < pairs.length; i++) {
+      if (pairs[i]) {
+        map[pairs[i][0]] = pairs[i][1];
+      }
+    }
     return {
       token: onlyString(asTokenString(map[ACCESS_KEY])),
       refreshToken: onlyString(asTokenString(map[REFRESH_KEY])),
@@ -169,9 +176,17 @@ export async function loadAuthTokens(): Promise<StoredAuthTokens> {
 
 export async function clearAuthTokens(): Promise<void> {
   try {
-    await AsyncStorage.multiRemove([ACCESS_KEY, REFRESH_KEY, SESSION_KEY]);
+    await AsyncStorage.multiRemove([
+      ACCESS_KEY,
+      REFRESH_KEY,
+      SESSION_KEY,
+      STORAGE_KEYS.AUTH,
+      `persist:${STORAGE_KEYS.AUTH}`,
+      STORAGE_KEYS.REGISTRATION,
+      `persist:${STORAGE_KEYS.REGISTRATION}`,
+    ]);
     if (__DEV__) {
-      console.log('[authSession] cleared');
+      console.log('[authSession] cleared all auth and persist keys');
     }
   } catch (error) {
     console.warn('[authSession] clear failed', error);

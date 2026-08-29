@@ -19,6 +19,7 @@ import { useAppTheme } from '@/hooks/useAppTheme';
 import { usePullToRefresh } from '@/hooks/usePullToRefresh';
 import {
   navigateToCitizenAssistance,
+  navigateToCitizenAssistanceIfPending,
   navigateToDisasterSurveyIfActive,
   navigateToIdaIfActive,
 } from '@/navigation/navigationRef';
@@ -140,6 +141,10 @@ export function NotificationsScreen() {
       }
       if (item.type === 'citizen_report_resolved') {
         navigateToCitizenAssistance();
+        return;
+      }
+      if (item.type === 'citizen_activity') {
+        void navigateToCitizenAssistanceIfPending();
         return;
       }
       if (item.type === 'disaster_survey') {

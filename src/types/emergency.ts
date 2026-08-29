@@ -56,7 +56,7 @@ export interface MapMarkerPoint {
   layer?: GisMapLayerId;
   severity?: string;
   /** Legacy API field — mapped to `layer` client-side */
-  type?: 'closure' | 'shelter' | 'resource' | 'hazard';
+  type?: 'closure' | 'shelter' | 'resource' | 'hazard' | 'alert';
 }
 
 export type GisMapLayerId =
@@ -69,7 +69,8 @@ export type GisMapLayerId =
   | 'powerOutages'
   | 'waterIssues'
   | 'resourceSites'
-  | 'incidentReports';
+  | 'incidentReports'
+  | 'alerts';
 
 export interface MapPolygonOverlay {
   id: string;

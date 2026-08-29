@@ -1,9 +1,11 @@
 import { useEffect } from 'react';
 
 import { DISASTER_NOTIFICATION_SCREEN } from '@/constants/disasterSurvey';
+import { CITIZEN_ASSISTANCE_NOTIFICATION_SCREEN } from '@/constants/citizenActivity';
 import { INBOX_NOTIFICATION_SCREEN } from '@/constants/notifications';
 import { IDA_NOTIFICATION_SCREEN } from '@/constants/routes';
 import {
+  navigateToCitizenAssistanceIfPending,
   navigateToDisasterSurveyIfActive,
   navigateToIdaIfActive,
   navigateToNotifications,
@@ -21,6 +23,9 @@ function presentationKeysFromData(data: Record<string, unknown> | undefined): st
   const keys: string[] = [];
   if (typeof data.invitationId === 'string' && data.invitationId.trim()) {
     keys.push(`inv:${data.invitationId.trim()}`);
+  }
+  if (typeof data.activityId === 'string' && data.activityId.trim()) {
+    keys.push(`activity:${data.activityId.trim()}`);
   }
   if (typeof data.inboxNotificationId === 'string' && data.inboxNotificationId.trim()) {
     keys.push(data.inboxNotificationId.trim());
@@ -41,6 +46,13 @@ function handleNotificationNavigation(data: Record<string, unknown> | undefined)
   }
   if (screen === IDA_NOTIFICATION_SCREEN || notificationType === 'ida_application') {
     void navigateToIdaIfActive();
+    return;
+  }
+  if (
+    screen === CITIZEN_ASSISTANCE_NOTIFICATION_SCREEN ||
+    notificationType === 'citizen_activity'
+  ) {
+    void navigateToCitizenAssistanceIfPending();
     return;
   }
   if (screen === INBOX_NOTIFICATION_SCREEN) {

@@ -288,11 +288,12 @@ export async function reverseGeocode(
   }
 }
 
+/** Continental United States overview (not zoomed into Kansas). */
 export const DEFAULT_MAP_CENTER = {
   latitude: 39.8283,
   longitude: -98.5795,
-  latitudeDelta: 8,
-  longitudeDelta: 8,
+  latitudeDelta: 25,
+  longitudeDelta: 45,
 } as const;
 
 export const SELECTED_MAP_DELTA = {

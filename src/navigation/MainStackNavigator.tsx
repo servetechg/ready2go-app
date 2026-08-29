@@ -14,6 +14,7 @@ import { MainTabNavigator } from './MainTabNavigator';
 import { stackScreenOptions } from './screenOptions';
 import { CitizenAssistanceScreen } from '@/screens/citizen/CitizenAssistanceScreen';
 import { NotificationsScreen } from '@/screens/dashboard/NotificationsScreen';
+import { ChangePasswordScreen } from '@/screens/dashboard/ChangePasswordScreen';
 
 const Stack = createStackNavigator<MainStackParamList>();
 
@@ -73,7 +74,12 @@ export function MainStackNavigator() {
       <Stack.Screen
         name={MAIN_STACK_ROUTES.SPLASH_PREVIEW}
         component={SplashPreviewScreen}
-        options={{ headerShown: false, presentation: 'fullScreenModal' }}
+        options={{ headerShown: false, presentation: 'modal' }}
+      />
+      <Stack.Screen
+        name={MAIN_STACK_ROUTES.CHANGE_PASSWORD}
+        component={ChangePasswordScreen}
+        options={{ headerShown: false }}
       />
     </Stack.Navigator>
   );

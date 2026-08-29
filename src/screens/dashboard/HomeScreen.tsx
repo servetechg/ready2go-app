@@ -24,22 +24,33 @@ import {
     TAB_ROUTES,
 } from '@/constants/routes';
 import { useActiveIda } from '@/hooks/useActiveIda';
+import { usePendingCitizenActivitySupplement } from '@/hooks/usePendingCitizenActivitySupplement';
 import { useAlertSourcePress } from '@/hooks/useAlertSourcePress';
 import { useAppTheme } from '@/hooks/useAppTheme';
 import { useHomeDashboard } from '@/hooks/useHomeDashboard';
+import { useAlertMapCoordinates } from '@/hooks/useAlertMapCoordinates';
+import { useRegisteredHomeCoordinates, separateFromReference } from '@/hooks/useRegisteredHomeCoordinates';
 import { usePullToRefresh } from '@/hooks/usePullToRefresh';
 import { navigateToAlertsTab, navigateToTab } from '@/navigation/navigationHelpers';
 import {
   navigateToCitizenAssistance,
+  navigateToCitizenAssistanceIfPending,
   navigateToIdaIfActive,
 } from '@/navigation/navigationRef';
 import { useAppSelector } from '@/redux/hooks';
 import { selectPreparednessCategories } from '@/redux/slices/dashboardSlice';
 import { spacing } from '@/theme';
 import type { HomeStackParamList, MainTabParamList } from '@/types/navigation';
-import { mapHomeAlertToWeatherAlert } from '@/utils/dashboardMappers';
+import { mapHomeAlertToWeatherAlert, mergeWeatherAlerts } from '@/utils/dashboardMappers';
 import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import type { CompositeNavigationProp } from '@react-navigation/native';
+import {
+  filterAlertsByAllowedStates,
+  filterMapMarkersByAllowedStates,
+  getSignupStateTokens,
+} from '@/utils/alertFilters';
+import { calculateRegionForMarkers, resolveMapRegion } from '@/utils/mapRegion';
+import type { MapMarkerPoint } from '@/types/emergency';
 
 type HomeNav = CompositeNavigationProp<
   StackNavigationProp<HomeStackParamList, typeof HOME_STACK_ROUTES.HOME>,
@@ -52,6 +63,7 @@ export function HomeScreen() {
   const insets = useSafeAreaInsets();
   const scrollRef = useRef<ScrollView>(null);
   const mapSectionY = useRef(0);
+  const address = useAppSelector((s) => s.registration.address);
   const searchQuery = useAppSelector((s) => s.dashboard.searchQuery);
   const preparednessCategories = useAppSelector(selectPreparednessCategories);
   const alertItems = useAppSelector((s) => s.alerts.items ?? []);
@@ -59,26 +71,91 @@ export function HomeScreen() {
   const preparednessLoading = useAppSelector((s) => s.preparedness.loading);
   const authToken = useAppSelector((s) => s.auth.token);
   const { invitation: idaInvitation, hasOpenIda } = useActiveIda(authToken);
+  const { pending: citizenPending, hasPendingSupplement } =
+    usePendingCitizenActivitySupplement(authToken);
   const { home, emergency, isCloudy, loading, error, reload } = useHomeDashboard();
   const { refreshControlProps } = usePullToRefresh(reload);
   const handleAlertPress = useAlertSourcePress();
 
+  const allowedTokens = useMemo(() => getSignupStateTokens(address), [address]);
+
+  const allActiveAlerts = useMemo(() => {
+    const homeAlerts = Array.isArray(home?.recentAlerts) ? home.recentAlerts : [];
+    const fromHome = homeAlerts.map(mapHomeAlertToWeatherAlert);
+    
+    const tabAlerts = Array.isArray(alertItems) ? alertItems : [];
+    const fromAlertsTab = tabAlerts.map(mapHomeAlertToWeatherAlert);
+    
+    const merged = mergeWeatherAlerts(fromHome, fromAlertsTab);
+    const stateFiltered = filterAlertsByAllowedStates(merged, allowedTokens);
+
+    const q = (searchQuery || '').trim().toLowerCase();
+    if (!q) return stateFiltered;
+    
+    return stateFiltered.filter(
+      (alert) => {
+        const title = alert.title || alert.name || '';
+        return title.toLowerCase().includes(q) ||
+          (alert.location || '').toLowerCase().includes(q) ||
+          (alert.severity || '').toLowerCase().includes(q);
+      }
+    );
+  }, [home?.recentAlerts, alertItems, searchQuery, allowedTokens]);
+
   const recentAlerts = useMemo(() => {
-    const fromHome = (home?.recentAlerts ?? []).map(mapHomeAlertToWeatherAlert);
-    const fromAlertsTab = alertItems.map(mapHomeAlertToWeatherAlert);
-    // Prefer home payload; fall back to alerts API so Home can show 2 when they exist.
-    const merged = fromHome.length > 0 ? fromHome : fromAlertsTab;
-    const q = searchQuery.trim().toLowerCase();
-    const filtered = !q
-      ? merged
-      : merged.filter(
-          (alert) =>
-            alert.title.toLowerCase().includes(q) ||
-            alert.location.toLowerCase().includes(q) ||
-            alert.severity.toLowerCase().includes(q),
-        );
-    return filtered.slice(0, 2);
-  }, [home?.recentAlerts, alertItems, searchQuery]);
+    return allActiveAlerts.slice(0, 2);
+  }, [allActiveAlerts]);
+
+  const alertCoordinatesById = useAlertMapCoordinates(allActiveAlerts);
+  const homeCoordinates = useRegisteredHomeCoordinates(address);
+
+  const mapMarkers = useMemo(() => {
+    const baseMarkers = filterMapMarkersByAllowedStates(
+      Array.isArray(emergency?.mapMarkers) ? emergency.mapMarkers : [],
+      allowedTokens,
+    );
+
+    const alertMarkers = allActiveAlerts
+      .map((alert): MapMarkerPoint | null => {
+        const coords = alertCoordinatesById.get(alert.id);
+        if (!coords) return null;
+
+        const separated = separateFromReference(coords, homeCoordinates);
+
+        return {
+          id: alert.id,
+          title: alert.title || alert.name || 'Alert',
+          description: alert.location,
+          latitude: separated.lat,
+          longitude: separated.lng,
+          severity: alert.severity,
+          layer: 'alerts',
+          type: 'alert',
+        };
+      })
+      .filter((marker): marker is MapMarkerPoint => marker !== null);
+
+    return [...baseMarkers, ...alertMarkers];
+  }, [emergency?.mapMarkers, allActiveAlerts, allowedTokens, alertCoordinatesById, homeCoordinates]);
+
+  const filteredMapRegion = useMemo(() => {
+    if (!emergency) return undefined;
+    const baseRegion = resolveMapRegion(emergency.mapRegion, address);
+
+    const regionPoints = mapMarkers.map((marker) => ({
+      latitude: marker.latitude,
+      longitude: marker.longitude,
+    }));
+
+    if (homeCoordinates) {
+      regionPoints.push({
+        latitude: homeCoordinates.lat,
+        longitude: homeCoordinates.lng,
+      });
+    }
+
+    return calculateRegionForMarkers(regionPoints, baseRegion);
+  }, [emergency, mapMarkers, address, homeCoordinates]);
 
   const hasSearch = Boolean(searchQuery.trim());
 
@@ -175,6 +252,15 @@ export function HomeScreen() {
         </View>
         <CitizenAssistantHomeCard onPress={navigateToCitizenAssistance} />
 
+        {hasPendingSupplement && citizenPending ? (
+          <IdaHomeCard
+            title="Citizen report — details needed"
+            subtitle={citizenPending.title}
+            cta="Tap to add missing details, pictures, or videos"
+            onPress={() => void navigateToCitizenAssistanceIfPending()}
+          />
+        ) : null}
+
         {hasOpenIda && idaInvitation ? (
           <IdaHomeCard
             title="Initial Disaster Assistance"
@@ -219,10 +305,16 @@ export function HomeScreen() {
                   mapSectionY.current = e.nativeEvent.layout.y;
                 }}>
                 <EmergencyMap
-                  region={emergency.mapRegion}
-                  markers={emergency.mapMarkers}
+                  region={filteredMapRegion ?? emergency.mapRegion}
+                  markers={mapMarkers}
                   overlays={emergency.mapOverlays}
                   variant={isCloudy ? 'situation' : 'area'}
+                  userLocation={
+                    homeCoordinates
+                      ? { latitude: homeCoordinates.lat, longitude: homeCoordinates.lng }
+                      : undefined
+                  }
+                  trackDeviceLocation={false}
                 />
                 {showIncidentLog ? <IncidentLog entries={emergency?.incidentLog ?? []} /> : null}
               </View>

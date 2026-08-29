@@ -91,6 +91,14 @@ export const GIS_MAP_LAYERS: MapLayerConfig[] = [
     icon: 'flame',
     defaultEnabled: true,
   },
+  {
+    id: 'alerts',
+    label: 'Active Alerts',
+    kind: 'point',
+    color: '#D32F2F',
+    icon: 'alert-badge',
+    defaultEnabled: true,
+  },
 ];
 
 export const DEFAULT_GIS_LAYER_STATE: Record<GisMapLayerId, boolean> = GIS_MAP_LAYERS.reduce(
