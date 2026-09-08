@@ -273,16 +273,11 @@ export const refreshSession = createAsyncThunk<
     (getState() as { auth: AuthState | null }).auth?.refreshToken,
   );
   if (!refreshToken) {
-    // No refresh token — not always fatal if access token still exists.
-    const access = asTokenString(
-      (getState() as { auth: AuthState | null }).auth?.token,
-    );
-    if (!access) {
-      await clearAuthTokens();
-    }
+    // Refresh is only requested when access is absent or has been rejected.
+    await clearAuthTokens();
     return rejectWithValue({
       message: 'No refresh token',
-      fatal: !access,
+      fatal: true,
     });
   }
 
@@ -290,15 +285,10 @@ export const refreshSession = createAsyncThunk<
     const result = await refreshWithLock(refreshToken);
     const access = asTokenString(result?.token);
     if (!access) {
-      const existing = asTokenString(
-        (getState() as { auth: AuthState | null }).auth?.token,
-      );
-      if (!existing) {
-        await clearAuthTokens();
-      }
+      await clearAuthTokens();
       return rejectWithValue({
         message: 'Refresh returned empty token',
-        fatal: !existing,
+        fatal: true,
       });
     }
     await saveSession({
@@ -318,10 +308,7 @@ export const refreshSession = createAsyncThunk<
     const fatal =
       isInvalidRefreshError(error) ||
       (isApiClientError(error) && error.status === 401);
-    const access = asTokenString(
-      (getState() as { auth: AuthState | null }).auth?.token,
-    );
-    if (fatal && !access) {
+    if (fatal) {
       await clearAuthTokens();
     }
     return rejectWithValue({
@@ -586,8 +573,10 @@ const authSlice = createSlice({
         state.isAuthenticated = Boolean(state.token || state.refreshToken);
       })
       .addCase(fetchCurrentUser.rejected, (state, action) => {
-        // Do not clear the local session on /me failures.
-        // Only explicit logout (or dead refresh with zero tokens) should Sign In.
+        if (action.payload?.fatal) {
+          return clearedAuthState(state as AuthPersistState);
+        }
+        // Keep the local session for temporary network/server failures.
         if (action.payload?.message) {
           state.error = action.payload.message;
         }
@@ -606,12 +595,7 @@ const authSlice = createSlice({
       })
       .addCase(refreshSession.rejected, (state, action) => {
         if (action.payload?.fatal) {
-          const access = asTokenString(state.token);
-          if (!access) {
-            return clearedAuthState(state as AuthPersistState);
-          }
-          // Keep both tokens in memory; API may recover on next attempt.
-          state.isAuthenticated = true;
+          return clearedAuthState(state as AuthPersistState);
         }
       });
   },
