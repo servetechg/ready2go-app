@@ -51,7 +51,18 @@ Set for **preview** before `eas build --platform android --profile preview`:
 | `EXPO_PUBLIC_GOOGLE_MAPS_API_KEY` | Google Places/Geocoding key — registration address search only |
 | `GOOGLE_MAPS_API_KEY` | Same key — native Android manifest |
 | `EXPO_PUBLIC_APP_ENV` | `production` |
+| `EXPO_PUBLIC_USE_RN_FETCH` | `1` — required so media uploads keep working (see below) |
 | `EXPO_PUBLIC_PROFILE_REMINDER_SECONDS` | `60` for quick push testing |
+
+### `EXPO_PUBLIC_USE_RN_FETCH`
+
+SDK 56 made the spec-compliant `expo/fetch` the default `globalThis.fetch`. Media
+uploads in this app append React Native file objects (`{ uri, name, type }`) to
+`FormData`, a non-standard shape that only React Native's own `fetch` resolves.
+Without this variable, avatar, document, survey, and citizen-report uploads
+serialize as `[object Object]` and silently fail.
+
+Removing it later requires migrating those uploads to `Blob`/`File` first.
 
 Publish an EAS update after changing bundle-time `EXPO_PUBLIC_*` values. Rebuild
 after changing native secrets/configuration such as `GOOGLE_MAPS_API_KEY`.

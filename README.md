@@ -4,7 +4,7 @@ Production-ready Expo + TypeScript mobile app for emergency household registrati
 
 ## Tech Stack
 
-- **Expo SDK 55** + React Native
+- **Expo SDK 57** + React Native 0.86
 - **Redux Toolkit** + redux-persist (AsyncStorage)
 - **React Navigation** (native stack)
 - **React Hook Form** + **Zod**
