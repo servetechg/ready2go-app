@@ -4,6 +4,7 @@ import { StyleSheet, View } from 'react-native';
 
 import { AppButton } from '@/components/ui/AppButton';
 import { AppText } from '@/components/ui/AppText';
+import { ExpandableText } from '@/components/ui/ExpandableText';
 import { borderRadius, palette, shadows, spacing } from '@/theme';
 import type { DashboardStatus } from '@/types/dashboard';
 import { formatIssuedLabel } from '@/utils/formatTimestamp';
@@ -27,12 +28,16 @@ export function DisruptionStatusBanner({ status, onViewSituation }: DisruptionSt
         </View>
       </View>
       <View style={styles.textBlock}>
-        <AppText variant="h3" color="#C62828" style={styles.title}>
+        <AppText variant="h3" color="#C62828" style={styles.title} numberOfLines={2}>
           {headline}
         </AppText>
-        <AppText variant="bodySmall" color={palette.textSecondary}>
-          {summary}
-        </AppText>
+        <ExpandableText
+          text={summary}
+          modalTitle={headline}
+          modalSubtitle={updatedLabel ?? undefined}
+          color={palette.textSecondary}
+          numberOfLines={3}
+        />
         {updatedLabel ? (
           <AppText variant="caption" color={palette.textMuted}>
             {updatedLabel}

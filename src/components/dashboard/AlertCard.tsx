@@ -3,6 +3,7 @@ import React, { useCallback } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 
 import { AppText } from '@/components/ui/AppText';
+import { ExpandableText } from '@/components/ui/ExpandableText';
 import { useAppTheme } from '@/hooks/useAppTheme';
 import { borderRadius, fontFamily, palette, spacing } from '@/theme';
 import type { AlertSeverity, WeatherAlert } from '@/types/dashboard';
@@ -75,13 +76,23 @@ export function AlertCard({ alert, onPress }: AlertCardProps) {
         <AppText
           variant="h3"
           color={colors.primary}
+          numberOfLines={2}
           style={[styles.title, !alert.read && styles.unreadTitle]}>
           {alert.title}
         </AppText>
       </View>
-      <AppText variant="caption" color={colors.textSecondary} style={styles.location}>
-        {alert.location}
-      </AppText>
+      <View style={styles.locationBlock}>
+        <ExpandableText
+          text={alert.location}
+          modalTitle={alert.title}
+          modalSubtitle={`${alert.severity} · Source: ${alert.source} · ${alert.issuedAgo}`}
+          variant="caption"
+          color={colors.textSecondary}
+          numberOfLines={2}
+          linkLabel="See all areas"
+          style={styles.location}
+        />
+      </View>
 
       <View style={styles.footer}>
         <Ionicons name="time-outline" size={14} color={colors.textMuted} />
@@ -188,7 +199,8 @@ const styles = StyleSheet.create({
   },
   issued: { maxWidth: 120, textAlign: 'right' },
   title: { flex: 1 },
-  location: { textTransform: 'uppercase', marginBottom: spacing.lg },
+  locationBlock: { marginBottom: spacing.lg },
+  location: { textTransform: 'uppercase' },
   footer: {
     flexDirection: 'row',
     alignItems: 'center',
