@@ -3,6 +3,7 @@ import React from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import { AppText } from '@/components/ui/AppText';
+import { ExpandableText } from '@/components/ui/ExpandableText';
 import { useAppTheme } from '@/hooks/useAppTheme';
 import { borderRadius, palette, shadows, spacing } from '@/theme';
 import type { DashboardStatus } from '@/types/dashboard';
@@ -26,12 +27,16 @@ export function BlueSkyStatusBanner({ status }: BlueSkyStatusBannerProps) {
         <Ionicons name="sunny" size={36} color={palette.primary} />
       </View>
       <View style={styles.textBlock}>
-        <AppText variant="h3" color={colors.primary} style={styles.title}>
+        <AppText variant="h3" color={colors.primary} style={styles.title} numberOfLines={2}>
           {headline}
         </AppText>
-        <AppText variant="bodySmall" color={colors.textSecondary}>
-          {summary}
-        </AppText>
+        <ExpandableText
+          text={summary}
+          modalTitle={headline}
+          modalSubtitle={updatedLabel ?? undefined}
+          color={colors.textSecondary}
+          numberOfLines={3}
+        />
         {updatedLabel ? (
           <AppText variant="caption" color={colors.textMuted} style={styles.updated}>
             {updatedLabel}
