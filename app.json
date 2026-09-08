@@ -3,6 +3,14 @@
     "name": "Ready2Go",
     "slug": "ready2go",
     "version": "1.0.0",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/fa398a3b-4d43-4415-8e4b-a4144bff2906",
+      "checkAutomatically": "NEVER",
+      "fallbackToCacheTimeout": 0
+    },
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "readytogoapp",

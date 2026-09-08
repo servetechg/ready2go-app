@@ -126,11 +126,19 @@ export function useSessionBootstrap() {
               refreshToken: refresh,
               user: result.payload.user,
             });
-          } else if (__DEV__) {
-            console.warn(
-              '[session] profile sync failed (keeping local session)',
-              result.payload,
-            );
+          } else {
+            if (result.payload?.fatal) {
+              lastSyncedToken.current = null;
+              access = null;
+              refresh = null;
+              return;
+            }
+            if (__DEV__) {
+              console.warn(
+                '[session] profile sync failed (keeping local session)',
+                result.payload,
+              );
+            }
           }
         }
 

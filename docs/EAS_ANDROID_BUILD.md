@@ -1,4 +1,45 @@
-# EAS Android build — maps & push
+# EAS Android build, OTA updates, maps & push
+
+## Client updates without reinstalling the APK
+
+The app now uses **EAS Update**. The `preview` APK is attached to the `preview`
+channel; Play Store builds use the separate `production` channel.
+
+### One-time rollout
+
+Because `expo-updates` is a native dependency, existing APKs cannot receive
+updates. Build and send **one new APK** to the client:
+
+```powershell
+cd C:\projects\ready2go-app
+eas build --platform android --profile preview
+```
+
+After the client installs that APK once, compatible JavaScript, TypeScript,
+styles, and image changes can be delivered without another APK:
+
+```powershell
+npm run update:preview -- --message "Describe the client update"
+```
+
+When the client next opens Ready2Go, the update downloads in the background.
+The app displays **Ready2Go update ready**; tapping **Restart now** applies it.
+
+Publish to `production` only for Play Store users:
+
+```powershell
+npm run update:production -- --message "Describe the production update"
+```
+
+### When a new APK/AAB is still required
+
+Create a new native build when changing native dependencies, Expo SDK,
+permissions, plugins, `app.json` native settings, notification credentials, or
+Android/iOS code. Before that build, increase `expo.version` (for example
+`1.0.0` → `1.1.0`) because OTA compatibility uses the app-version runtime.
+
+Never publish test work to `production`. Test it on `preview` first. EAS Update
+also supports rollout percentages and rollback from the Expo dashboard.
 
 ## Environment variables (Expo dashboard)
 
@@ -12,7 +53,8 @@ Set for **preview** before `eas build --platform android --profile preview`:
 | `EXPO_PUBLIC_APP_ENV` | `production` |
 | `EXPO_PUBLIC_PROFILE_REMINDER_SECONDS` | `60` for quick push testing |
 
-Rebuild after changing any variable.
+Publish an EAS update after changing bundle-time `EXPO_PUBLIC_*` values. Rebuild
+after changing native secrets/configuration such as `GOOGLE_MAPS_API_KEY`.
 
 ---
 

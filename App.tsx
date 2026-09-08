@@ -13,6 +13,7 @@ import { AppSplashScreen } from '@/components/splash/AppSplashScreen';
 import { SplashReadyView } from '@/components/splash/SplashReadyView';
 import { useInboxNotificationResponse } from '@/hooks/useInboxNotificationResponse';
 import { useInboxNotificationsPolling } from '@/hooks/useInboxNotificationsPolling';
+import { useAppUpdates } from '@/hooks/useAppUpdates';
 import { useAppFonts } from '@/hooks/useAppFonts';
 import { useSessionBootstrap } from '@/hooks/useSessionBootstrap';
 import { useProfileReminder } from '@/hooks/useProfileReminder';
@@ -100,6 +101,7 @@ function AppNavigation() {
     void initNotificationHandler();
   }, []);
 
+  useAppUpdates();
   useSessionBootstrap();
   usePushTokenRegistration();
   useProfileReminder();

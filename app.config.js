@@ -1,8 +1,6 @@
-/** @type {import('expo/config').ExpoConfig} */
 // Expo CLI / EAS local builds load .env automatically before this file runs.
 const fs = require('fs');
 const path = require('path');
-const appJson = require('./app.json');
 
 // Only the registration address search (Places web service) uses this; the dashboard map
 // runs on OpenStreetMap tiles and needs no key.
@@ -17,14 +15,13 @@ const googleServicesFile = fs.existsSync(path.join(__dirname, 'google-services.j
   ? './google-services.json'
   : undefined;
 
-module.exports = {
-  expo: {
-    ...appJson.expo,
-    android: {
-      ...appJson.expo.android,
+module.exports = ({ config }) => ({
+  ...config,
+  android: {
+    ...config.android,
       ...(googleServicesFile ? { googleServicesFile } : {}),
       permissions: [
-        ...(appJson.expo.android?.permissions ?? []),
+        ...(config.android?.permissions ?? []),
         'android.permission.INTERNET',
         'android.permission.POST_NOTIFICATIONS',
         'android.permission.SCHEDULE_EXACT_ALARM',
@@ -32,21 +29,21 @@ module.exports = {
         'android.permission.RECEIVE_BOOT_COMPLETED',
       ],
       config: {
-        ...appJson.expo.android?.config,
+        ...config.android?.config,
         googleMaps: {
           apiKey: googleMapsApiKey,
         },
       },
-    },
-    ios: {
-      ...appJson.expo.ios,
+  },
+  ios: {
+      ...config.ios,
       config: {
-        ...appJson.expo.ios?.config,
+        ...config.ios?.config,
         googleMapsApiKey,
       },
-    },
-    plugins: [
-      ...(appJson.expo.plugins ?? []),
+  },
+  plugins: [
+      ...(config.plugins ?? []),
       [
         'expo-image-picker',
         {
@@ -97,14 +94,13 @@ module.exports = {
           },
         },
       ],
-    ],
-    extra: {
-      ...appJson.expo.extra,
+  ],
+  extra: {
+      ...config.extra,
       eas: {projectId: 'fa398a3b-4d43-4415-8e4b-a4144bff2906'},
       googleMapsApiKey,
       profileReminderSeconds: profileReminderSeconds
         ? Number(profileReminderSeconds)
         : undefined,
-    },
   },
-};
+});
