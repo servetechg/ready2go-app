@@ -85,10 +85,63 @@ export function buildOsmMapHtml({ tileUrl, maxZoom, colors }: OsmMapHtmlOptions)
     border-right: 6px solid transparent;
     border-top: 8px solid var(--pin-color, ${colors.surface});
   }
-  .r2g-popup-title { font-size: 13px; font-weight: 600; color: ${colors.text}; }
-  .r2g-popup-body { font-size: 12px; color: ${colors.textSecondary}; margin-top: 2px; }
-  .leaflet-popup-content { margin: 8px 10px; }
-  .leaflet-popup-content-wrapper { border-radius: 8px; }
+  .r2g-popup-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: ${colors.text};
+    padding-right: 20px;
+    line-height: 1.3;
+  }
+  .r2g-popup-body {
+    font-size: 12px;
+    color: ${colors.textSecondary};
+    margin-top: 4px;
+    max-height: 110px;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    touch-action: pan-y;
+    overscroll-behavior: contain;
+    line-height: 1.45;
+    word-break: break-word;
+    padding-right: 4px;
+  }
+  .r2g-popup-body::-webkit-scrollbar {
+    width: 4px;
+  }
+  .r2g-popup-body::-webkit-scrollbar-thumb {
+    background: rgba(0, 0, 0, 0.25);
+    border-radius: 4px;
+  }
+  .leaflet-popup-content {
+    margin: 10px 12px;
+    max-width: 240px;
+    box-sizing: border-box;
+  }
+  .leaflet-popup-content-wrapper {
+    border-radius: 10px;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.18);
+  }
+  .leaflet-popup-close-button {
+    top: 8px !important;
+    right: 8px !important;
+    width: 22px !important;
+    height: 22px !important;
+    line-height: 20px !important;
+    font-size: 16px !important;
+    color: ${colors.textSecondary} !important;
+    text-decoration: none !important;
+    text-align: center;
+    border-radius: 11px;
+    background: rgba(0, 0, 0, 0.05);
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
+  }
+  .leaflet-popup-close-button:hover,
+  .leaflet-popup-close-button:active {
+    background: rgba(0, 0, 0, 0.12);
+    color: ${colors.text} !important;
+  }
 </style>
 </head>
 <body>
@@ -283,7 +336,20 @@ export function buildOsmMapHtml({ tileUrl, maxZoom, colors }: OsmMapHtmlOptions)
         zIndexOffset: marker.layer === 'alerts' ? 300 : 200
       });
       if (marker.title || marker.description) {
-        pin.bindPopup(popupHtml(marker), { closeButton: false });
+        pin.bindPopup(popupHtml(marker), {
+          closeButton: true,
+          maxWidth: 240,
+          minWidth: 160,
+          maxHeight: 140,
+          autoPan: true,
+          autoPanPadding: [16, 16]
+        });
+        pin.on('popupopen', function (e) {
+          var el = e.popup && e.popup.getElement();
+          if (el) {
+            L.DomEvent.disableScrollPropagation(el);
+          }
+        });
       }
       pin.addTo(markerLayer);
     });
